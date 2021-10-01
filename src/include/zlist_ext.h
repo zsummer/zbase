@@ -20,8 +20,8 @@
 #include "fn_log.h"
 
 
-#ifndef  ZLIST_H
-#define ZLIST_H
+#ifndef  ZLIST_EXT_H
+#define ZLIST_EXT_H
 
 
 namespace zsummer
@@ -154,7 +154,7 @@ namespace zsummer
     }
 
     //list need init all nodes.
-    template<class _Ty, size_t _Size>
+    template<class _Ty, size_t _Size, size_t _FixedSize>
     class zlist
     {
     public:
@@ -169,6 +169,9 @@ namespace zsummer
 
         static const u64 FENCE_VAL = 0xdeadbeafdeadbeafULL;
         static const u64 MAX_SIZE = _Size;
+        static_assert(_Size > 0, "");
+        static_assert(_FixedSize > 0, "");
+        static_assert(_FixedSize <= _Size, "");
 
         using iterator = ListIterator<zlist<_Ty, _Size>>;
         using const_iterator = ConstListIterator<zlist<_Ty, _Size>>;
@@ -183,9 +186,9 @@ namespace zsummer
             u64 fence;
             u32 front;
             u32 next;
-            space_type space;
+            space_type *space;
         };
-        static _Ty* MAY_ALIAS node_cast(Node* node) { return reinterpret_cast<_Ty*>(&node->space); }
+        static _Ty* MAY_ALIAS node_cast(Node* node) { return reinterpret_cast<_Ty*>(node->space); }
     public:
 
         zlist()
@@ -194,9 +197,10 @@ namespace zsummer
         }
         ~zlist()
         {
-            if /*constexpr*/ (!std::is_object<_Ty>::value)
+            clear();
+            if (dync_space_ != NULL)
             {
-                clear();
+                delete[] dync_space_;
             }
         }
 
@@ -281,9 +285,11 @@ namespace zsummer
                 data_[i].next = (u32)i + 1;
                 data_[i].fence = FENCE_VAL;
                 data_[i].front = end_id_;
+                data_[i].space = NULL;
             }
             data_[end_id_].next = end_id_;
             used_id_ = end_id_;
+            dync_space_ = 0;
         }
     private:
         bool push_free_node(u32 id)
@@ -507,6 +513,8 @@ namespace zsummer
         u32 used_id_;
         u32 end_id_;
         Node data_[_Size + 1];
+        space_type fixed_space_[_FixedSize + 1];
+        space_type* dync_space_;// size is _Size - _FixedSize
     };
 
     template<class _Ty, size_t _Size>
