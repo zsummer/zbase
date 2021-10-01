@@ -8,6 +8,7 @@
 #include "zcontain_test.h"
 #include "zobj_pool.h"
 #include "zlist_stress.h"
+#include <unordered_map>
 
 using namespace zsummer::shm_arena;
 
@@ -244,6 +245,21 @@ s32 ZContainStress()
     {
         zarray<int, LOAD_CAPACITY> c;
         LinerStress(c, "zarray<int, LOAD_CAPACITY>");
+    }
+    if (true)
+    {
+        std::map<int, int>  m;
+        MapStress(m, "std::map<int, int>");
+    }
+    if (true)
+    {
+        std::unordered_map<int, int>  m;
+        MapStress(m, "std::unordered_map<int, int>");
+    }
+    if (true)
+    {
+        zhash_map<int, int, LOAD_CAPACITY> m;
+        MapStress(m, "zhash_map<int, int, LOAD_CAPACITY>");
     }
     return 0;
 }

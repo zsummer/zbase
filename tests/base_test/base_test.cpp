@@ -83,7 +83,7 @@ int main(int argc, char *argv[])
     }
 
 
-    if (true)
+    if (false)
     {
         PROF_DEFINE_REGISTER(rec, "PROF_COUNTER_CLOCK dis 1000w", PROF_COUNTER_RDTSC_BTB);
         for (size_t i = 0; i < 1000 * 10000; i++)
