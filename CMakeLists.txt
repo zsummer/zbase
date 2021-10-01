@@ -97,7 +97,7 @@ if(WIN32)
     #SET_PROPERTY(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT ${PROJECT_NAME})
 else()
     ADD_DEFINITIONS(-Wall -O2 )
-    SET(CMAKE_CXX_FLAGS -std=c++11)
+    SET(CMAKE_CXX_FLAGS -std=c++14)
     SET(CMAKE_CXX_FLAGS_DEBUG "$ENV{CXXFLAGS} -O0 -Wall -g -ggdb")
     SET(CMAKE_CXX_FLAGS_RELEASE "$ENV{CXXFLAGS} -O3 -Wall")
     LINK_LIBRARIES(pthread m c)
@@ -115,7 +115,7 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/bin)
 
 #自定义部分 
 
-
+include_directories(${CMAKE_SOURCE_DIR}/tests)
 macro(SUB_DIR_LIST result curdir)
     file(GLOB children RELATIVE ${curdir} ${curdir}/*)
     set(dirlist "")

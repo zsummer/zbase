@@ -18,7 +18,7 @@
 
 #include "base_def.h"
 #include "fn_log.h"
-
+#include <memory>
 
 #ifndef ZOBJ_POOL_H
 #define ZOBJ_POOL_H
