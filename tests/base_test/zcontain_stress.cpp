@@ -10,7 +10,7 @@
 #include "zlist_stress.h"
 #include <unordered_map>
 
-using namespace zsummer::shm_arena;
+using namespace zsummer;
 
 
 #define AssertTest(val1, val2, desc)   \

@@ -7,7 +7,7 @@
 #include "zhash_map.h"
 #include "zcontain_test.h"
 #include "zobj_pool.h"
-using namespace zsummer::shm_arena;
+using namespace zsummer;
 
 
 #define AssertTest(val1, val2, desc)   \
