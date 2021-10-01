@@ -1,0 +1,55 @@
+# Prerequisites
+*.d
+
+# Compiled Object files
+*.slo
+*.lo
+*.o
+*.obj
+
+# Precompiled Headers
+*.gch
+*.pch
+
+# Compiled Dynamic libraries
+*.so
+*.dylib
+*.dll
+
+# Fortran module files
+*.mod
+*.smod
+
+# Compiled Static libraries
+*.lai
+*.la
+*.a
+*.lib
+
+# Compiled Dir
+build
+build_*
+build-*
+.DS_Store
+.vs
+.vscode
+xcodes
+vs_sln
+
+
+# Executables
+*.exe
+*.out
+*.app
+*.bin
+bin/test_*
+bin/stress_*
+bin/benchmark_*
+bin/Debug
+bin/Release
+.gdb_history
+
+# log
+bin/*.log.*
+bin/*.log
+bin/log
