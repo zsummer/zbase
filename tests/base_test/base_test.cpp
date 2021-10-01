@@ -31,8 +31,9 @@ typedef float f32;
 #include "fn_log.h"
 #include "zprof.h"
 #include "zcontain.h"
-
-
+#include "zcontain_stress.h"
+#include "zlist_stress.h"
+#include "zcontain_test.h"
 
 
 
@@ -50,11 +51,11 @@ int main(int argc, char *argv[])
     LogDebug() << " main begin test. ";
     volatile double cycles = 0.0f;
 
+    ZContainStress();
+    ZContainTest();
+    ZListLowerBoundTest();
 
-
-
-
-    if (true)
+    if (false)
     {
         PROF_DEFINE_AUTO_SINGLE_RECORD(guard, 1000 * 10000, PROF_LEVEL_NORMAL, "PROF_CONNTER_CHRONO bat 1000w");
         for (size_t i = 0; i < 1000 * 10000; i++)
@@ -63,7 +64,7 @@ int main(int argc, char *argv[])
         }
     }
 
-    if (true)
+    if (false)
     {
         PROF_DEFINE_AUTO_SINGLE_RECORD(guard, 1000 * 10000, PROF_LEVEL_NORMAL, "PROF_COUNTER_RDTSC_PURE bat 1000w");
         for (size_t i = 0; i < 1000 * 10000; i++)
@@ -72,7 +73,7 @@ int main(int argc, char *argv[])
         }
     }
 
-    if (true)
+    if (false)
     {
         PROF_DEFINE_AUTO_SINGLE_RECORD(guard, 1000 * 10000, PROF_LEVEL_NORMAL, "PROF_COUNTER_RDTSC_NOFENCE bat 1000w");
         for (size_t i = 0; i < 1000 * 10000; i++)
