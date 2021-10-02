@@ -12,20 +12,7 @@
 using namespace zsummer;
 
 
-#define AssertTest(val1, val2, desc)   \
-{\
-    auto v1 = (val1); \
-    auto v2 = (val2); \
-    if ((v1)==(v2)) \
-    { \
-        LogDebug() << (v1) << " " << (v2) <<" " << desc << " pass.";  \
-    } \
-    else  \
-    { \
-        LogError() << (v1) << " " << (v2) <<" " << desc << " failed.";  \
-        return 1U;  \
-    } \
-}
+
 
 #define Now() std::chrono::duration<double>(std::chrono::system_clock().now().time_since_epoch()).count()                                
 

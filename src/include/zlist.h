@@ -16,8 +16,6 @@
 * limitations under the License.
 */
 
-#include "base_def.h"
-#include "fn_log.h"
 
 
 #ifndef  ZLIST_H
@@ -26,6 +24,28 @@
 
 namespace zsummer
 {
+    using s8 = char;
+    using u8 = unsigned char;
+    using s16 = short int;
+    using u16 = unsigned short int;
+    using s32 = int;
+    using u32 = unsigned int;
+    using s64 = long long;
+    using u64 = unsigned long long;
+    using f32 = float;
+    using f64 = double;
+
+#if __GNUG__ && __GNUC__ < 5
+#define IS_TRIVIALLY_COPYABLE(T) __has_trivial_copy(T)
+#else
+#define IS_TRIVIALLY_COPYABLE(T) std::is_trivially_copyable<T>::value
+#endif
+
+#if __GNUG__
+#define MAY_ALIAS __attribute__((__may_alias__))
+#else
+#define MAY_ALIAS
+#endif
 
     template<class _List>
     struct ConstListIterator;
@@ -194,7 +214,7 @@ namespace zsummer
         }
         ~zlist()
         {
-            if /*constexpr*/ (!std::is_object<_Ty>::value)
+            if (std::is_object<_Ty>::value)
             {
                 clear();
             }
@@ -240,7 +260,7 @@ namespace zsummer
         reference back() { return *node_cast(&data_[data_[end_id_].front]); }
         const_reference back() const { *node_cast(&data_[data_[end_id_].front]); }
 
-        static constexpr u32 static_buf_size(u32 obj_count) { return sizeof(zlist<_Ty, 0>) + sizeof(Node) * obj_count; }
+        static constexpr u32 static_buf_size(u32 obj_count) { return sizeof(zlist<_Ty, 1>) + sizeof(Node) *( obj_count -1); }
 
 
         const size_type size() const noexcept { return used_count_; }
@@ -316,7 +336,7 @@ namespace zsummer
             {
                 return false; //empty
             }
-            if /*constexpr*/ (!std::is_object<_Ty>::value)
+            if (std::is_object<_Ty>::value)
             {
                 node_cast(node)->~_Ty();
             }
@@ -340,7 +360,7 @@ namespace zsummer
             {
                 return push_free_node(id);
             }
-            LogError() << "release used node error";
+//            LogError() << "release used node error";
             return false;
         }
         void inject(u32 pos_id, u32 new_id)

@@ -15,30 +15,17 @@
 using namespace zsummer;
 
 
-#define AssertTest(val1, val2, desc)   \
-{\
-    auto v1 = (val1); \
-    auto v2 = (val2); \
-    if ((v1)==(v2)) \
-    { \
-        LogDebug() << (v1) << " " << (v2) <<" " << desc << " pass.";  \
-    } \
-    else  \
-    { \
-        LogError() << (v1) << " " << (v2) <<" " << desc << " failed.";  \
-        return 1U;  \
-    } \
-}
+
 
 #define Now() std::chrono::duration<double>(std::chrono::system_clock().now().time_since_epoch()).count()                                
 
 static const int LOOP_CAPACITY = 1000;
 static const int LOAD_CAPACITY = 10000;
-template<class List>
-s32 LinerStress(List& l, const std::string& desc)
+template<class List, class V>
+s32 LinerStress(List& l, const std::string& desc,  bool is_static = false, V*p = NULL)
 {
     std::stringstream ss;
-    ss << desc << ":" << LOOP_CAPACITY << "/" << LOAD_CAPACITY << ": ";
+    ss << desc << ":" << LOAD_CAPACITY  << ": ";
 
     if (true)
     {
@@ -46,9 +33,29 @@ s32 LinerStress(List& l, const std::string& desc)
         prof_cost.start();
         for (int i = 0; i < LOAD_CAPACITY; i++)
         {
-            l.push_back(i);
+            l.push_back(V(i));
         }
         prof_cost.record_current<LOAD_CAPACITY>();
+        if (is_static)
+        {
+            l.push_back(V(LOAD_CAPACITY));
+            l.push_back(V(LOAD_CAPACITY));
+        }
+
+        AssertCheck((int)l.size(), LOAD_CAPACITY, desc + ": error");
+
+        int i = 0;
+        for (auto &v : l)
+        {
+            if ((v) != i)
+            {
+                volatile int a = i;
+                (void)a;
+            }
+            AssertCheck((int)v, i, desc + ": error");
+            i++;
+        }
+
     }
 
     if (true)
@@ -57,6 +64,11 @@ s32 LinerStress(List& l, const std::string& desc)
         prof_cost.start();
         l.clear();
         prof_cost.record_current<LOAD_CAPACITY>();
+        AssertCheck((int)l.size(), 0, desc + ": error");
+        if (is_static)
+        {
+            l.erase(l.end());
+        }
     }
 
     if (true)
@@ -67,7 +79,7 @@ s32 LinerStress(List& l, const std::string& desc)
         {
             for (int i = 0; i < LOAD_CAPACITY; i++)
             {
-                l.insert(l.begin(), i);
+                l.insert(l.begin(), V(i));
             }
             if (l.size() != LOAD_CAPACITY)
             {
@@ -79,8 +91,37 @@ s32 LinerStress(List& l, const std::string& desc)
             }
         }
         prof_cost.record_current<LOAD_CAPACITY * 2>();
+        AssertCheck((int)l.size(), 0, desc + ": error");
     }
 
+    if (true)
+    {
+        PROF_DEFINE_REGISTER_DEFAULT(prof_cost, (ss.str() + "insert end & pop end(capacity)").c_str());
+        prof_cost.start();
+        for (int loop = 0; loop < 1; loop++)
+        {
+            for (int i = 0; i < LOAD_CAPACITY; i++)
+            {
+                l.insert(l.end(), V(i));
+            }
+            if (l.size() != LOAD_CAPACITY)
+            {
+                LogError() << " stress test error";
+            }
+            for (int i = 0; i < LOAD_CAPACITY; i++)
+            {
+                auto iter = l.end();
+                iter--;
+                l.erase(iter);
+            }
+        }
+        prof_cost.record_current<LOAD_CAPACITY * 2>();
+        if (is_static)
+        {
+            l.erase(l.end());
+        }
+        AssertCheck((int)l.size(), 0, desc + ": error");
+    }
 
 
 
@@ -92,7 +133,7 @@ s32 LinerStress(List& l, const std::string& desc)
         {
             for (int i = 0; i < LOAD_CAPACITY; i++)
             {
-                l.push_back(i);
+                l.push_back(V(i));
             }
             if (l.size() != LOAD_CAPACITY)
             {
@@ -104,6 +145,7 @@ s32 LinerStress(List& l, const std::string& desc)
             }
         }
         prof_cost.record_current<LOAD_CAPACITY * 2>();
+        AssertCheck((int)l.size(), 0, desc + ": error");
     }
 
 
@@ -113,10 +155,11 @@ s32 LinerStress(List& l, const std::string& desc)
         prof_cost.start();
         for (int i = 0; i < LOAD_CAPACITY * LOOP_CAPACITY; i++)
         {
-            l.push_back(i);
+            l.push_back(V(i));
             l.pop_back();
         }
         prof_cost.record_current<LOAD_CAPACITY * LOOP_CAPACITY>();
+        AssertCheck((int)l.size(), 0, desc + ": error");
     }
 
 
@@ -128,7 +171,7 @@ s32 LinerStress(List& l, const std::string& desc)
         {
             for (int i = 0; i < LOAD_CAPACITY; i++)
             {
-                l.push_back(i);
+                l.push_back(V(i));
             }
             for (int i = 0; i < LOAD_CAPACITY; i++)
             {
@@ -136,16 +179,17 @@ s32 LinerStress(List& l, const std::string& desc)
             }
         }
         prof_cost.record_current<LOAD_CAPACITY * 2 * 1000>();
+        AssertCheck((int)l.size(), 0, desc + ": error");
     }
 
     return 0;
 }
 
-template<class Map>
-s32 MapStress(Map& m, const std::string& desc)
+template<class Map, class V>
+s32 MapStress(Map& m, const std::string& desc, bool is_static = false, V* p = NULL)
 {
     std::stringstream ss;
-    ss << desc << ":" << LOOP_CAPACITY << "/" << LOAD_CAPACITY << ": ";
+    ss << desc << ":" <<  LOAD_CAPACITY << ": ";
 
     if (true)
     {
@@ -153,9 +197,16 @@ s32 MapStress(Map& m, const std::string& desc)
         prof_cost.start();
         for (int i = 0; i < LOAD_CAPACITY; i++)
         {
-            m.insert({ i, i });
+            m.insert({ i, V(i) });
         }
         prof_cost.record_current<LOAD_CAPACITY>();
+       
+        if (is_static)
+        {
+            m.insert({ LOAD_CAPACITY, V(LOAD_CAPACITY) });
+            m.insert({ LOAD_CAPACITY + 1,  V(LOAD_CAPACITY + 1) });
+        }
+        AssertCheck((int)m.size(), LOAD_CAPACITY, desc + ":has error");
     }
 
     if (true)
@@ -164,6 +215,8 @@ s32 MapStress(Map& m, const std::string& desc)
         prof_cost.start();
         m.clear();
         prof_cost.record_current<LOAD_CAPACITY>();
+        AssertCheck((int)m.size(), 0, desc + ":has error");
+
     }
 
     if (true)
@@ -172,21 +225,25 @@ s32 MapStress(Map& m, const std::string& desc)
         prof_cost.start();
         for (int i = 0; i < LOAD_CAPACITY; i++)
         {
-            m.insert({ i, i });
+            m.insert({ i,  V(i) });
         }
-        if (m.size() != LOAD_CAPACITY)
-        {
-            LogError() << " stress test error";
-        }
+        AssertCheck((int)m.size(), LOAD_CAPACITY, desc + ": error");
+
         for (int i = 0; i < LOAD_CAPACITY; i++)
         {
             m.erase(i);
         }
-        if (m.size() != 0)
-        {
-            LogError() << " stress test error";
-        }
         prof_cost.record_current<LOAD_CAPACITY * 2>();
+        AssertCheck((int)m.size(), 0, desc + ":has error");
+        for (int i = 0; i < LOAD_CAPACITY; i++)
+        {
+            m.erase(i);
+        }
+        if (is_static)
+        {
+            m.erase(m.end());
+        }
+        
     }
 
 
@@ -197,12 +254,9 @@ s32 MapStress(Map& m, const std::string& desc)
 
         for (int i = 0; i < LOAD_CAPACITY; i++)
         {
-            m.insert({ i, i });
+            m.insert({ i,  V(i) });
         }
-        if (m.size() != LOAD_CAPACITY)
-        {
-            LogError() << " stress test error";
-        }
+        AssertCheck((int)m.size(), LOAD_CAPACITY, desc + ": error");
 
         PROF_DEFINE_REGISTER_DEFAULT(prof_cost, (ss.str() + "find(capacity)").c_str());
         prof_cost.start();
@@ -220,59 +274,90 @@ s32 MapStress(Map& m, const std::string& desc)
     return 0;
 }
 
+template<class T,  class V = RAIIVal<>,  bool IS_STATIC = false>
+void LinerStressWrap()
+{
+    T* c = new T;
+    LinerStress(*c, typeid(T).name(), IS_STATIC, (V*)NULL);
+    delete c; 
+    CheckRAIIVal(typeid(T).name());
+}
+
+template<class T, class V = RAIIVal<>, bool IS_STATIC = false>
+void LinerDestroyWrap()
+{
+    T* c = new T;
+    for (int i = 0; i < LOAD_CAPACITY; i++)
+    {
+        c->push_back(V(i));
+    }
+    delete c;
+    CheckRAIIVal(typeid(T).name());
+}
+
+template<class T, class V = RAIIVal<>, bool IS_STATIC = false>
+void MapStressWrap()
+{
+    T* c = new T;
+    MapStress(*c, typeid(T).name(), IS_STATIC, (V*)NULL);
+    delete c;
+    CheckRAIIVal(typeid(T).name());
+}
+
+template<class T, class V = RAIIVal<>, bool IS_STATIC = false>
+void MapDestroyWrap()
+{
+    T* c = new T;
+    for (int i = 0; i < LOAD_CAPACITY; i++)
+    {
+        c->insert(std::make_pair(i, V(i)));
+    }
+    delete c;
+    CheckRAIIVal(typeid(T).name());
+}
+
 
 s32 ZContainStress()
 {
-    if (true)
-    {
-        std::list<int> c;
-        LinerStress(c, "std::list<int>");
-    }
-    if (true)
-    {
-        std::vector<int> c;
-        LinerStress(c, "std::vector<int>");
-    }
-    if (true)
-    {
-        std::deque<int> c;
-        LinerStress(c, "std::deque<int>");
-    }
-    if (true)
-    {
-        zlist<int, LOAD_CAPACITY> c;
-        LinerStress(c, "zlist<int, LOAD_CAPACITY>");
-    }
-    if (true)
-    {
-        zlist_ext<int, LOAD_CAPACITY, LOAD_CAPACITY> c;
-        LinerStress(c, "zlist_ext<int, LOAD_CAPACITY, LOAD_CAPACITY>");
-    }
-    if (true)
-    {
-        zlist_ext<int, LOAD_CAPACITY, 1> c;
-        LinerStress(c, "zlist_ext<int, LOAD_CAPACITY, 1>");
-    }
+    LogDebug() << "================";
+    LinerStressWrap<std::vector<int>, int>();
+    LinerStressWrap<zarray<int, LOAD_CAPACITY>, int, true>();
+    LinerStressWrap<std::vector<int>, RAIIVal<>>();
+    LinerStressWrap<zarray<int, LOAD_CAPACITY>, RAIIVal<>, true>();    
+    LinerDestroyWrap<std::vector<int>, RAIIVal<>>();
+    LinerDestroyWrap<zarray<int, LOAD_CAPACITY>, RAIIVal<>, true>();
 
-    if (true)
-    {
-        zarray<int, LOAD_CAPACITY> c;
-        LinerStress(c, "zarray<int, LOAD_CAPACITY>");
-    }
-    if (true)
-    {
-        std::map<int, int>  m;
-        MapStress(m, "std::map<int, int>");
-    }
-    if (true)
-    {
-        std::unordered_map<int, int>  m;
-        MapStress(m, "std::unordered_map<int, int>");
-    }
-    if (true)
-    {
-        zhash_map<int, int, LOAD_CAPACITY> m;
-        MapStress(m, "zhash_map<int, int, LOAD_CAPACITY>");
-    }
+
+    LogDebug() << "================";
+    LinerStressWrap<std::deque<int>, int>();
+    LinerStressWrap<zlist<int, LOAD_CAPACITY>, int, true>();
+    LinerStressWrap<zlist_ext<int, LOAD_CAPACITY, LOAD_CAPACITY>, int, true>();
+    LinerStressWrap<zlist_ext<int, LOAD_CAPACITY, 1>, int, true>();
+
+
+    LinerStressWrap<std::deque<RAIIVal<>>, RAIIVal<>>();
+    LinerStressWrap<zlist<RAIIVal<>, LOAD_CAPACITY>, RAIIVal<>, true>();
+    LinerStressWrap<zlist_ext<RAIIVal<>, LOAD_CAPACITY, LOAD_CAPACITY>, RAIIVal<>, true>();
+    LinerStressWrap<zlist_ext<RAIIVal<>, LOAD_CAPACITY, 1>, RAIIVal<>, true>();
+
+    LinerDestroyWrap<std::deque<RAIIVal<>>, RAIIVal<>>();
+    LinerDestroyWrap<zlist<RAIIVal<>, LOAD_CAPACITY>, RAIIVal<>, true>();
+    LinerDestroyWrap<zlist_ext<RAIIVal<>, LOAD_CAPACITY, LOAD_CAPACITY>, RAIIVal<>, true>();
+    LinerDestroyWrap<zlist_ext<RAIIVal<>, LOAD_CAPACITY, 1>, RAIIVal<>, true>();
+
+    LogDebug() << "================";
+
+    MapStressWrap<std::map<int, int>, int, false>();
+    MapStressWrap<std::unordered_map<int, int>, int, false>();
+    MapStressWrap<zhash_map<int, int, LOAD_CAPACITY>, int, true>();
+
+    MapStressWrap<std::map<int, RAIIVal<>>, RAIIVal<>, false>();
+    MapStressWrap<std::unordered_map<int, RAIIVal<>>, RAIIVal<>, false>();
+    MapStressWrap<zhash_map<int, RAIIVal<>, LOAD_CAPACITY>, RAIIVal<>, true>();
+
+    MapDestroyWrap<std::map<int, RAIIVal<>>, RAIIVal<>, false>();
+    MapDestroyWrap<std::unordered_map<int, RAIIVal<>>, RAIIVal<>, false>();
+    MapDestroyWrap<zhash_map<int, RAIIVal<>, LOAD_CAPACITY>, RAIIVal<>, true>();
+    LogDebug() << "================";
     return 0;
 }

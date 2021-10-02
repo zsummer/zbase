@@ -16,8 +16,7 @@
 * limitations under the License.
 */
 
-#include "base_def.h"
-#include "fn_log.h"
+
 #include <memory>
 
 #ifndef ZOBJ_POOL_H
@@ -29,6 +28,23 @@
 #endif // WIN32
 namespace zsummer
 {
+    using s8 = char;
+    using u8 = unsigned char;
+    using s16 = short int;
+    using u16 = unsigned short int;
+    using s32 = int;
+    using u32 = unsigned int;
+    using s64 = long long;
+    using u64 = unsigned long long;
+    using f32 = float;
+    using f64 = double;
+
+#if __GNUG__ && __GNUC__ < 5
+#define IS_TRIVIALLY_COPYABLE(T) __has_trivial_copy(T)
+#else
+#define IS_TRIVIALLY_COPYABLE(T) std::is_trivially_copyable<T>::value
+#endif
+
     //list need init all nodes.
     template<class _Ty, bool _Has_Vtpr = false>
     class alignas(std::max_align_t) zobj_pool

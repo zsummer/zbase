@@ -1,5 +1,5 @@
 
-#include "base_def.h"
+
 #include "fn_log.h"
 #include <string>
 #include "zarray.h"
@@ -10,54 +10,9 @@
 using namespace zsummer;
 
 
-#define AssertTest(val1, val2, desc)   \
-{\
-    auto v1 = (val1); \
-    auto v2 = (val2); \
-    if ((v1)==(v2)) \
-    { \
-        LogDebug() << (v1) << " " << (v2) <<" " << desc << " pass.";  \
-    } \
-    else  \
-    { \
-        LogError() << (v1) << " " << (v2) <<" " << desc << " failed.";  \
-        return 1U;  \
-    } \
-}
 
 
-class RAIIVal
-{
-public:
-    static u32 construct_count_;
-    static u32 destroy_count_;
-    static u32 now_live_count_;
-    void reset()
-    {
-        construct_count_ = 0;
-        destroy_count_ = 0;
-        now_live_count_ = 0;
-    }
-    RAIIVal()
-    {
-        construct_count_++;
-        now_live_count_++;
-    }
-    RAIIVal(const RAIIVal& v)
-    {
-        construct_count_++;
-        now_live_count_++;
-    }
-    ~RAIIVal()
-    {
-        destroy_count_++;
-        now_live_count_--;
-    }
-};
 
-u32 RAIIVal::construct_count_ = 0;
-u32 RAIIVal::destroy_count_ = 0;
-u32 RAIIVal::now_live_count_ = 0;
 
 s32 ZArrayTest()
 {
@@ -111,19 +66,19 @@ s32 ZArrayTest()
 
     if (true)
     {
-        RAIIVal rv;
+        RAIIVal<> rv;
         rv.reset();
-        zarray<RAIIVal, 100> raii_array;
-        AssertTest(RAIIVal::now_live_count_, 0U, "");
+        zarray<RAIIVal<>, 100> raii_array;
+        AssertTest(RAIIVal<>::now_live_count_, 0U, "");
         raii_array.push_back(rv);
-        AssertTest(RAIIVal::now_live_count_, 1U, "");
+        AssertTest(RAIIVal<>::now_live_count_, 1U, "");
         raii_array.insert(raii_array.begin(), rv);
-        AssertTest(RAIIVal::now_live_count_, 2U, "");
-        AssertTest(RAIIVal::construct_count_, 3U, "");
+        AssertTest(RAIIVal<>::now_live_count_, 2U, "");
+        AssertTest(RAIIVal<>::construct_count_, 3U, "");
         raii_array.clear();
-        AssertTest(RAIIVal::now_live_count_, 0U, "");
-        AssertTest(RAIIVal::construct_count_, 3U, "");
-        AssertTest(RAIIVal::destroy_count_, 3U, "");
+        AssertTest(RAIIVal<>::now_live_count_, 0U, "");
+        AssertTest(RAIIVal<>::construct_count_, 3U, "");
+        AssertTest(RAIIVal<>::destroy_count_, 3U, "");
 
     }
 
