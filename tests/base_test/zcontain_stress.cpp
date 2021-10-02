@@ -5,6 +5,7 @@
 #include "zarray.h"
 #include <string>
 #include "zlist.h"
+#include "zlist_ext.h"
 #include "zhash_map.h"
 #include "zcontain_test.h"
 #include "zobj_pool.h"
@@ -235,13 +236,24 @@ s32 ZContainStress()
     if (true)
     {
         std::deque<int> c;
-        LinerStress(c, "std::vector<int>");
+        LinerStress(c, "std::deque<int>");
     }
     if (true)
     {
         zlist<int, LOAD_CAPACITY> c;
         LinerStress(c, "zlist<int, LOAD_CAPACITY>");
     }
+    if (true)
+    {
+        zlist_ext<int, LOAD_CAPACITY, LOAD_CAPACITY> c;
+        LinerStress(c, "zlist_ext<int, LOAD_CAPACITY, LOAD_CAPACITY>");
+    }
+    if (true)
+    {
+        zlist_ext<int, LOAD_CAPACITY, 1> c;
+        LinerStress(c, "zlist_ext<int, LOAD_CAPACITY, 1>");
+    }
+
     if (true)
     {
         zarray<int, LOAD_CAPACITY> c;

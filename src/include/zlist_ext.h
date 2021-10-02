@@ -1,6 +1,6 @@
 
 /*
-* zlist License
+* zlist_ext License
 * Copyright (C) 2019 YaweiZhang <yawei.zhang@foxmail.com>.
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
@@ -28,10 +28,10 @@ namespace zsummer
 {
 
     template<class _List>
-    struct ConstListIterator;
+    struct ConstListExtIterator;
 
     template<class _List>
-    struct ListIterator
+    struct ListExtIterator
     {
         using _Node = typename _List::Node;
         using _Ty = typename _List::value_type;
@@ -41,29 +41,29 @@ namespace zsummer
         using pointer = typename _List::pointer;
         using reference = typename _List::reference;
 
-        ListIterator(const _Node* const head, u32 id) { head_ = const_cast<_Node*>(head); id_ = id; }
-        ListIterator(const ListIterator<_List>& other) { head_ = const_cast<_Node*>(other.head_); id_ = other.id_; }
-        ListIterator(const ConstListIterator<_List>& other) { head_ = const_cast<_Node*>(other.head_); id_ = other.id_; }
-        ListIterator() :ListIterator(NULL, 0) {}
-        ListIterator& operator ++()
+        ListExtIterator(const _Node* const head, u32 id) { head_ = const_cast<_Node*>(head); id_ = id; }
+        ListExtIterator(const ListExtIterator<_List>& other) { head_ = const_cast<_Node*>(other.head_); id_ = other.id_; }
+        ListExtIterator(const ConstListExtIterator<_List>& other) { head_ = const_cast<_Node*>(other.head_); id_ = other.id_; }
+        ListExtIterator() :ListExtIterator(NULL, 0) {}
+        ListExtIterator& operator ++()
         {
             id_ = (head_ + id_)->next;
             return *this;
         }
-        ListIterator& operator --()
+        ListExtIterator& operator --()
         {
             id_ = (head_ + id_)->front;
             return *this;
         }
-        ListIterator operator ++(int)
+        ListExtIterator operator ++(int)
         {
-            ListIterator old = *this;
+            ListExtIterator old = *this;
             id_ = (head_ + id_)->next;
             return old;
         }
-        ListIterator operator --(int)
+        ListExtIterator operator --(int)
         {
-            ListIterator old = *this;
+            ListExtIterator old = *this;
             id_ = (head_ + id_)->front;
             return old;
         }
@@ -82,18 +82,18 @@ namespace zsummer
         u32 id_;
     };
     template<class _List>
-    bool operator == (const ListIterator<_List>& n1, const ListIterator<_List>& n2)
+    bool operator == (const ListExtIterator<_List>& n1, const ListExtIterator<_List>& n2)
     {
         return n1.head_ == n2.head_ && n1.id_ == n2.id_;
     }
     template<class _List>
-    bool operator != (const ListIterator<_List>& n1, const ListIterator<_List>& n2)
+    bool operator != (const ListExtIterator<_List>& n1, const ListExtIterator<_List>& n2)
     {
         return !(n1 == n2);
     }
 
     template<class _List>
-    struct ConstListIterator
+    struct ConstListExtIterator
     {
         using _Node = typename _List::Node;
         using _Ty = typename _List::value_type;
@@ -103,29 +103,29 @@ namespace zsummer
         using const_pointer = typename _List::const_pointer;
         using const_reference = typename _List::const_reference;
 
-        ConstListIterator(const _Node* const head, u32 id) { head_ = const_cast<_Node*>(head); id_ = id; }
-        ConstListIterator(const ConstListIterator<_List>& other) { head_ = const_cast<_Node*>(other.head_); id_ = other.id_; }
-        ConstListIterator(const ListIterator<_List>& other) { head_ = const_cast<_Node*>(other.head_); id_ = other.id_; }
-        ConstListIterator() :ConstListIterator(NULL, 0) {}
-        ConstListIterator& operator ++()
+        ConstListExtIterator(const _Node* const head, u32 id) { head_ = const_cast<_Node*>(head); id_ = id; }
+        ConstListExtIterator(const ConstListExtIterator<_List>& other) { head_ = const_cast<_Node*>(other.head_); id_ = other.id_; }
+        ConstListExtIterator(const ListExtIterator<_List>& other) { head_ = const_cast<_Node*>(other.head_); id_ = other.id_; }
+        ConstListExtIterator() :ConstListExtIterator(NULL, 0) {}
+        ConstListExtIterator& operator ++()
         {
             id_ = (head_ + id_)->next;
             return *this;
         }
-        ConstListIterator& operator --()
+        ConstListExtIterator& operator --()
         {
             id_ = (head_ + id_)->front;
             return *this;
         }
-        ConstListIterator operator ++(int)
+        ConstListExtIterator operator ++(int)
         {
-            ConstListIterator old = *this;
+            ConstListExtIterator old = *this;
             id_ = (head_ + id_)->next;
             return old;
         }
-        ConstListIterator operator --(int)
+        ConstListExtIterator operator --(int)
         {
-            ConstListIterator old = *this;
+            ConstListExtIterator old = *this;
             id_ = (head_ + id_)->front;
             return old;
         }
@@ -143,19 +143,19 @@ namespace zsummer
         u32 id_;
     };
     template<class _List>
-    bool operator == (const ConstListIterator<_List>& n1, const ConstListIterator<_List>& n2)
+    bool operator == (const ConstListExtIterator<_List>& n1, const ConstListExtIterator<_List>& n2)
     {
         return n1.head_ == n2.head_ && n1.id_ == n2.id_;
     }
     template<class _List>
-    bool operator != (const ConstListIterator<_List>& n1, const ConstListIterator<_List>& n2)
+    bool operator != (const ConstListExtIterator<_List>& n1, const ConstListExtIterator<_List>& n2)
     {
         return !(n1 == n2);
     }
 
     //list need init all nodes.
     template<class _Ty, size_t _Size, size_t _FixedSize>
-    class zlist
+    class zlist_ext
     {
     public:
         struct Node;
@@ -173,8 +173,8 @@ namespace zsummer
         static_assert(_FixedSize > 0, "");
         static_assert(_FixedSize <= _Size, "");
 
-        using iterator = ListIterator<zlist<_Ty, _Size>>;
-        using const_iterator = ConstListIterator<zlist<_Ty, _Size>>;
+        using iterator = ListExtIterator<zlist_ext<_Ty, _Size, _FixedSize>>;
+        using const_iterator = ConstListExtIterator<zlist_ext<_Ty, _Size, _FixedSize>>;
 
         using reverse_iterator = std::reverse_iterator<iterator>;
         using const_reverse_iterator = std::reverse_iterator<const_iterator>;
@@ -191,11 +191,11 @@ namespace zsummer
         static _Ty* MAY_ALIAS node_cast(Node* node) { return reinterpret_cast<_Ty*>(node->space); }
     public:
 
-        zlist()
+        zlist_ext()
         {
             init(_Size);
         }
-        ~zlist()
+        ~zlist_ext()
         {
             clear();
             if (dync_space_ != NULL)
@@ -204,12 +204,12 @@ namespace zsummer
             }
         }
 
-        zlist(std::initializer_list<_Ty> init_list)
+        zlist_ext(std::initializer_list<_Ty> init_list)
         {
             init(_Size);
             assign(init_list.begin(), init_list.end());
         }
-        zlist<_Ty, _Size>& operator = (const zlist<_Ty, _Size>& other)
+        zlist_ext<_Ty, _Size, _FixedSize>& operator = (const zlist_ext<_Ty, _Size, _FixedSize>& other)
         {
             if (data() == other.data())
             {
@@ -244,7 +244,7 @@ namespace zsummer
         reference back() { return *node_cast(&data_[data_[end_id_].front]); }
         const_reference back() const { *node_cast(&data_[data_[end_id_].front]); }
 
-        static constexpr u32 static_buf_size(u32 obj_count) { return sizeof(zlist<_Ty, 0>) + sizeof(Node) * obj_count; }
+        static constexpr u32 static_buf_size(u32 obj_count) { return sizeof(zlist_ext<_Ty, 0>) + sizeof(Node) * obj_count; }
 
 
         const size_type size() const noexcept { return used_count_; }
@@ -373,8 +373,20 @@ namespace zsummer
             }
             u32 new_id = free_id_;
             free_id_ = data_[new_id].next;
+            if (new_id > _FixedSize)
+            {
+                if (dync_space_ == NULL)
+                {
+                    dync_space_ = new space_type[_Size - _FixedSize];
+                }
+                data_[new_id].space = &dync_space_[new_id];
+            }
+            else
+            {
+                data_[new_id].space = &fixed_space_[new_id];
+            }
             inject(id, new_id);
-            new (&data_[new_id].space) _Ty(value);
+            new (data_[new_id].space) _Ty(value);
             return new_id;
         }
         template< class... Args >
@@ -386,8 +398,21 @@ namespace zsummer
             }
             u32 new_id = free_id_;
             free_id_ = data_[new_id].next;
+            if (new_id > _FixedSize)
+            {
+                if (dync_space_ == NULL)
+                {
+                    dync_space_ = new space_type[_Size - _FixedSize];
+                }
+                data_[new_id].space = &dync_space_[new_id];
+            }
+            else
+            {
+                data_[new_id].space = &fixed_space_[new_id];
+            }
+
             inject(id, new_id);
-            new (&data_[new_id].space) _Ty(args ...);
+            new (data_[new_id].space) _Ty(args ...);
             return new_id;
         }
     public:
@@ -517,16 +542,14 @@ namespace zsummer
         space_type* dync_space_;// size is _Size - _FixedSize
     };
 
-    template<class _Ty, size_t _Size>
-    bool operator==(const zlist<_Ty, _Size>& a1, const zlist<_Ty, _Size>& a2)
+    template<class _Ty, size_t _Size, size_t _FixedSize>
+    bool operator==(const zlist_ext<_Ty, _Size, _FixedSize>& a1, const zlist_ext<_Ty, _Size, _FixedSize>& a2)
     {
         return a1.data() == a2.data();
     }
 
 
-    static_assert(zlist<std::string, 0>::static_buf_size(0) == sizeof(zlist<std::string, 0>), "");
-    static_assert(zlist<std::string, 0>::static_buf_size(1) == sizeof(zlist<std::string, 1>), "");
-    static_assert(zlist<std::string, 0>::static_buf_size(5) == sizeof(zlist<std::string, 5>), "");
+
 
 }
 
