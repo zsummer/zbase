@@ -386,13 +386,13 @@ namespace zsummer
             u32 new_id = free_id_;
             free_id_ = data_[new_id].next;
 
-            if (new_id > _FixedSize)
+            if (new_id >= _FixedSize)
             {
                 if (dync_space_ == NULL)
                 {
                     dync_space_ = new space_type[_Size - _FixedSize];
                 }
-                data_[new_id].space = &dync_space_[new_id - _FixedSize - 1];
+                data_[new_id].space = &dync_space_[new_id - _FixedSize];
             }
             else
             {
@@ -411,13 +411,13 @@ namespace zsummer
             }
             u32 new_id = free_id_;
             free_id_ = data_[new_id].next;
-            if (new_id > _FixedSize)
+            if (new_id >= _FixedSize)
             {
                 if (dync_space_ == NULL)
                 {
                     dync_space_ = new space_type[_Size - _FixedSize ];
                 }
-                data_[new_id].space = &dync_space_[new_id - _FixedSize - 1];
+                data_[new_id].space = &dync_space_[new_id - _FixedSize];
             }
             else
             {

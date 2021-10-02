@@ -316,9 +316,75 @@ void MapDestroyWrap()
     CheckRAIIVal(typeid(T).name());
 }
 
-
-s32 ZContainStress()
+template<int M, int F>
+void TestDynSpaceMemoryLeak()
 {
+    for (int i = 0; i < M; i++)
+    {
+        zlist_ext<RAIIVal<>, M, F>  z; 
+        for (int j = 0; j < i; j++)
+        {
+            z.push_back(RAIIVal<>(i * 10000 + j)); 
+        }
+    }
+}
+
+template<int M>
+void TestStaticSpaceMemoryLeak()
+{
+    for (int i = 0; i < M; i++)
+    {
+        zlist<RAIIVal<>, M>  z;
+        for (int j = 0; j < i; j++)
+        {
+            z.push_back(RAIIVal<>(i * 10000 + j));
+        }
+    }
+}
+
+
+
+s32 ContainerStress()
+{
+    TestDynSpaceMemoryLeak<1, 1>();
+    TestDynSpaceMemoryLeak<2, 1>();
+    TestDynSpaceMemoryLeak<2, 2>();
+    TestDynSpaceMemoryLeak<3, 1>();
+    TestDynSpaceMemoryLeak<3, 2>();
+    TestDynSpaceMemoryLeak<3, 3>();
+    TestDynSpaceMemoryLeak<4, 1>();
+    TestDynSpaceMemoryLeak<4, 2>();
+    TestDynSpaceMemoryLeak<4, 3>();
+    TestDynSpaceMemoryLeak<4, 4>();
+    TestDynSpaceMemoryLeak<5, 1>();
+    TestDynSpaceMemoryLeak<5, 2>();
+    TestDynSpaceMemoryLeak<5, 3>();
+    TestDynSpaceMemoryLeak<5, 4>();
+    TestDynSpaceMemoryLeak<5, 5>();
+
+    TestStaticSpaceMemoryLeak<1>();
+    TestStaticSpaceMemoryLeak<2>();
+    TestStaticSpaceMemoryLeak<3>();
+    TestStaticSpaceMemoryLeak<4>();
+    TestStaticSpaceMemoryLeak<5>();
+    TestStaticSpaceMemoryLeak<6>();
+    TestStaticSpaceMemoryLeak<7>();
+    TestStaticSpaceMemoryLeak<8>();
+
+    if (true)
+    {
+        for (int i = 0; i < 1008; i++)
+        {
+            zlist_ext<RAIIVal<>, 1000, 200>  z;
+            for (int j = 0; j < i; j++)
+            {
+                z.push_back(RAIIVal<>(i * 10000 + j));
+            }
+        }
+    }
+
+
+
     LogDebug() << "================";
     LinerStressWrap<std::vector<int>, int>();
     LinerStressWrap<zarray<int, LOAD_CAPACITY>, int, true>();
@@ -359,5 +425,9 @@ s32 ZContainStress()
     MapDestroyWrap<std::unordered_map<int, RAIIVal<>>, RAIIVal<>, false>();
     MapDestroyWrap<zhash_map<int, RAIIVal<>, LOAD_CAPACITY>, RAIIVal<>, true>();
     LogDebug() << "================";
+
+
+
+
     return 0;
 }

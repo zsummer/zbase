@@ -6,7 +6,7 @@
 #define ZCONTAIN_STRESS_H
 
 
-s32 ZContainStress();
+s32 ContainerStress();
 
 
 
