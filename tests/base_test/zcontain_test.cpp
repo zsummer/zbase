@@ -4,58 +4,122 @@
 #include <string>
 #include "zarray.h"
 #include "zlist.h"
+#include "zlist_ext.h"
 #include "zhash_map.h"
 #include "zcontain_test.h"
 #include "zobj_pool.h"
 using namespace zsummer;
 
 
+static const int MAX_SIZE = 1000;
+int rand_array[MAX_SIZE];
+int sort_array[MAX_SIZE];
 
 
-
-
-s32 ZArrayTest()
+template<class T>
+s32 PushArrayTest(T& a)
 {
-    zarray<int, 100> numbers = { 3,2,8 };
-    AssertTest(numbers.size(), 3ULL, "check  init list");
-    AssertTest(numbers.at(0), 3, "check  init list");
-    AssertTest(numbers.at(1), 2, "check  init list");
-    AssertTest(numbers.at(2), 8, "check  init list");
-    u32 i = 0;
-    for (auto n : numbers)
+    for (int i = 0; i < MAX_SIZE; i++)
     {
-        AssertTest(numbers.at(i), n, "check member list");
-        i++;
+        a.push_back(rand_array[i]);
     }
-    AssertTest(i, 3ULL, "check  init list");
-    for (auto iter = numbers.rbegin(); iter != numbers.rend(); iter++)
+    if (a.size() != MAX_SIZE)
     {
-        i--;
-        AssertTest(numbers.at(i), *iter, "check member list");
+        LogError() << "  has error";
+        return -1;
     }
-    for (i = 0; i < numbers.size(); i++)
+    if (true)
     {
-        AssertTest(*(numbers.data() + i), numbers.at(i), "check member list");
+        int i = 0;
+        for (auto v : a)
+        {
+            if (v != rand_array[i])
+            {
+                LogError() << "  has error";
+                return -1;
+            }
+            i++;
+        }
+    }
+    return 0;
+}
+
+template<class T>
+s32 SortArrayTest(T& a)
+{
+    if (true)
+    {
+        int i = 0;
+        for (auto v : a)
+        {
+            if (v != sort_array[i])
+            {
+                LogError() << "  has error";
+                return -1;
+            }
+            i++;
+        }
+    }
+    return 0;
+}
+
+
+
+s32 ArrayTest()
+{
+    for (int i = 0; i < MAX_SIZE; i++)
+    {
+        rand_array[i] = rand() % MAX_SIZE;
     }
 
-    AssertTest(numbers.max_size(), 100ULL, "");
-    numbers.insert(numbers.begin(), 1);
-    AssertTest(numbers.at(0), 1, "");
-    AssertTest(numbers.size(), 4ULL, "");
-    std::sort(numbers.begin(), numbers.end());
-    AssertTest(numbers.at(0), 1, "");
-    AssertTest(numbers.at(1), 2, "");
-    AssertTest(numbers.at(2), 3, "");
-    AssertTest(numbers.at(3), 8, "");
-    numbers.push_back(2);
-    numbers.erase(std::remove(numbers.begin(), numbers.end(), 2), numbers.end());
-    AssertTest(numbers.size(), 3ULL, "");
-    AssertTest(numbers.at(0), 1, "");
-    AssertTest(numbers.at(1), 3, "");
-    AssertTest(numbers.at(2), 8, "");
-    numbers.fill(0);
-    AssertTest(numbers.size(), 100ULL, "");
-    numbers.push_back(0);
+    memcpy(sort_array, rand_array, sizeof(int) * MAX_SIZE);
+    std::sort(&sort_array[0], &sort_array[0] + MAX_SIZE);
+
+    if (true)
+    {
+        zarray<int, MAX_SIZE> numbers;
+        PushArrayTest(numbers);
+        if (true)
+        {
+            for (int i = 0;i < MAX_SIZE; i++)
+            {
+                if (numbers.at(i) != rand_array[i])
+                {
+                    LogError() << "  has error";
+                    return -1;
+                }
+                i++;
+            }
+        }
+        std::sort(numbers.begin(), numbers.end());
+        SortArrayTest(numbers);
+    }
+    if (true)
+    {
+        std::vector<int> numbers;
+        PushArrayTest(numbers);
+        std::sort(numbers.begin(), numbers.end());
+        SortArrayTest(numbers);
+
+    }
+    if (true)
+    {
+        zlist<int, MAX_SIZE> numbers;
+        PushArrayTest(numbers);
+        numbers.erase(std::remove(numbers.begin(), numbers.end(), 2), numbers.end());
+    }
+    if (true)
+    {
+        zlist_ext<int, MAX_SIZE, 1> numbers;
+        PushArrayTest(numbers);
+        numbers.erase(std::remove(numbers.begin(), numbers.end(), 2), numbers.end());
+    }
+    if (true)
+    {
+        zlist_ext<int, MAX_SIZE, MAX_SIZE> numbers;
+        PushArrayTest(numbers);
+        numbers.erase(std::remove(numbers.begin(), numbers.end(), 2), numbers.end());
+    }
 
 
     zarray<std::string, 100> strings = { "123", "2" };
@@ -448,7 +512,7 @@ s32 ZObjPoolTest()
 
 s32 ZContainTest()
 {
-    AssertTest(ZArrayTest(), 0, " ZArrayTest()");
+    AssertTest(ArrayTest(), 0, " ArrayTest()");
     AssertTest(ZListTest(), 0, " ZListTest()");
     AssertTest(ZSortInsertTest(), 0, " ZSortInsertTest()");
     AssertTest(ZContainCopyTest((zlist<size_t, 100>*)NULL), 0, "ZContainCopyTest((zlist<size_t, 100>*)NULL)");
