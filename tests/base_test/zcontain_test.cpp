@@ -15,9 +15,8 @@ static const int MAX_SIZE = 1000;
 int rand_array[MAX_SIZE];
 int sort_array[MAX_SIZE];
 
-
 template<class T>
-s32 PushArrayTest(T& a)
+s32 CheckPushArray(T& a)
 {
     for (int i = 0; i < MAX_SIZE; i++)
     {
@@ -28,6 +27,56 @@ s32 PushArrayTest(T& a)
         LogError() << "  has error";
         return -1;
     }
+    return 0;
+}
+template<class T>
+s32 CheckEmplacePushArray(T& a)
+{
+    for (int i = 0; i < MAX_SIZE; i++)
+    {
+        a.emplace_back(rand_array[i]);
+    }
+    if (a.size() != MAX_SIZE)
+    {
+        LogError() << "  has error";
+        return -1;
+    }
+    return 0;
+}
+
+template<class T>
+s32 CheckInsertBeginArray(T& a)
+{
+    for (int i = 0; i < MAX_SIZE; i++)
+    {
+        a.insert(a.begin(), rand_array[i]);
+    }
+    if (a.size() != MAX_SIZE)
+    {
+        LogError() << "  has error";
+        return -1;
+    }
+    return 0;
+}
+
+template<class T>
+s32 CheckEmplaceInsertBeginArray(T& a)
+{
+    for (int i = 0; i < MAX_SIZE; i++)
+    {
+        a.emplace(a.begin(), rand_array[i]);
+    }
+    if (a.size() != MAX_SIZE)
+    {
+        LogError() << "  has error";
+        return -1;
+    }
+    return 0;
+}
+
+template<class T>
+s32 CheckRandArray(T& a)
+{
     if (true)
     {
         int i = 0;
@@ -45,7 +94,38 @@ s32 PushArrayTest(T& a)
 }
 
 template<class T>
-s32 SortArrayTest(T& a)
+s32 CheckRandArrayAt(T& a)
+{
+    if (true)
+    {
+        int i = 0;
+        for (auto v : a)
+        {
+            if (v != rand_array[i])
+            {
+                LogError() << "  has error";
+                return -1;
+            }
+            if (v != a.at(i))
+            {
+                LogError() << "  has error";
+                return -1;
+            }
+            if (v != a[i])
+            {
+                LogError() << "  has error";
+                return -1;
+            }
+            i++;
+        }
+    }
+    return 0;
+}
+
+
+
+template<class T>
+s32 CheckSortArray(T& a)
 {
     if (true)
     {
@@ -63,7 +143,33 @@ s32 SortArrayTest(T& a)
     return 0;
 }
 
+template<class T>
+s32 CheckPopArray(T& a)
+{
+    int count = a.size();
+    if (a.size() != 0)
+    {
+        a.pop_back();
+        count--;
+    }
+    if (count != 0)
+    {
+        LogError() << " pop error";
+    }
+    return 0;
+}
 
+template<class T>
+s32 CheckEraseArray(T& a)
+{
+    int count = a.size();
+    a.erase(a.begin(), a.end());
+    if (count != 0)
+    {
+        LogError() << " pop error";
+    }
+    return 0;
+}
 
 s32 ArrayTest()
 {
@@ -78,47 +184,117 @@ s32 ArrayTest()
     if (true)
     {
         zarray<int, MAX_SIZE> numbers;
-        PushArrayTest(numbers);
-        if (true)
-        {
-            for (int i = 0;i < MAX_SIZE; i++)
-            {
-                if (numbers.at(i) != rand_array[i])
-                {
-                    LogError() << "  has error";
-                    return -1;
-                }
-                i++;
-            }
-        }
+        CheckPushArray(numbers);
+        CheckRandArray(numbers);
+        CheckPopArray(numbers);
+
+        CheckEmplacePushArray(numbers);
+        CheckRandArray(numbers);
+        CheckPopArray(numbers);
+
+        CheckInsertBeginArray(numbers);
+        CheckRandArrayAt(numbers);
+        CheckEraseArray(numbers);
+
+        CheckEmplaceInsertBeginArray(numbers);
+        CheckRandArrayAt(numbers);
+        CheckEraseArray(numbers);
+
+        CheckEmplaceInsertBeginArray(numbers);
         std::sort(numbers.begin(), numbers.end());
-        SortArrayTest(numbers);
+        CheckSortArray(numbers);
+        CheckPushArray(numbers);
+        CheckSortArray(numbers);
     }
+
     if (true)
     {
         std::vector<int> numbers;
-        PushArrayTest(numbers);
-        std::sort(numbers.begin(), numbers.end());
-        SortArrayTest(numbers);
+        CheckPushArray(numbers);
+        CheckRandArray(numbers);
+        CheckPopArray(numbers);
 
+        CheckEmplacePushArray(numbers);
+        CheckRandArray(numbers);
+        CheckPopArray(numbers);
+
+        CheckInsertBeginArray(numbers);
+        CheckRandArrayAt(numbers);
+        CheckEraseArray(numbers);
+
+        CheckEmplaceInsertBeginArray(numbers);
+        CheckRandArrayAt(numbers);
+        CheckEraseArray(numbers);
+
+        CheckEmplaceInsertBeginArray(numbers);
+        std::sort(numbers.begin(), numbers.end());
+        CheckSortArray(numbers);
     }
+
     if (true)
     {
         zlist<int, MAX_SIZE> numbers;
-        PushArrayTest(numbers);
-        numbers.erase(std::remove(numbers.begin(), numbers.end(), 2), numbers.end());
+        CheckPushArray(numbers);
+        CheckRandArray(numbers);
+        CheckPopArray(numbers);
+
+        CheckEmplacePushArray(numbers);
+        CheckRandArray(numbers);
+        CheckPopArray(numbers);
+
+        CheckInsertBeginArray(numbers);
+        CheckRandArray(numbers);
+        CheckEraseArray(numbers);
+
+        CheckEmplaceInsertBeginArray(numbers);
+        CheckRandArray(numbers);
+        CheckEraseArray(numbers);
+
+        CheckEmplaceInsertBeginArray(numbers);
     }
-    if (true)
-    {
-        zlist_ext<int, MAX_SIZE, 1> numbers;
-        PushArrayTest(numbers);
-        numbers.erase(std::remove(numbers.begin(), numbers.end(), 2), numbers.end());
-    }
+
     if (true)
     {
         zlist_ext<int, MAX_SIZE, MAX_SIZE> numbers;
-        PushArrayTest(numbers);
-        numbers.erase(std::remove(numbers.begin(), numbers.end(), 2), numbers.end());
+        CheckPushArray(numbers);
+        CheckRandArray(numbers);
+        CheckPopArray(numbers);
+
+        CheckEmplacePushArray(numbers);
+        CheckRandArray(numbers);
+        CheckPopArray(numbers);
+
+        CheckInsertBeginArray(numbers);
+        CheckRandArray(numbers);
+        CheckEraseArray(numbers);
+
+        CheckEmplaceInsertBeginArray(numbers);
+        CheckRandArray(numbers);
+        CheckEraseArray(numbers);
+
+        CheckEmplaceInsertBeginArray(numbers);
+    }
+
+    if (true)
+    {
+        zlist_ext<int, MAX_SIZE, 1> numbers;
+        CheckPushArray(numbers);
+        CheckRandArray(numbers);
+        CheckPopArray(numbers);
+
+        CheckEmplacePushArray(numbers);
+        CheckRandArray(numbers);
+        CheckPopArray(numbers);
+
+        CheckInsertBeginArray(numbers);
+        CheckRandArray(numbers);
+        CheckEraseArray(numbers);
+
+        CheckEmplaceInsertBeginArray(numbers);
+        CheckRandArray(numbers);
+        CheckEraseArray(numbers);
+
+        CheckEmplaceInsertBeginArray(numbers);
     }
 
 
