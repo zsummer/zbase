@@ -266,7 +266,7 @@ namespace zsummer
         reference back() { return *node_cast(&data_[data_[end_id_].front]); }
         const_reference back() const { *node_cast(&data_[data_[end_id_].front]); }
 
-        static constexpr u32 static_buf_size(u32 obj_count) { return sizeof(zlist<_Ty, 1>) + sizeof(Node) * (obj_count - 1); }
+ //       static constexpr u32 static_buf_size(u32 obj_count) { return sizeof(zlist_ext<_Ty, 1>) + sizeof(Node) * (obj_count - 1); }
 
 
         const size_type size() const noexcept { return used_count_; }
