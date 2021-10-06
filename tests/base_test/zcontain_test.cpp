@@ -15,12 +15,21 @@ static const int MAX_SIZE = 1000;
 int rand_array[MAX_SIZE];
 int sort_array[MAX_SIZE];
 
-template<class T>
-s32 CheckPushArray(T& a)
+RAIIVal<> rand_obj_array[MAX_SIZE];
+RAIIVal<> sort_obj_array[MAX_SIZE];
+
+
+template<class T, class V>
+s32 CheckPushArray(T& a, const V & rand_a)
 {
     for (int i = 0; i < MAX_SIZE; i++)
     {
-        a.push_back(rand_array[i]);
+        a.push_back(rand_a[i]);
+        if (a.back() != rand_a[i])
+        {
+            LogError() << "  has error";
+            return -1;
+        }
     }
     if (a.size() != MAX_SIZE)
     {
@@ -29,12 +38,17 @@ s32 CheckPushArray(T& a)
     }
     return 0;
 }
-template<class T>
-s32 CheckEmplacePushArray(T& a)
+template<class T, class V>
+s32 CheckEmplacePushArray(T& a, const V& rand_a)
 {
     for (int i = 0; i < MAX_SIZE; i++)
     {
-        a.emplace_back(rand_array[i]);
+        a.emplace_back(rand_a[i]);
+        if (a.back() != rand_a[i])
+        {
+            LogError() << "  has error";
+            return -1;
+        }
     }
     if (a.size() != MAX_SIZE)
     {
@@ -44,12 +58,17 @@ s32 CheckEmplacePushArray(T& a)
     return 0;
 }
 
-template<class T>
-s32 CheckInsertBeginArray(T& a)
+template<class T, class V>
+s32 CheckInsertBeginArray(T& a, const V& rand_a)
 {
     for (int i = 0; i < MAX_SIZE; i++)
     {
-        a.insert(a.begin(), rand_array[i]);
+        a.insert(a.begin(), rand_a[i]);
+        if (a.front() != rand_a[i])
+        {
+            LogError() << "  has error";
+            return -1;
+        }
     }
     if (a.size() != MAX_SIZE)
     {
@@ -59,12 +78,38 @@ s32 CheckInsertBeginArray(T& a)
     return 0;
 }
 
-template<class T>
-s32 CheckEmplaceInsertBeginArray(T& a)
+template<class T, class V>
+s32 CheckInsertEndArray(T& a, const V& rand_a)
 {
     for (int i = 0; i < MAX_SIZE; i++)
     {
-        a.emplace(a.begin(), rand_array[i]);
+        a.insert(a.end(), rand_a[i]);
+        if (a.back() != rand_a[i])
+        {
+            LogError() << "  has error";
+            return -1;
+        }
+    }
+    if (a.size() != MAX_SIZE)
+    {
+        LogError() << "  has error";
+        return -1;
+    }
+    return 0;
+}
+
+
+template<class T, class V>
+s32 CheckEmplaceInsertBeginArray(T& a, const V& rand_a)
+{
+    for (int i = 0; i < MAX_SIZE; i++)
+    {
+        a.emplace(a.begin(), rand_a[i]);
+        if (a.front() != rand_a[i])
+        {
+            LogError() << "  has error";
+            return -1;
+        }
     }
     if (a.size() != MAX_SIZE)
     {
@@ -80,14 +125,33 @@ s32 CheckRandArray(T& a)
     if (true)
     {
         int i = 0;
-        for (auto v : a)
+        for (auto& v : a)
         {
-            if (v != rand_array[i])
+            if ((int)v != rand_array[i])
             {
                 LogError() << "  has error";
                 return -1;
             }
             i++;
+        }
+    }
+    return 0;
+}
+
+template<class T>
+s32 CheckRevertRandArray(T& a)
+{
+    if (true)
+    {
+        int i = MAX_SIZE - 1;
+        for (auto& v : a)
+        {
+            if ((int)v != rand_array[i])
+            {
+                LogError() << "  has error";
+                return -1;
+            }
+            i--;
         }
     }
     return 0;
@@ -99,19 +163,19 @@ s32 CheckRandArrayAt(T& a)
     if (true)
     {
         int i = 0;
-        for (auto v : a)
+        for (auto& v : a)
         {
-            if (v != rand_array[i])
+            if ((int)v != rand_array[i])
             {
                 LogError() << "  has error";
                 return -1;
             }
-            if (v != a.at(i))
+            if ((int)v != (int)a.at(i))
             {
                 LogError() << "  has error";
                 return -1;
             }
-            if (v != a[i])
+            if ((int)v != (int)a[i])
             {
                 LogError() << "  has error";
                 return -1;
@@ -122,6 +186,34 @@ s32 CheckRandArrayAt(T& a)
     return 0;
 }
 
+template<class T>
+s32 CheckRevertRandArrayAt(T& a)
+{
+    if (true)
+    {
+        int i = MAX_SIZE - 1;
+        for (auto& v : a)
+        {
+            if ((int)v != rand_array[i])
+            {
+                LogError() << "  has error";
+                return -1;
+            }
+            if ((int)v != (int)a.at(MAX_SIZE - i - 1))
+            {
+                LogError() << "  has error";
+                return -1;
+            }
+            if ((int)v != (int)a[MAX_SIZE - i - 1])
+            {
+                LogError() << "  has error";
+                return -1;
+            }
+            i--;
+        }
+    }
+    return 0;
+}
 
 
 template<class T>
@@ -130,9 +222,9 @@ s32 CheckSortArray(T& a)
     if (true)
     {
         int i = 0;
-        for (auto v : a)
+        for (auto& v : a)
         {
-            if (v != sort_array[i])
+            if ((int)v != sort_array[i])
             {
                 LogError() << "  has error";
                 return -1;
@@ -146,13 +238,11 @@ s32 CheckSortArray(T& a)
 template<class T>
 s32 CheckPopArray(T& a)
 {
-    int count = a.size();
-    if (a.size() != 0)
+    while (a.size() != 0)
     {
         a.pop_back();
-        count--;
     }
-    if (count != 0)
+    if (a.size() != 0)
     {
         LogError() << " pop error";
     }
@@ -162,139 +252,173 @@ s32 CheckPopArray(T& a)
 template<class T>
 s32 CheckEraseArray(T& a)
 {
-    int count = a.size();
     a.erase(a.begin(), a.end());
-    if (count != 0)
+    if (a.size() != 0)
     {
-        LogError() << " pop error";
+        LogError() << " erase fail";
     }
     return 0;
 }
+
+template<class A, class VS>
+s32 ArrayBaseTest(A& a, VS& v)
+{
+    a = { 1, 2,3 };
+    if ((int)a[0] != 1  || (int)a[1] != 2 || (int)a[2] != 3  || a.size() != 3)
+    {
+        LogError() << " pop error";
+    }
+    CheckPopArray(a);
+    CheckRAIIVal("ArrayBaseTest");
+
+    CheckPushArray(a, v);
+    CheckRandArray(a);
+    CheckPopArray(a);
+    CheckRAIIVal("ArrayBaseTest");
+
+    CheckEmplacePushArray(a, v);
+    CheckRandArray(a);
+    CheckPopArray(a);
+    CheckRAIIVal("ArrayBaseTest");
+
+    CheckInsertEndArray(a, v);
+    CheckRandArrayAt(a);
+    CheckEraseArray(a);
+    CheckRAIIVal("ArrayBaseTest");
+
+    CheckInsertBeginArray(a, v);
+    CheckRevertRandArrayAt(a);
+    CheckEraseArray(a);
+    CheckRAIIVal("ArrayBaseTest");
+
+    CheckEmplaceInsertBeginArray(a, v);
+    CheckRevertRandArrayAt(a);
+    CheckEraseArray(a);
+    CheckRAIIVal("ArrayBaseTest");
+
+    CheckEmplaceInsertBeginArray(a, v);
+    std::sort(a.begin(), a.end());
+    CheckSortArray(a);
+    auto m1 = a.begin();
+    m1++;
+    auto m2 = a.end();
+    m2--;
+    a.erase(m1, m2);
+    return 0;
+}
+
+template<class A, class VS>
+s32 ListBaseTest(A& a, VS& v)
+{
+    a = { 1, 2,3 };
+    if (true)
+    {
+        int i = 0;
+        char vvv[] = { 1,2,3 };
+        for (auto& v:a)
+        {
+            if ((int)v != vvv[i])
+            {
+                LogError() << " assign error";
+                return 1;
+            }
+            i++;
+        }
+        if (a.size() != 3)
+        {
+            LogError() << " assign error";
+        }
+        CheckPopArray(a);
+    }
+
+
+    CheckPushArray(a, v);
+    CheckRandArray(a);
+    CheckPopArray(a);
+    CheckRAIIVal("ListBaseTest");
+
+    CheckEmplacePushArray(a, v);
+    CheckRandArray(a);
+    CheckPopArray(a);
+    CheckRAIIVal("ListBaseTest");
+
+    CheckInsertEndArray(a, v);
+    CheckRandArray(a);
+    CheckEraseArray(a);
+    CheckRAIIVal("ListBaseTest");
+
+    CheckInsertBeginArray(a, v);
+    CheckRevertRandArray(a);
+    CheckEraseArray(a);
+    CheckRAIIVal("ListBaseTest");
+
+    CheckEmplaceInsertBeginArray(a, v);
+    CheckRevertRandArray(a);
+    CheckEraseArray(a);
+    CheckRAIIVal("ListBaseTest");
+
+    CheckEmplaceInsertBeginArray(a, v);
+    auto m1 = a.begin();
+    m1++;
+    auto m2 = a.end();
+    m2--;
+    a.erase(m1, m2);
+    return 0;
+}
+
 
 s32 ArrayTest()
 {
     for (int i = 0; i < MAX_SIZE; i++)
     {
         rand_array[i] = rand() % MAX_SIZE;
+        rand_obj_array[i] = rand_array[i];
     }
-
     memcpy(sort_array, rand_array, sizeof(int) * MAX_SIZE);
     std::sort(&sort_array[0], &sort_array[0] + MAX_SIZE);
+    for (int i = 0; i < MAX_SIZE; i++)
+    {
+        sort_obj_array[i] = sort_array[i];
+    }
+    RAIIVal<>::reset();
+
 
     if (true)
     {
-        zarray<int, MAX_SIZE> numbers;
-        CheckPushArray(numbers);
-        CheckRandArray(numbers);
-        CheckPopArray(numbers);
-
-        CheckEmplacePushArray(numbers);
-        CheckRandArray(numbers);
-        CheckPopArray(numbers);
-
-        CheckInsertBeginArray(numbers);
-        CheckRandArrayAt(numbers);
-        CheckEraseArray(numbers);
-
-        CheckEmplaceInsertBeginArray(numbers);
-        CheckRandArrayAt(numbers);
-        CheckEraseArray(numbers);
-
-        CheckEmplaceInsertBeginArray(numbers);
-        std::sort(numbers.begin(), numbers.end());
-        CheckSortArray(numbers);
-        CheckPushArray(numbers);
-        CheckSortArray(numbers);
+        zarray<int, MAX_SIZE> a;
+        ArrayBaseTest(a, rand_array);
+    }
+    if (true)
+    {
+        zarray<RAIIVal<>, MAX_SIZE> a;
+        ArrayBaseTest(a, rand_array);
     }
 
     if (true)
     {
-        std::vector<int> numbers;
-        CheckPushArray(numbers);
-        CheckRandArray(numbers);
-        CheckPopArray(numbers);
-
-        CheckEmplacePushArray(numbers);
-        CheckRandArray(numbers);
-        CheckPopArray(numbers);
-
-        CheckInsertBeginArray(numbers);
-        CheckRandArrayAt(numbers);
-        CheckEraseArray(numbers);
-
-        CheckEmplaceInsertBeginArray(numbers);
-        CheckRandArrayAt(numbers);
-        CheckEraseArray(numbers);
-
-        CheckEmplaceInsertBeginArray(numbers);
-        std::sort(numbers.begin(), numbers.end());
-        CheckSortArray(numbers);
+        std::vector<int> a;
+        ArrayBaseTest(a, rand_array);
+    }
+    if (true)
+    {
+        std::vector<RAIIVal<>> a;
+        ArrayBaseTest(a, rand_array);
     }
 
     if (true)
     {
-        zlist<int, MAX_SIZE> numbers;
-        CheckPushArray(numbers);
-        CheckRandArray(numbers);
-        CheckPopArray(numbers);
-
-        CheckEmplacePushArray(numbers);
-        CheckRandArray(numbers);
-        CheckPopArray(numbers);
-
-        CheckInsertBeginArray(numbers);
-        CheckRandArray(numbers);
-        CheckEraseArray(numbers);
-
-        CheckEmplaceInsertBeginArray(numbers);
-        CheckRandArray(numbers);
-        CheckEraseArray(numbers);
-
-        CheckEmplaceInsertBeginArray(numbers);
+        zlist<int, MAX_SIZE> a;
+        ListBaseTest(a, rand_array);
     }
-
     if (true)
     {
-        zlist_ext<int, MAX_SIZE, MAX_SIZE> numbers;
-        CheckPushArray(numbers);
-        CheckRandArray(numbers);
-        CheckPopArray(numbers);
-
-        CheckEmplacePushArray(numbers);
-        CheckRandArray(numbers);
-        CheckPopArray(numbers);
-
-        CheckInsertBeginArray(numbers);
-        CheckRandArray(numbers);
-        CheckEraseArray(numbers);
-
-        CheckEmplaceInsertBeginArray(numbers);
-        CheckRandArray(numbers);
-        CheckEraseArray(numbers);
-
-        CheckEmplaceInsertBeginArray(numbers);
+        zlist_ext<int, MAX_SIZE, MAX_SIZE> a;
+        ListBaseTest(a, rand_array);
     }
-
     if (true)
     {
-        zlist_ext<int, MAX_SIZE, 1> numbers;
-        CheckPushArray(numbers);
-        CheckRandArray(numbers);
-        CheckPopArray(numbers);
-
-        CheckEmplacePushArray(numbers);
-        CheckRandArray(numbers);
-        CheckPopArray(numbers);
-
-        CheckInsertBeginArray(numbers);
-        CheckRandArray(numbers);
-        CheckEraseArray(numbers);
-
-        CheckEmplaceInsertBeginArray(numbers);
-        CheckRandArray(numbers);
-        CheckEraseArray(numbers);
-
-        CheckEmplaceInsertBeginArray(numbers);
+        zlist_ext<int, MAX_SIZE, 1> a;
+        ListBaseTest(a, rand_array);
     }
 
 
@@ -306,19 +430,18 @@ s32 ArrayTest()
 
     if (true)
     {
-        RAIIVal<> rv;
-        rv.reset();
+        RAIIVal<>& rv = sort_obj_array[0];
         zarray<RAIIVal<>, 100> raii_array;
         AssertTest(RAIIVal<>::now_live_count_, 0U, "");
         raii_array.push_back(rv);
         AssertTest(RAIIVal<>::now_live_count_, 1U, "");
         raii_array.insert(raii_array.begin(), rv);
         AssertTest(RAIIVal<>::now_live_count_, 2U, "");
-        AssertTest(RAIIVal<>::construct_count_, 3U, "");
+        AssertTest(RAIIVal<>::construct_count_, RAIIVal<>::destroy_count_ + 2, "");
         raii_array.clear();
         AssertTest(RAIIVal<>::now_live_count_, 0U, "");
-        AssertTest(RAIIVal<>::construct_count_, 3U, "");
-        AssertTest(RAIIVal<>::destroy_count_, 3U, "");
+        AssertTest(RAIIVal<>::construct_count_, RAIIVal<>::destroy_count_, "");
+
 
     }
 
@@ -686,7 +809,7 @@ s32 ZObjPoolTest()
     return 0;
 }
 
-s32 ZContainTest()
+s32 ContainerTest()
 {
     AssertTest(ArrayTest(), 0, " ArrayTest()");
     AssertTest(ZListTest(), 0, " ZListTest()");

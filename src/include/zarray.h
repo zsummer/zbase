@@ -68,7 +68,7 @@ namespace zsummer
         size_type distance(const_pointer l, const_pointer r) const noexcept { return (size_type)(r - l); }
     public:
         zarray() { count_ = 0; }
-        ~zarray() { count_ = 0; }
+        ~zarray() { clear(); }
         zarray(std::initializer_list<_Ty> init_list)
         {
             count_ = 0;
@@ -99,8 +99,8 @@ namespace zsummer
 
         reference front() { return *begin(); }
         const_reference front() const { return *begin(); }
-        reference back() { return *begin(); }
-        const_reference back() const { return *begin(); }
+        reference back() { return *ptr(count_ - 1); }
+        const_reference back() const { return *ptr(count_ - 1);}
 
         value_type* data() noexcept { return ptr(0); }
         const value_type* data() const noexcept { return ptr(0); }
@@ -224,21 +224,26 @@ namespace zsummer
             {
                 return end();
             }
-            if (last >= end())
+
+
+            if (last >= end() && !std::is_object<_Ty>::value)
             {
                 count_ -= distance(first, end());
                 return end();
             }
+
+
             size_type remaind = distance(last, end());
             iterator cp_first = (iterator)first;
             iterator cp_last = (iterator)last;
-            if /*constexpr*/ (IS_TRIVIALLY_COPYABLE(_Ty))
+            if (IS_TRIVIALLY_COPYABLE(_Ty))
             {
 #if __GNUG__ && __GNUC__ >= 5
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wclass-memaccess"
 #endif
                 memmove((_Ty*)first, (_Ty*)last, remaind * sizeof(_Ty));
+                cp_first = (iterator)(first + remaind);
 #if __GNUG__ && __GNUC__ >= 5
 #pragma GCC diagnostic pop
 #endif
@@ -251,10 +256,11 @@ namespace zsummer
                 }
                 if (std::is_object<_Ty>::value)
                 {
-                    while (cp_first != begin() + _Size)
+                    iterator erase_first = cp_first;
+                    while (erase_first != begin() + _Size)
                     {
-                        cp_first->~_Ty();
-                        ++cp_first;
+                        erase_first->~_Ty();
+                        ++erase_first;
                     }
                 }
             }
@@ -340,7 +346,7 @@ namespace zsummer
 
         zarray<_Ty, _Size>& operator=(const zarray<_Ty, _Size>& other)
         {
-            if (*this == other)
+            if (this == &other)
             {
                 return *this;
             }

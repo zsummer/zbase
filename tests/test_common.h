@@ -21,7 +21,9 @@
 #include "zarray.h"
 #include "zlist.h"
 #include "zhash_map.h"
-
+#ifndef WIN32
+#include <cxxabi.h>
+#endif
 using s8 = char;
 using u8 = unsigned char;
 using s16 = short int;
@@ -75,7 +77,7 @@ public:
     int val_;
     operator int() { return val_; }
 public:
-    void reset()
+    static void reset()
     {
         construct_count_ = 0;
         destroy_count_ = 0;
@@ -123,14 +125,27 @@ u32 RAIIVal<CLASS>::destroy_count_ = 0;
 template<int CLASS>
 u32 RAIIVal<CLASS>::now_live_count_ = 0;
 
-inline s32 CheckRAIIVal(const std::string& name)
+template<class T>
+inline std::string TypeName()
 {
-    if (RAIIVal<>::construct_count_  != RAIIVal<>::destroy_count_ )
-    {
-        LogError() << name << ": CheckRAIIVal has error.  destroy / construct:" << RAIIVal<>::destroy_count_ << "/" << RAIIVal<>::construct_count_;
-    }
-    return 0;
+#ifdef WIN32
+    return typeid(T).name();
+#else
+    int status = 0;   
+    char *p = abi::__cxa_demangle(typeid(T).name(), 0, 0, &status);  
+    std::string dname = p;
+    free(p);
+    return dname;
+#endif
 }
+
+
+
+#define CheckRAIIVal(name)   do {if(RAIIVal<>::construct_count_  != RAIIVal<>::destroy_count_ ){LogError() << name << ": CheckRAIIVal has error.  destroy / construct:" << RAIIVal<>::destroy_count_ << "/" << RAIIVal<>::construct_count_; break;} } while(0)
+//#define CheckRAIIValByType(t)   CheckRAIIVal(TypeName<decltype(t)>());
+#define CheckRAIIValByType(t)   CheckRAIIVal(TypeName<t>());
+
+
 
 
 

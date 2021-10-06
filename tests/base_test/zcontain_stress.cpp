@@ -278,9 +278,10 @@ template<class T,  class V = RAIIVal<>,  bool IS_STATIC = false>
 void LinerStressWrap()
 {
     T* c = new T;
-    LinerStress(*c, typeid(T).name(), IS_STATIC, (V*)NULL);
+    LinerStress(*c, TypeName<T>(), IS_STATIC, (V*)NULL);
     delete c; 
-    CheckRAIIVal(typeid(T).name());
+    
+    CheckRAIIValByType(T);
 }
 
 template<class T, class V = RAIIVal<>, bool IS_STATIC = false>
@@ -292,16 +293,16 @@ void LinerDestroyWrap()
         c->push_back(V(i));
     }
     delete c;
-    CheckRAIIVal(typeid(T).name());
+    CheckRAIIValByType(T);
 }
 
 template<class T, class V = RAIIVal<>, bool IS_STATIC = false>
 void MapStressWrap()
 {
     T* c = new T;
-    MapStress(*c, typeid(T).name(), IS_STATIC, (V*)NULL);
+    MapStress(*c, TypeName<T>(), IS_STATIC, (V*)NULL);
     delete c;
-    CheckRAIIVal(typeid(T).name());
+    CheckRAIIValByType(T);
 }
 
 template<class T, class V = RAIIVal<>, bool IS_STATIC = false>
@@ -313,7 +314,7 @@ void MapDestroyWrap()
         c->insert(std::make_pair(i, V(i)));
     }
     delete c;
-    CheckRAIIVal(typeid(T).name());
+    CheckRAIIValByType(T);
 }
 
 template<int M, int F>
@@ -373,6 +374,7 @@ s32 ContainerStress()
 
     if (true)
     {
+        CheckRAIIVal("empty  memory over test");
         for (int i = 0; i < 1008; i++)
         {
             zlist_ext<RAIIVal<>, 1000, 200>  z;
@@ -381,6 +383,25 @@ s32 ContainerStress()
                 z.push_back(RAIIVal<>(i * 10000 + j));
             }
         }
+        CheckRAIIVal("zlist_ext  memory over test");
+        for (int i = 0; i < 1008; i++)
+        {
+            zlist<RAIIVal<>, 1000>  z;
+            for (int j = 0; j < i; j++)
+            {
+                z.push_back(RAIIVal<>(i * 10000 + j));
+            }
+        }
+        CheckRAIIVal("zlist  memory over test");
+        for (int i = 0; i < 1008; i++)
+        {
+            zarray<RAIIVal<>, 1000>  z;
+            for (int j = 0; j < i; j++)
+            {
+                z.push_back(RAIIVal<>(i * 10000 + j));
+            }
+        }
+        CheckRAIIVal("zlist  memory over test");
     }
 
 
