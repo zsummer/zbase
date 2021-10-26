@@ -42,83 +42,96 @@ namespace zsummer
 #endif
 
 
-    template<class Bucket, class Key, class _Ty, size_t _Size>
+    template<class Bucket, class Key, class _Ty, size_t _Buckets, size_t _Size>
     struct HashMapIterator
     {
         using value_type = std::pair<const Key, _Ty>;
-        Bucket* bucket_;
-        Bucket** buckets_;
-        Bucket* end_bucket_;
-        operator Bucket* () const { return bucket_; }
-        operator const Bucket* ()const { return bucket_; }
-        Bucket* next()
+        u32* buckets_;
+        Bucket* pool_;
+        u32 cur_hash_id_;
+        u32 cur_obj_id_;
+
+        operator Bucket* () const { return pool_[cur_obj_id_]; }
+        operator const Bucket* ()const { return pool_[cur_obj_id_]; }
+        HashMapIterator()
         {
-            if (bucket_ == end_bucket_)
+            buckets_ = NULL;
+            pool_ = NULL;
+            cur_hash_id_ = 0;
+            cur_obj_id_ = 0;
+        }
+        HashMapIterator(u32* buckets, Bucket* pool,  u32 hash_id, u32 obj_id)
+        {
+            buckets_ = buckets;
+            pool_ = pool;
+            cur_hash_id_ = hash_id;
+            cur_obj_id_ = obj_id;
+        }
+        HashMapIterator(const HashMapIterator& other)
+        {
+            buckets_ = other.buckets_;
+            pool_ = other.pool_;
+            cur_hash_id_ = other.cur_hash_id_;
+            cur_obj_id_ = other.cur_obj_id_;
+        }
+
+        void next()
+        {
+            if (buckets_ == NULL)
             {
-                return bucket_;
+                return;
             }
-            if (bucket_ && bucket_->next && bucket_->next != end_bucket_ && bucket_->next != bucket_[bucket_->bid])
+            if (cur_obj_id_ != 0 && pool_[cur_obj_id_].next != 0)
             {
-                return bucket_->next;
+                cur_obj_id_ = pool_[cur_obj_id_].next;
+                return;
             }
-            u32 bid = bucket_->bid + 1;
-            while (bid < _Size)
+            cur_obj_id_ = 0;
+            for (u32 hash_id = cur_hash_id_ + 1; hash_id < _Buckets; hash_id++)
             {
-                if (bucket_[bid])
+                if (buckets_[hash_id] == 0)
                 {
-                    return bucket_[bid];
+                    continue;
                 }
-                bid++;
+                cur_hash_id_ = hash_id;
+                cur_obj_id_ = buckets_[hash_id];
+                return;
             }
-            return end_bucket_;
+            cur_hash_id_ = _Buckets;
+            cur_obj_id_ = 0;
+            return;
         }
 
         HashMapIterator& operator ++()
         {
-            bucket_ = next();
+            next();
             return *this;
         }
+
         HashMapIterator operator ++(int)
         {
-            Bucket* old = bucket_;
-            bucket_ = next();
-            return old;
+            HashMapIterator result(*this);
+            next();
+            return result;
         }
 
         value_type* operator ->()
         {
-            return (value_type*)&bucket_->val;
+            return (value_type*)&pool_[cur_obj_id_].val_space;
         }
         value_type& operator *()
         {
-            return bucket_->val;
-        }
-        HashMapIterator()
-        {
-            bucket_ = NULL;
-            buckets_ = NULL;
-            end_bucket_ = NULL;
-        }
-        HashMapIterator(Bucket* bucket, Bucket** buckets, Bucket* end_bucket)
-        {
-            bucket_ = bucket;
-            buckets_ = buckets;
-            end_bucket_ = end_bucket;
-        }
-        HashMapIterator(const HashMapIterator& other)
-        {
-            bucket_ = other.bucket_;
-            buckets_ = other.buckets_;
-            end_bucket_ = other.end_bucket_;
+            return *((value_type*)&pool_[cur_obj_id_].val_space);
         }
     };
-    template<class Bucket, class Key, class _Ty, size_t _Size>
-    bool operator == (const HashMapIterator<Bucket, Key, _Ty, _Size>& n1, const HashMapIterator<Bucket, Key, _Ty, _Size>& n2)
+
+    template<class Bucket, class Key, class _Ty, size_t _Buckets, size_t _Size>
+    bool operator == (const HashMapIterator<Bucket, Key, _Ty, _Buckets, _Size>& n1, const HashMapIterator<Bucket, Key, _Ty, _Buckets, _Size>& n2)
     {
-        return (Bucket*)n1 == (Bucket*)n2;
+        return n1.pool_ == n2.pool_ && n1.cur_obj_id_ == n2.cur_obj_id_;
     }
-    template<class Bucket, class Key, class _Ty, size_t _Size>
-    bool operator != (const HashMapIterator<Bucket, Key, _Ty, _Size>& n1, const HashMapIterator<Bucket, Key, _Ty, _Size>& n2)
+    template<class Bucket, class Key, class _Ty, size_t _Buckets, size_t _Size>
+    bool operator != (const HashMapIterator<Bucket, Key, _Ty, _Buckets, _Size>& n1, const HashMapIterator<Bucket, Key, _Ty, _Buckets, _Size>& n2)
     {
         return !(n1 == n2);
     }
@@ -131,121 +144,128 @@ namespace zsummer
         class zhash_map
     {
     public:
-        struct bucket
-        {
-            u32 fence;
-            u32 bid;
-            size_t ukey;
-            bucket* next;
-            std::pair<Key, _Ty> val;
-        };
-        using bucket_pointer = bucket*;
 
-
-
-    public:
-
+        using size_type = size_t;
+        const static size_type FREE_INDEX = 0;
+        const static size_type BUCKET_COUNT = _Size;
+        const static size_type HASH_COUNT = _Size * 2;
+        constexpr size_type max_size() const { return _Size; }
+        constexpr size_type max_bucket_count() const { return HASH_COUNT; }
         using key_type = Key;
         using mapped_type = _Ty;
         using value_type = std::pair<const key_type, mapped_type>;
         using reference = value_type&;
         using const_reference = const value_type&;
-        using iterator = HashMapIterator<bucket, key_type, mapped_type, _Size>;
+        using space_type = typename std::aligned_storage<sizeof(value_type), alignof(value_type)>::type;
+        struct bucket
+        {
+            space_type val_space;
+            u32 next;
+        };
+        using iterator = HashMapIterator<bucket, key_type, mapped_type, HASH_COUNT,  _Size + 1>;
         using const_iterator = const iterator;
-        using size_type = size_t;
-        static const size_type free_bucket_count_ = _Size * 2;
-
-        constexpr size_type max_size() { return _Size; }
-        constexpr size_type bucket_count() { return free_bucket_count_; }
-        constexpr size_type max_bucket_count() { return free_bucket_count_; }
-        static const u32 fence_val = 0xdeadbeaf;
-
         Hash hasher;
         KeyEqual key_equal;
     private:
-        bucket_pointer buckets_[free_bucket_count_];
-        bucket end_bucket_;
-        bucket free_buckets_[free_bucket_count_];
-        bucket_pointer free_head_;
+        u32 buckets_[HASH_COUNT];
+        bucket obj_pool_[BUCKET_COUNT+1];
+        u32 exploit_offset_;
         size_t count_;
-        iterator mi(bucket* b) { return iterator(b, buckets_, &end_bucket_); }
+        iterator mi(u32 hash_id, u32 obj_id) { return iterator(buckets_, obj_pool_, hash_id, obj_id); }
+        static reference rf(bucket& b) { return *reinterpret_cast<value_type*>(&b.val_space); }
+
         void reset()
         {
-#if __GNUG__ && __GNUC__ >= 5
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wclass-memaccess"
-#endif
-            memset(buckets_, 0, sizeof(buckets_));
-            memset(&end_bucket_, 0, sizeof(end_bucket_));
-#if __GNUG__ && __GNUC__ >= 5
-#pragma GCC diagnostic pop
-#endif
-
-            end_bucket_.next = &end_bucket_;
-            free_head_ = &free_buckets_[0];
-            for (size_t i = 0; i < free_bucket_count_; i++)
-            {
-                free_buckets_[i].next = &free_buckets_[0] + i + 1;
-            }
-            free_buckets_[free_bucket_count_ - 1].next = &end_bucket_;
+            exploit_offset_ = 0;
             count_ = 0;
+            obj_pool_[FREE_INDEX].next = 0;
+            memset(buckets_, 0, sizeof(u32) * HASH_COUNT);
         }
-        bucket_pointer pop_free()
+
+        u32 pop_free()
         {
-            bucket_pointer ret = &end_bucket_;
-            if (free_head_ == &end_bucket_)
+            if (obj_pool_[FREE_INDEX].next != 0)
             {
+                u32 ret = obj_pool_[FREE_INDEX].next;
+                obj_pool_[FREE_INDEX].next = obj_pool_[ret].next;
+                count_++;
                 return ret;
             }
-            ret = free_head_;
-            free_head_ = free_head_->next;
-            count_++;
-            return ret;
+            if (exploit_offset_ < BUCKET_COUNT)
+            {
+                u32 ret = ++exploit_offset_;
+                count_++;
+                return ret;
+            }
+            return 0;
         }
-        void push_free(bucket_pointer p)
+
+        void push_free(u32 obj_id)
         {
-            p->val = value_type();
-            p->next = free_head_->next;
-            free_head_ = p;
+            obj_pool_[obj_id].next = obj_pool_[FREE_INDEX].next;
+            obj_pool_[FREE_INDEX].next = obj_id;
             count_--;
         }
-        iterator next_b(u32 bid)
+
+        iterator next_b(u32 hash_id)
         {
-            while (bid < _Size && buckets_[bid] == NULL)
+            while (hash_id < HASH_COUNT && buckets_[hash_id] == 0)
             {
-                bid++;
+                hash_id++;
             }
-            if (bid >= _Size)
+            if (hash_id >= HASH_COUNT)
             {
-                return mi(&end_bucket_);
+                return mi(HASH_COUNT, 0);
             }
-            return mi(buckets_[bid]);
+            return mi(hash_id, buckets_[hash_id]);
         }
 
-        bucket* erase_bucket(bucket* b)
+        iterator erase_bucket(u32 hash_id, u32 obj_id)
         {
-            if (b == &end_bucket_)
+            if (obj_id == 0)
             {
-                return &end_bucket_;
+                return end();
+            }
+            if (hash_id >= HASH_COUNT)
+            {
+                return end();
+            }
+            if (buckets_[hash_id] == 0)
+            {
+                return end();
             }
 
-            bucket* last = buckets_[b->bid];
-            if (b == last)
+            u32 pre_obj_id = buckets_[hash_id];
+            if (pre_obj_id == obj_id)
             {
-                buckets_[b->bid] = b->next;
-                last = buckets_[b->bid];
-                push_free(b);
-                return last;
+                buckets_[hash_id] = obj_pool_[obj_id].next;
             }
-            bucket* cur = last->next;
-            while (cur != b)
+            else
             {
-                last = cur;
-                cur = cur->next;
+                u32 cur_obj_id = pre_obj_id;
+                while (obj_pool_[cur_obj_id].next != obj_id && obj_pool_[cur_obj_id].next != 0)
+                {
+                    cur_obj_id = obj_pool_[cur_obj_id].next;
+                }
+                if (obj_pool_[cur_obj_id].next != obj_id)
+                {
+                    return end();
+                }
+                obj_pool_[cur_obj_id].next = obj_pool_[obj_id].next;
             }
-            last->next = b->next;
-            push_free(b);
-            return last->next;
+            bucket& obj = obj_pool_[obj_id];
+            if (std::is_object<_Ty>::value)
+            {
+                rf(obj).second.~_Ty();
+            }
+
+            u32 next_obj_id = obj.next;
+            push_free(obj_id);
+            if (next_obj_id != 0)
+            {
+                return mi(hash_id, next_obj_id);
+            }
+            return next_b(hash_id + 1);
         }
 
         std::pair<iterator, bool> insert_v(const value_type& val, bool assign)
@@ -255,44 +275,47 @@ namespace zsummer
             {
                 if (assign)
                 {
-                    ((bucket*)finder)->val = val;
+                    finder->second = val.second;
                 }
                 return { finder, false };
             }
 
             size_t ukey = hasher(val.first);
-            size_t bid = ukey % free_bucket_count_;
+            size_t hash_id = ukey % HASH_COUNT;
 
-            bucket_pointer newp = pop_free();
-            if (newp == &end_bucket_)
+            u32 new_obj_id = pop_free();
+            if (new_obj_id == 0)
             {
                 return { end(), false };
             }
-
-            newp->val = val;
-            newp->fence = fence_val;
-            newp->ukey = ukey;
-            newp->bid = (u32)bid;
-            if (buckets_[bid] == NULL || buckets_[bid] == &end_bucket_)
+            bucket& obj = obj_pool_[new_obj_id];
+            obj.next = 0;
+            if (std::is_object<_Ty>::value)
             {
-                buckets_[bid] = newp;
-                newp->next = &end_bucket_;
+                new (&obj.val_space) value_type(val);
             }
             else
             {
-                newp->next = buckets_[bid];
-                buckets_[bid] = newp;
+                memcpy(&obj.val_space, &val, sizeof(val));
+                //rf(obj) = val;
             }
-            return { mi(buckets_[bid]), true };
+
+            if (buckets_[hash_id] != 0)
+            {
+                obj.next = buckets_[hash_id];
+            }
+            buckets_[hash_id] = new_obj_id;
+            return { mi((u32)hash_id, new_obj_id), true };
         }
+
     public:
         iterator begin() noexcept { return next_b(0); }
         const_iterator begin() const noexcept { return next_b(0); }
         const_iterator cbegin() const noexcept { return next_b(0); }
 
-        iterator end() noexcept { return mi(&end_bucket_); }
-        const_iterator end() const noexcept { return mi(&end_bucket_); }
-        const_iterator cend() const noexcept { return mi(&end_bucket_); }
+        iterator end() noexcept { return mi(HASH_COUNT, 0); }
+        const_iterator end() const noexcept { return mi(HASH_COUNT, 0); }
+        const_iterator cend() const noexcept { return mi(HASH_COUNT, 0); }
 
     public:
         zhash_map()
@@ -309,33 +332,29 @@ namespace zsummer
         }
         ~zhash_map()
         {
-
+            clear();
         }
         void clear()
         {
+            if (std::is_object<_Ty>::value)
+            {
+                for (reference kv : *this)
+                {
+                    kv.second.~_Ty();
+                }
+            }
             reset();
         }
         const size_type size() const noexcept { return count_; }
         const bool empty() const noexcept { return !size(); }
-        const bool full() const noexcept { return size() == max_size(); }
+        const bool full() const noexcept { return size() == BUCKET_COUNT; }
         size_type bucket_size(size_type bid)
         {
-            size_type count = 0;
-            if (bid >= _Size)
-            {
-                return count;
-            }
-            bucket* b = buckets_[bid];
-            while (b && b != &end_bucket_)
-            {
-                count++;
-                b = b->next;
-            }
-            return count;
+            return count_;
         }
         float load_factor() const
         {
-            return size() / 1.0f / bucket_count();
+            return size() / 1.0f / HASH_COUNT;
         }
         std::pair<iterator, bool> insert(const value_type& val)
         {
@@ -354,50 +373,27 @@ namespace zsummer
         iterator find(const key_type& key)
         {
             size_t ukey = hasher(key);
-            size_t bid = ukey % free_bucket_count_;
-            bucket_pointer head = buckets_[bid];
-            while (head != NULL && head != &end_bucket_)
+            size_t hash_id = ukey % HASH_COUNT;
+            u32 obj_id = buckets_[hash_id];
+            while (obj_id != 0 && rf(obj_pool_ [obj_id]).first != key)
             {
-                if (head->ukey != ukey || !key_equal(head->val.first, key))
-                {
-                    head = head->next;
-                    continue;
-                }
-                return mi(head);
+                obj_id = obj_pool_[obj_id].next;
+            }
+            if (obj_id != 0)
+            {
+                return mi((u32)hash_id, obj_id);
             }
             return end();
         }
 
         iterator erase(iterator iter)
         {
-            u32 bid = iter.bucket_->bid;
-            bucket* next = erase_bucket(iter);
-            if (next == &end_bucket_ && bid < _Size)
-            {
-                return mi(next_b(bid));
-            }
-            return mi(next);
+            return erase_bucket(iter.cur_hash_id_, iter.cur_obj_id_);
         }
 
         iterator erase(const key_type& key)
         {
-            size_t ukey = hasher(key);
-            size_t bid = ukey % free_bucket_count_;
-            bucket_pointer last = buckets_[bid];
-            do
-            {
-                if (last == NULL || last == &end_bucket_)
-                {
-                    break;
-                }
-                if (last->bid != bid || last->ukey != ukey || last->val.first != key)
-                {
-                    last = last->next;
-                    continue;
-                }
-                last = erase_bucket(last);
-            } while (true);
-            return next_b((u32)bid);
+            return erase(find(key));
         }
 
 
