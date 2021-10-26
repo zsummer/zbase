@@ -262,7 +262,8 @@ s32 MapStress(Map& m, const std::string& desc, bool is_static = false, V* p = NU
         prof_cost.start();
         for (int i = 0; i < 1000 * 10000; i++)
         {
-            if (m.find(rand() % LOAD_CAPACITY) == m.end())
+            int r = rand() % LOAD_CAPACITY;
+            if (m.find(r) == m.end())
             {
                 LogError() << " stress test error";
             }
