@@ -629,8 +629,7 @@ s32 ZListTest()
 s32 ZHashMapTest()
 {
     zhash_map<int, int, 2> hash = { {1,1}, {2,2}, {3,3}, {4,4} };
-    AssertTest(hash.size(), 4U, "");
-    AssertTest(hash.size(), 4U, "");
+    AssertTest(hash.size(), 2U, "");
     AssertTest(hash.insert({ 8,8 }).second, false, "");
     AssertTest(hash.insert({ 8,8 }).first == hash.end(), true, "");
     hash[1] = 111;
