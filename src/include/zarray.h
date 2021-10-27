@@ -126,7 +126,7 @@ namespace zsummer
 
         void clear()
         {
-            if (std::is_object<_Ty>::value)
+            if (!std::is_trivial<_Ty>::value)
             {
                 for (size_type i = 0; i < count_; i++)
                 {
@@ -181,7 +181,7 @@ namespace zsummer
             {
                 return pos;
             }
-            if  (!std::is_object<_Ty>::value)
+            if  (std::is_trivial<_Ty>::value)
             {
                 memmove((space_type*)in_pos + count, (space_type*)in_pos, sizeof(space_type) * ((space_type*)old_end - (space_type*)in_pos));
             }
@@ -219,7 +219,7 @@ namespace zsummer
             }
 
 
-            if (last >= end() && !std::is_object<_Ty>::value)
+            if (last >= end() && std::is_trivial<_Ty>::value)
             {
                 count_ -= distance(first, end());
                 return end();
@@ -228,7 +228,7 @@ namespace zsummer
             size_type island_count = distance(last, end());
             iterator cp_first = (iterator)first;
             iterator cp_last = (iterator)last;
-            if (!std::is_object<_Ty>::value)
+            if (std::is_trivial<_Ty>::value)
             {
                 memmove((space_type*)first, (space_type*)last, island_count * sizeof(space_type));
                 cp_first = (iterator)(first + island_count);
@@ -262,7 +262,7 @@ namespace zsummer
             {
                 return  end();
             }
-            if (std::is_object< _Ty>::value)
+            if (!std::is_trivial< _Ty>::value)
             {
                 for (size_t i = 0; i < count; i++)
                 {
@@ -297,7 +297,7 @@ namespace zsummer
                 return  end();
             }
             iterator cp_first = (iterator)first;
-            if (std::is_object< _Ty>::value)
+            if (!std::is_trivial< _Ty>::value)
             {
                 while (cp_first != last)
                 {
