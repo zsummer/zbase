@@ -277,13 +277,21 @@ namespace zsummer
         const Node* data() const noexcept { return data_; }
         const bool is_valid_node(void* addr) const noexcept
         {
+            u64 ufixed_addr = (u64)&fixed_space_[0];
+            u64 udyn_addr = (u64)dync_space_;
             u64 uaddr = (u64)addr;
-            u64 udata = (u64)data_;
-            if (uaddr < udata || uaddr >= udata + sizeof(Node) * max_size())
+            if (uaddr >= ufixed_addr && uaddr < ufixed_addr + sizeof(space_type) * _FixedSize)
             {
-                return false;
+                return true;
             }
-            return true;
+            if (udyn_addr != 0)
+            {
+                if (uaddr >= udyn_addr && uaddr < udyn_addr + sizeof(space_type) * (_Size - _FixedSize))
+                {
+                    return true;
+                }
+            }
+            return false;
         }
 
         void clear()
