@@ -434,13 +434,21 @@ s32 ContainerStress()
 
 
     LogDebug() << "================";
+
+
     LinerStressWrap<std::vector<int>, int>();
     LinerStressWrap<zarray<int, LOAD_CAPACITY>, int, true>();
     LinerStressWrap<std::vector<int>, RAIIVal<>>();
-    LinerStressWrap<zarray<int, LOAD_CAPACITY>, RAIIVal<>, true>();    
+    LinerStressWrap<zarray<int, LOAD_CAPACITY>, RAIIVal<>, true>();
     LinerDestroyWrap<std::vector<int>, RAIIVal<>>();
     LinerDestroyWrap<zarray<int, LOAD_CAPACITY>, RAIIVal<>, true>();
 
+    LinerStressWrap<std::vector<RAIIVal<>>, int>();
+    LinerStressWrap<zarray<RAIIVal<>, LOAD_CAPACITY>, int, true>();
+    LinerStressWrap<std::vector<RAIIVal<>>, RAIIVal<>>();
+    LinerStressWrap<zarray<RAIIVal<>, LOAD_CAPACITY>, RAIIVal<>, true>();
+    LinerDestroyWrap<std::vector<RAIIVal<>>, RAIIVal<>>();
+    LinerDestroyWrap<zarray<RAIIVal<>, LOAD_CAPACITY>, RAIIVal<>, true>();
 
     LogDebug() << "================";
     LinerStressWrap<std::deque<int>, int>();
