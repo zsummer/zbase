@@ -667,6 +667,27 @@ s32 ZSortInsertLogN(C& c, size_t s)
     return 0;
 }
 
+
+template<class C>
+s32 ZListValidTest(C& c, size_t s)
+{
+    for (size_t i = 0; i < s; i++)
+    {
+        size_t r = rand() % 100;
+        c.insert(c.begin(), r);
+    }
+    AssertTest(c.size(), s, "");
+    for (auto& e : c)
+    {
+        if (!c.is_valid_node(&e))
+        {
+            volatile int a = 0;
+        }
+        AssertTest(!c.is_valid_node(&e), false, "");
+    }
+    return 0;
+}
+
 template<class C>
 s32 ZSortInsertLine(C& c, size_t s)
 {
@@ -723,7 +744,16 @@ s32 ZSortInsertTest()
         zlist<size_t, 200> zl;
         AssertTest(ZSortInsertLine(zl, 200), 0, "");
     }
-
+    if (true)
+    {
+        zlist<size_t, 200> zl;
+        ZListValidTest(zl, 200);
+    }
+    if (true)
+    {
+        zlist_ext<size_t, 200, 100> zl;
+        ZListValidTest(zl, 200);
+    }
     return 0;
 }
 s32 ZObjPoolTest()
