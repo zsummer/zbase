@@ -71,6 +71,8 @@ s32 LinerStress(List& l, const std::string& desc,  bool is_static = false, V*p =
         }
     }
 
+
+
     if (true)
     {
         PROF_DEFINE_REGISTER_DEFAULT(prof_cost, (ss.str() + "insert begin & pop begin(capacity)").c_str());
@@ -93,6 +95,30 @@ s32 LinerStress(List& l, const std::string& desc,  bool is_static = false, V*p =
         prof_cost.record_current<LOAD_CAPACITY * 2>();
         AssertCheck((int)l.size(), 0, desc + ": error");
     }
+
+    if (true)
+    {
+        PROF_DEFINE_REGISTER_DEFAULT(prof_cost, (ss.str() + "insert begin ").c_str());
+        prof_cost.start();
+        for (int i = 0; i < LOAD_CAPACITY; i++)
+        {
+            l.insert(l.begin(), V(i));
+        }
+        prof_cost.record_current<LOAD_CAPACITY * 2>();
+    }
+
+    if (true)
+    {
+        PROF_DEFINE_REGISTER_DEFAULT(prof_cost, (ss.str() + "pop begin ").c_str());
+        prof_cost.start();
+        for (int i = 0; i < LOAD_CAPACITY; i++)
+        {
+            l.erase(l.begin());
+        }
+        prof_cost.record_current<LOAD_CAPACITY * 2>();
+        AssertCheck((int)l.size(), 0, desc + ": error");
+    }
+
 
     if (true)
     {
