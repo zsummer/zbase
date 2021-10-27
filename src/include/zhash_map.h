@@ -254,7 +254,7 @@ namespace zsummer
                 obj_pool_[cur_obj_id].next = obj_pool_[obj_id].next;
             }
             bucket& obj = obj_pool_[obj_id];
-            if (std::is_object<_Ty>::value)
+            if (!std::is_trivial<_Ty>::value)
             {
                 rf(obj).second.~_Ty();
             }
@@ -290,7 +290,7 @@ namespace zsummer
             }
             bucket& obj = obj_pool_[new_obj_id];
             obj.next = 0;
-            if (std::is_object<_Ty>::value)
+            if (!std::is_trivial<_Ty>::value)
             {
                 new (&obj.val_space) value_type(val);
             }
@@ -332,7 +332,7 @@ namespace zsummer
         }
         ~zhash_map()
         {
-            if (std::is_object<_Ty>::value)
+            if (!std::is_trivial<_Ty>::value)
             {
                 for (reference kv : *this)
                 {
@@ -342,7 +342,7 @@ namespace zsummer
         }
         void clear()
         {
-            if (std::is_object<_Ty>::value)
+            if (!std::is_trivial<_Ty>::value)
             {
                 for (reference kv : *this)
                 {
