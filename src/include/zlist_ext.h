@@ -216,7 +216,7 @@ namespace zsummer
         }
         ~zlist_ext()
         {
-            if (std::is_object<_Ty>::value)
+            if (!std::is_trivial<_Ty>::value)
             {
                 clear();
             }
@@ -342,7 +342,7 @@ namespace zsummer
             {
                 return false; //empty
             }
-            if (std::is_object<_Ty>::value)
+            if (!std::is_trivial<_Ty>::value)
             {
                 node_cast(node)->~_Ty();
             }
