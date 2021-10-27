@@ -332,7 +332,13 @@ namespace zsummer
         }
         ~zhash_map()
         {
-            clear();
+            if (std::is_object<_Ty>::value)
+            {
+                for (reference kv : *this)
+                {
+                    kv.second.~_Ty();
+                }
+            }
         }
         void clear()
         {

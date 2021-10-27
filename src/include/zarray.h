@@ -63,7 +63,7 @@ namespace zsummer
         using const_reverse_iterator = std::reverse_iterator<const_iterator>;
         using space_type = typename std::aligned_storage<sizeof(_Ty), alignof(_Ty)>::type;
     private:
-        pointer ptr(size_type i) const noexcept { return (pointer)&data_[i]; }
+        pointer ptr(size_type i) const noexcept { return reinterpret_cast<pointer>(const_cast<space_type*>(&data_[i])); }
         reference ref(size_type i) const noexcept { return *ptr(i); }
         size_type distance(const_pointer l, const_pointer r) const noexcept { return (size_type)(r - l); }
     public:
@@ -181,16 +181,9 @@ namespace zsummer
             {
                 return pos;
             }
-            if /*constexpr*/ (IS_TRIVIALLY_COPYABLE(_Ty))
+            if  (!std::is_object<_Ty>::value)
             {
-#if __GNUG__ && __GNUC__ >= 5
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wclass-memaccess"
-#endif
-                memmove((_Ty*)in_pos + count, (_Ty*)in_pos, sizeof(_Ty) * ((_Ty*)old_end - (_Ty*)in_pos));
-#if __GNUG__ && __GNUC__ >= 5
-#pragma GCC diagnostic pop
-#endif
+                memmove((space_type*)in_pos + count, (space_type*)in_pos, sizeof(space_type) * ((space_type*)old_end - (space_type*)in_pos));
             }
             else
             {
@@ -232,40 +225,27 @@ namespace zsummer
                 return end();
             }
 
-
-            size_type remaind = distance(last, end());
+            size_type island_count = distance(last, end());
             iterator cp_first = (iterator)first;
             iterator cp_last = (iterator)last;
-            if (IS_TRIVIALLY_COPYABLE(_Ty))
+            if (!std::is_object<_Ty>::value)
             {
-#if __GNUG__ && __GNUC__ >= 5
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wclass-memaccess"
-#endif
-                memmove((_Ty*)first, (_Ty*)last, remaind * sizeof(_Ty));
-                cp_first = (iterator)(first + remaind);
-#if __GNUG__ && __GNUC__ >= 5
-#pragma GCC diagnostic pop
-#endif
+                memmove((space_type*)first, (space_type*)last, island_count * sizeof(space_type));
+                cp_first = (iterator)(first + island_count);
             }
             else
             {
-                for (size_type i = 0; i < remaind; i++)
+                for (size_type i = 0; i < island_count; i++)
                 {
                     *cp_first++ = *cp_last++;
                 }
-                if (std::is_object<_Ty>::value)
+                iterator erase_first = cp_first;
+                while (erase_first != end())
                 {
-                    iterator erase_first = cp_first;
-                    while (erase_first != begin() + _Size)
-                    {
-                        erase_first->~_Ty();
-                        ++erase_first;
-                    }
+                    erase_first->~_Ty();
+                    ++erase_first;
                 }
             }
-
-
             count_ -= distance(cp_first, end());
             return end();
         }
@@ -282,9 +262,19 @@ namespace zsummer
             {
                 return  end();
             }
-            for (size_t i = 0; i < count; i++)
+            if (std::is_object< _Ty>::value)
             {
-                new (pos++) _Ty(value);
+                for (size_t i = 0; i < count; i++)
+                {
+                    new (pos++) _Ty(value);
+                }
+            }
+            else
+            {
+                for (size_t i = 0; i < count; i++)
+                {
+                    *pos++ = value;
+                }
             }
             return new_iter;
         }
@@ -307,10 +297,22 @@ namespace zsummer
                 return  end();
             }
             iterator cp_first = (iterator)first;
-            while (cp_first != last)
+            if (std::is_object< _Ty>::value)
             {
-                new (pos++) _Ty(*cp_first++);
+                while (cp_first != last)
+                {
+                    new (pos++) _Ty(*cp_first++);
+                }
             }
+            else
+            {
+                while (cp_first != last)
+                {
+                    *pos++ =  *cp_first++;
+                }
+            }
+
+
             return new_iter;
         }
 
