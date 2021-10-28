@@ -2270,7 +2270,7 @@ int ProfRecord<INST, RESERVE, DECLARE, ANON>::serialize(unsigned int flags, std:
 #endif 
 
 #ifndef PROF_ANON_COUNT
-#define PROF_ANON_COUNT 200
+#define PROF_ANON_COUNT 500
 #endif
 
 
