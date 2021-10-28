@@ -56,7 +56,7 @@ using f64 = double;
     auto v2 = (val2); \
     if ((v1)==(v2)) \
     { \
-        LogDebug() << (v1) << " " << (v2) <<" " << desc << " pass.";  \
+        /*LogDebug() << (v1) << " " << (v2) <<" " << desc << " pass.";  */ \
     } \
     else  \
     { \
