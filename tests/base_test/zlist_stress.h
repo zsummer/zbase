@@ -6,7 +6,7 @@
 #define ZLIST_STRESS_H
 
 
-s32 ZListLowerBoundTest();
+s32 SortTest();
 
 
 

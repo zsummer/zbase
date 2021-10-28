@@ -8,7 +8,7 @@
 #include "zhash_map.h"
 #include "zcontain_test.h"
 #include "zobj_pool.h"
-
+#include "zlist_ext.h"
 using namespace zsummer;
 
 
@@ -19,10 +19,10 @@ using namespace zsummer;
 struct Element
 {
     int v;
-    char buf[8];
-    //char buf[1280];
+    //char buf[8];
+    char buf[1280];
 };
-static const int list_size = 200;
+static const int list_size = 100;
 static const int rand_size = 1000;
 static int rand_array[rand_size] = { 0 };
 
@@ -32,7 +32,7 @@ inline bool comp(const Element& f, const Element& s)
 }
 
 template<class V>
-s32 LowerBoundStress(V& v, bool is_test, const char* desc)
+s32 SortArrayTest(V& v, bool is_test, const char* desc)
 {
     Element e;
     double now = Now();
@@ -104,7 +104,7 @@ s32 LowerBoundStress(V& v, bool is_test, const char* desc)
 
 
 template<class V>
-s32 LowerBoundListStress(V& v, bool is_test, const char* desc)
+s32 SortListTest(V& v, bool is_test, const char* desc)
 {
     Element e;
     double now = Now();
@@ -188,29 +188,35 @@ s32 likely_test()
 
 
 
-s32 ZListLowerBoundTest()
+s32 SortTest()
 {
+    std::vector<Element> sys_vector;
     std::list<Element> sys_list;
+
+
+    std::unique_ptr<zarray<Element, list_size>> zarray_ptr(new  zarray<Element, list_size>());
+    zarray<Element, list_size>& zarray_ref = *zarray_ptr;
     std::unique_ptr< zlist<Element, list_size>> zlist_ptr(new  zlist<Element, list_size>());
     zlist<Element, list_size>& zlist_bound = *zlist_ptr;
-    std::vector<Element> sys_vector;
+    std::unique_ptr< zlist_ext<Element, list_size, list_size/2>> zlist_ext_ptr(new  zlist_ext<Element, list_size, list_size / 2>());
+    zlist_ext<Element, list_size, list_size / 2 >& zlist_ext_bound = *zlist_ext_ptr;
 
-    std::unique_ptr< zarray<Element, list_size>> zarray_ptr(new  zarray<Element, list_size>());
-    zarray<Element, list_size>& zarray_ref = *zarray_ptr;
     for (size_t i = 0; i < rand_size; i++)
     {
         rand_array[i] = rand();
     }
 
-    LowerBoundStress(sys_vector, true, "sys_vector");
-    LowerBoundStress(zarray_ref, true, "zarray");
+    SortArrayTest(sys_vector, true, "sys_vector");
+    SortArrayTest(zarray_ref, true, "zarray");
 
-    LowerBoundStress(sys_vector, false, "sys_vector");
-    LowerBoundStress(zarray_ref, false, "zarray");
+    SortArrayTest(sys_vector, false, "sys_vector");
+    SortArrayTest(zarray_ref, false, "zarray");
 
 
-    LowerBoundListStress(zlist_bound, true,  "zlist");
-    LowerBoundListStress(zlist_bound, false,  "zlist");
+    SortListTest(zlist_bound, true, "zlist");
+    SortListTest(zlist_ext_bound, true, "zlist_ext_bound");
+    SortListTest(zlist_bound, false,  "zlist");
+    SortListTest(zlist_ext_bound, false, "zlist_ext_bound");
 
 
     likely_test();

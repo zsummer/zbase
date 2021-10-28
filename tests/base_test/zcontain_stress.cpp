@@ -11,6 +11,7 @@
 #include "zobj_pool.h"
 #include "zlist_stress.h"
 #include <unordered_map>
+#include "zprof.h"
 
 using namespace zsummer;
 
@@ -20,7 +21,7 @@ using namespace zsummer;
 #define Now() std::chrono::duration<double>(std::chrono::system_clock().now().time_since_epoch()).count()                                
 
 static const int LOOP_CAPACITY = 1000;
-static const int LOAD_CAPACITY = 10000;
+static const int LOAD_CAPACITY = 1024*8;
 template<class List, class V>
 s32 LinerStress(List& l, const std::string& desc,  bool is_static = false, V*p = NULL)
 {
@@ -247,19 +248,18 @@ s32 MapStress(Map& m, const std::string& desc, bool is_static = false, V* p = NU
 
     if (true)
     {
-        PROF_DEFINE_REGISTER_DEFAULT(prof_cost, (ss.str() + "insert begin & pop begin(capacity)").c_str());
-        prof_cost.start();
         for (int i = 0; i < LOAD_CAPACITY; i++)
         {
             m.insert({ i,  V(i) });
         }
         AssertCheck((int)m.size(), LOAD_CAPACITY, desc + ": error");
-
+        PROF_DEFINE_REGISTER_DEFAULT(prof_cost, (ss.str() + "insert  & erase (capacity)").c_str());
+        prof_cost.start();
         for (int i = 0; i < LOAD_CAPACITY; i++)
         {
             m.erase(i);
         }
-        prof_cost.record_current<LOAD_CAPACITY * 2>();
+        prof_cost.record_current<LOAD_CAPACITY>();
         AssertCheck((int)m.size(), 0, desc + ":has error");
         for (int i = 0; i < LOAD_CAPACITY; i++)
         {
@@ -482,8 +482,49 @@ s32 ContainerStress()
     MapDestroyWrap<zhash_map<int, RAIIVal<>, LOAD_CAPACITY>, RAIIVal<>, true>();
     LogDebug() << "================";
 
+    if (true)
+    {
+        zhash_map<int, int, LOAD_CAPACITY> z_hashmap;
+        for (int i = 0; i < LOAD_CAPACITY/3; i++)
+        {
+            z_hashmap.insert(std::make_pair(i, i));
+        }
+        AssertTest(z_hashmap.size(), LOAD_CAPACITY / 3, "");
+        std::unordered_map<int, int> sys_hashmap;
+        for (int i = 0; i < LOAD_CAPACITY / 3; i++)
+        {
+            sys_hashmap.insert(std::make_pair(i, i));
+        }
+        AssertTest(sys_hashmap.size(), LOAD_CAPACITY / 3, "");
 
-
+        int sys_count = 0;
+        int z_count = 0;
+        if (true)
+        {
+            
+            PROF_DEFINE_AUTO_SINGLE_RECORD(cost, LOOP_CAPACITY, PROF_LEVEL_NORMAL, "sys hash_map foreach");
+            for (int i = 0; i < LOOP_CAPACITY; i++)
+            {
+                for (auto&kv: sys_hashmap)
+                {
+                    sys_count +=kv.second;
+                }
+            }
+        }
+        if (true)
+        {
+            
+            PROF_DEFINE_AUTO_SINGLE_RECORD(cost, LOOP_CAPACITY, PROF_LEVEL_NORMAL, "z hash_map foreach");
+            for (int i = 0; i < LOOP_CAPACITY; i++)
+            {
+                for (auto& kv : z_hashmap)
+                {
+                    z_count += kv.second;
+                }
+            }
+        }
+        AssertTest(sys_count, z_count, "");
+    }
 
     return 0;
 }
