@@ -49,9 +49,10 @@ int main(int argc, char *argv[])
 
     LogDebug() << " main begin test. ";
     volatile double cycles = 0.0f;
+    ZListLowerBoundTest();
     ContainerTest();
     ContainerStress();
-    ZListLowerBoundTest();
+    
 
     if (false)
     {
