@@ -253,7 +253,7 @@ s32 MapStress(Map& m, const std::string& desc, bool is_static = false, V* p = NU
             m.insert({ i,  V(i) });
         }
         AssertCheck((int)m.size(), LOAD_CAPACITY, desc + ": error");
-        PROF_DEFINE_REGISTER_DEFAULT(prof_cost, (ss.str() + "insert  & erase (capacity)").c_str());
+        PROF_DEFINE_REGISTER_DEFAULT(prof_cost, (ss.str() + "erase key (capacity)").c_str());
         prof_cost.start();
         for (int i = 0; i < LOAD_CAPACITY; i++)
         {
@@ -269,10 +269,47 @@ s32 MapStress(Map& m, const std::string& desc, bool is_static = false, V* p = NU
         {
             m.erase(m.end());
         }
-        
     }
-
-
+    if (true)
+    {
+        for (int i = 0; i < LOAD_CAPACITY; i++)
+        {
+            m.insert({ i,  V(i) });
+        }
+        AssertCheck((int)m.size(), LOAD_CAPACITY, desc + ": error");
+        PROF_DEFINE_REGISTER_DEFAULT(prof_cost, (ss.str() + "revert erase key (capacity)").c_str());
+        prof_cost.start();
+        for (int i = 0; i < LOAD_CAPACITY; i++)
+        {
+            m.erase(LOAD_CAPACITY - i - 1);
+        }
+        prof_cost.record_current<LOAD_CAPACITY>();
+        AssertCheck((int)m.size(), 0, desc + ":has error");
+        for (int i = 0; i < LOAD_CAPACITY; i++)
+        {
+            m.erase(i);
+        }
+        if (is_static)
+        {
+            m.erase(m.end());
+        }
+    }
+    if (true)
+    {
+        for (int i = 0; i < LOAD_CAPACITY; i++)
+        {
+            m.insert({ i,  V(i) });
+        }
+        AssertCheck((int)m.size(), LOAD_CAPACITY, desc + ": error");
+        PROF_DEFINE_REGISTER_DEFAULT(prof_cost, (ss.str() + "erase begin (capacity)").c_str());
+        prof_cost.start();
+        for (int i = 0; i < LOAD_CAPACITY; i++)
+        {
+            m.erase(m.begin());
+        }
+        prof_cost.record_current<LOAD_CAPACITY>();
+        AssertCheck((int)m.size(), 0, desc + ":has error");
+    }
 
 
     if (true)

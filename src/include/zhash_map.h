@@ -159,6 +159,7 @@ namespace zsummer
     private:
         u32 buckets_[HASH_COUNT];
         bucket obj_pool_[INVALID_POOL_SIZE];
+        u32 first_valid_;
         u32 exploit_offset_;
         u32 count_;
         iterator mi(u32 obj_id) { return iterator(obj_pool_, obj_id, exploit_offset_ + 1); }
@@ -168,6 +169,7 @@ namespace zsummer
         {
             exploit_offset_ = 0;
             count_ = 0;
+            first_valid_ = 0;
             obj_pool_[FREE_POOL_SIZE].next = 0;
             obj_pool_[FREE_POOL_SIZE].hash_id = HASH_COUNT;
             memset(buckets_, 0, sizeof(u32) * HASH_COUNT);
@@ -181,6 +183,10 @@ namespace zsummer
                 obj_pool_[ret].hash_id = HASH_COUNT;
                 obj_pool_[FREE_POOL_SIZE].next = obj_pool_[ret].next;
                 count_++;
+                if (first_valid_ == 0 || ret < first_valid_)
+                {
+                    first_valid_ = ret;
+                }
                 return ret;
             }
             if (exploit_offset_ < POOL_SIZE)
@@ -188,6 +194,10 @@ namespace zsummer
                 u32 ret = ++exploit_offset_;
                 obj_pool_[ret].hash_id = HASH_COUNT;
                 count_++;
+                if (first_valid_ == 0 || ret < first_valid_)
+                {
+                    first_valid_ = ret;
+                }
                 return ret;
             }
             return 0;
@@ -199,6 +209,10 @@ namespace zsummer
             obj_pool_[obj_id].next = obj_pool_[FREE_POOL_SIZE].next;
             obj_pool_[FREE_POOL_SIZE].next = obj_id;
             count_--;
+            if (obj_id == first_valid_)
+            {
+                first_valid_ = next_b(first_valid_+1).cur_obj_id_;
+            }
         }
 
         iterator next_b(u32 obj_id)
@@ -213,52 +227,7 @@ namespace zsummer
             return end();
         }
 
-        iterator erase_bucket(u32 obj_id)
-        {
-            if (obj_id == 0 || obj_id > exploit_offset_)
-            {
-                return end();
-            }
-            bucket& obj = obj_pool_[obj_id];
-            u32 hash_id = obj.hash_id;
 
-            if (hash_id >= HASH_COUNT)
-            {
-                return end();
-            }
-            if (buckets_[hash_id] == 0)
-            {
-                return end();
-            }
-
-            u32 pre_obj_id = buckets_[hash_id];
-            if (pre_obj_id == obj_id)
-            {
-                buckets_[hash_id] = obj_pool_[obj_id].next;
-            }
-            else
-            {
-                u32 cur_obj_id = pre_obj_id;
-                while (obj_pool_[cur_obj_id].next != obj_id && obj_pool_[cur_obj_id].next != 0)
-                {
-                    cur_obj_id = obj_pool_[cur_obj_id].next;
-                }
-                if (obj_pool_[cur_obj_id].next != obj_id)
-                {
-                    return end();
-                }
-                obj_pool_[cur_obj_id].next = obj_pool_[obj_id].next;
-            }
-
-            if (!std::is_trivial<_Ty>::value)
-            {
-                rf(obj).second.~_Ty();
-            }
-
-            u32 next_obj_id = obj.next;
-            push_free(obj_id);
-            return next_b(next_obj_id);
-        }
 
         std::pair<iterator, bool> insert_v(const value_type& val, bool assign)
         {
@@ -302,9 +271,9 @@ namespace zsummer
         }
 
     public:
-        iterator begin() noexcept { return next_b(0); }
-        const_iterator begin() const noexcept { return next_b(0); }
-        const_iterator cbegin() const noexcept { return next_b(0); }
+        iterator begin() noexcept { return next_b(first_valid_); }
+        const_iterator begin() const noexcept { return next_b(first_valid_); }
+        const_iterator cbegin() const noexcept { return next_b(first_valid_); }
 
         iterator end() noexcept { return mi(INVALID_POOL_SIZE); }
         const_iterator end() const noexcept { return mi(INVALID_POOL_SIZE); }
@@ -387,12 +356,89 @@ namespace zsummer
 
         iterator erase(iterator iter)
         {
-            return erase_bucket(iter.cur_obj_id_);
+            u32 obj_id = iter.cur_obj_id_;
+            if (obj_id == 0 || obj_id > exploit_offset_)
+            {
+                return end();
+            }
+            bucket& obj = obj_pool_[obj_id];
+
+            //return erase(rf(obj).first);
+            u32 hash_id = obj.hash_id;
+            
+            if (hash_id >= HASH_COUNT)
+            {
+                return end();
+            }
+            if (buckets_[hash_id] == 0)
+            {
+                return end();
+            }
+            
+            u32 pre_obj_id = buckets_[hash_id];
+            if (pre_obj_id == obj_id)
+            {
+                buckets_[hash_id] = obj_pool_[obj_id].next;
+            }
+            else
+            {
+                u32 cur_obj_id = pre_obj_id;
+                while (obj_pool_[cur_obj_id].next != 0 && obj_pool_[cur_obj_id].next != obj_id)
+                {
+                    cur_obj_id = obj_pool_[cur_obj_id].next;
+                }
+                if (obj_pool_[cur_obj_id].next != obj_id)
+                {
+                    return end();
+                }
+                obj_pool_[cur_obj_id].next = obj_pool_[obj_id].next;
+            }
+
+            if (!std::is_trivial<_Ty>::value)
+            {
+                rf(obj).second.~_Ty();
+            }
+            push_free(obj_id);
+            return begin();
         }
 
         iterator erase(const key_type& key)
         {
-            return erase(find(key));
+            u32 ukey = (u32)hasher(key);
+            u32 hash_id = ukey % HASH_COUNT;
+            u32 pre_obj_id = buckets_[hash_id];
+            if (pre_obj_id == 0)
+            {
+                return end();
+            }
+
+            u32 obj_id = 0;
+            if (rf(obj_pool_[pre_obj_id]).first == key)
+            {
+                obj_id = pre_obj_id;
+                buckets_[hash_id] = obj_pool_[pre_obj_id].next;
+            }
+            else
+            {
+                u32 cur_obj_id = pre_obj_id;
+                while (obj_pool_[cur_obj_id].next != 0 && rf(obj_pool_[obj_pool_[cur_obj_id].next]).first != key)
+                {
+                    cur_obj_id = obj_pool_[cur_obj_id].next;
+                }
+                if (rf(obj_pool_[obj_pool_[cur_obj_id].next]).first != key)
+                {
+                    return end();
+                }
+                obj_id = obj_pool_[cur_obj_id].next;
+                obj_pool_[cur_obj_id].next = obj_pool_[obj_pool_[cur_obj_id].next].next;
+            }
+
+            if (!std::is_trivial<_Ty>::value)
+            {
+                rf(obj_pool_[obj_id]).second.~_Ty();
+            }
+            push_free(obj_id);
+            return begin();
         }
 
 
