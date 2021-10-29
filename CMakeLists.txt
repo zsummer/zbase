@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.0)
-project(base_container)
+project(zbase)
 #enable_language(ASM)
 
 #from github.com/zsummer
