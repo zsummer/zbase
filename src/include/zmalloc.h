@@ -21,188 +21,6 @@
 #include <sstream>
 
 
-#ifdef WIN32
-/*
-* left to right scan
-* num:<1>  return 0
-* num:<2>  return 1
-* num:<3>  return 1
-* num:<4>  return 2
-* num:<0>  return (u32)-1
-*/
-
-inline u32 FirstBitIndex(u64 num)
-{
-    DWORD index = (DWORD)-1;
-    _BitScanReverse64(&index, num);
-    return (u32)index;
-}
-/*
-* right to left scan
-*/
-
-inline u32 LastBitIndex(u64 num)
-{
-    DWORD index = -1;
-    _BitScanForward64(&index, num);
-    return (u32)index;
-}
-
-#else
-#define FirstBitIndex(num) ((u32)(sizeof(u64) * 8 - __builtin_clzll((u64)num) - 1))
-#define LastBitIndex(num) ((u32)(__builtin_ctzll((u64)num)))
-#endif
-
-
-
-static const u32 FIRST_BIT_INDEX_TABLE[] =
-{
-    /*
-    1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16
-    */
-    0,
-    0, 1, 1, 2, 2, 2, 2, 3, 3, 3,  3,  3,  3,  3,  3,  4,
-    4, 4, 4, 4, 4, 4, 4, 4, 4, 4,  4,  4,  4,  4,  4,  5, //32
-    5, 5, 5, 5, 5, 5, 5, 5, 5, 5,  5,  5,  5,  5,  5,  5,
-    5, 5, 5, 5, 5, 5, 5, 5, 5, 5,  5,  5,  5,  5,  5,  6, //64
-    6, 6, 6, 6, 6, 6, 6, 6, 6, 6,  6,  6,  6,  6,  6,  6,
-    6, 6, 6, 6, 6, 6, 6, 6, 6, 6,  6,  6,  6,  6,  6,  6,
-    6, 6, 6, 6, 6, 6, 6, 6, 6, 6,  6,  6,  6,  6,  6,  6,
-    6, 6, 6, 6, 6, 6, 6, 6, 6, 6,  6,  6,  6,  6,  6,  7, //128
-    7, 7, 7, 7, 7, 7, 7, 7, 7, 7,  7,  7,  7,  7,  7,  7,
-    7, 7, 7, 7, 7, 7, 7, 7, 7, 7,  7,  7,  7,  7,  7,  7,
-    7, 7, 7, 7, 7, 7, 7, 7, 7, 7,  7,  7,  7,  7,  7,  7,
-    7, 7, 7, 7, 7, 7, 7, 7, 7, 7,  7,  7,  7,  7,  7,  7,
-    7, 7, 7, 7, 7, 7, 7, 7, 7, 7,  7,  7,  7,  7,  7,  7,
-    7, 7, 7, 7, 7, 7, 7, 7, 7, 7,  7,  7,  7,  7,  7,  7,
-    7, 7, 7, 7, 7, 7, 7, 7, 7, 7,  7,  7,  7,  7,  7,  7,
-    7, 7, 7, 7, 7, 7, 7, 7, 7, 7,  7,  7,  7,  7,  7,//8, //256
-};
-static constexpr u32 FAST_FIRST_BIT_SIZE = sizeof(FIRST_BIT_INDEX_TABLE) / sizeof(u32);
-
-#define FastFirstBitIndex(bytes) ( (bytes) < FAST_FIRST_BIT_SIZE ? FIRST_BIT_INDEX_TABLE[bytes] : FirstBitIndex(bytes) )
-
-
-
-
-
-template<class Integer>
-inline Integer FillingRight(Integer num)
-{
-    static_assert(std::is_same<Integer, u32>::value, "only support u32 type");
-    num |= num >> 1U;
-    num |= num >> 2U;
-    num |= num >> 4U;
-    num |= num >> 8U;
-    num |= num >> 16U;
-    return num;
-}
-
-#define FirstBit001(num)   (FillingRight((num) >> 1) + 1)
-#define CeilFirstBit001(num)   (FillingRight((num) -1) + 1) 
-#define CeilFirstBit CeilFirstBit001   //next power of 2
-#define FirstBit FirstBit001   //next power of 2
-#define NextPowerOf2 CeilFirstBit
-#define IsPowerOf2(num)  (!(num & (num-1)))
-
-#define LastBit(x) ((x) & -(x))
-//#define LastBit(num)  (num &(~(num & (num-1))))
-
-#define BSMax(x, y) ((x) > (y) ? (x) : (y))
-#define BSMin(x, y) ((x) < (y) ? (x) : (y))
-
-
-
-
-#define ShiftSize(shift) (1U << (shift))
-#define ShiftSize64(shift) (1ULL << (shift))
-#define ShiftRightMask(shift) (ShiftSize(shift) -1U)
-#define ShiftRightMask64(shift) (ShiftSize64(shift) -1ULL)
-
-
-
-#define AlignBytesSize(bytes, up) ( ( (bytes) + ((up) - 1U) ) & ~((up) - 1U) )  
-#define IsAlignBytesSize(bytes, up) (!((bytes) & ((up) - 1U)))
-
-static_assert(AlignBytesSize(0, 4) == 0, "");
-static_assert(AlignBytesSize(1, 4) == 4, "");
-static_assert(AlignBytesSize(1, 4096) == 4096, "");
-static_assert(AlignBytesSize((1ULL << 50) + 1, (1ULL << 50)) == (1ULL << 50) * 2, "");
-static_assert(AlignBytesSize((1ULL << 50) * 2 + 1, (1ULL << 50)) == (1ULL << 50) * 3, "");
-
-static_assert(IsAlignBytesSize(0, 4), "");
-static_assert(!IsAlignBytesSize(1, 4), "");
-static_assert(IsAlignBytesSize(4, 4), "");
-
-
-
-
-#define AlignUpUnitSize(bytes, shift) (((bytes) + ShiftRightMask64(shift)) >> (shift))
-static_assert(AlignUpUnitSize(0, 10) == 0, "");
-static_assert(AlignUpUnitSize(1, 10) == 1, "");
-static_assert(AlignUpUnitSize(1 << 10, 10) == 1, "");
-static_assert(AlignUpUnitSize((1 << 10) + 1, 10) == 2, "");
-static_assert(AlignUpUnitSize(1 << 10, 10) == 1, "");
-static_assert(AlignUpUnitSize((1ULL << 50) + 1, 50) == 2, "");
-
-#define AlignObjSize(bytes) AlignBytesSize(bytes, sizeof(std::max_align_t)) 
-static_assert(AlignObjSize(1) == sizeof(std::max_align_t), "");
-static_assert(AlignObjSize(0) == 0, "");
-
-
-#define MIN_PAGE_SHIFT 12
-
-
-
-
-
-
-#define ThirdBitIndex(bytes) ((FastFirstBitIndex(bytes >> 10) + 10) - 2)
-#define GeoPostPart(third_index, bytes) (((bytes) >> (third_index)) & 0x3)
-#define GeoSequence(third_index, bytes) (((third_index) << 2) + GeoPostPart(third_index, bytes))
-static constexpr u32 geo_sequence_test_1 = GeoSequence(0, 7);
-static_assert(GeoSequence(0, 4) == 0, "");
-static_assert(GeoSequence(0, 5) == 1, "");
-static_assert(GeoSequence(0, 6) == 2, "");
-static_assert(GeoSequence(0, 7) == 3, "");
-
-static_assert(GeoSequence(1, 8) == 4, "");
-static_assert(GeoSequence(1, 9) == 4, "");
-static_assert(GeoSequence(1, 10) == 5, "");
-static_assert(GeoSequence(1, 11) == 5, "");
-static_assert(GeoSequence(1, 12) == 6, "");
-static_assert(GeoSequence(1, 13) == 6, "");
-static_assert(GeoSequence(1, 14) == 7, "");
-static_assert(GeoSequence(1, 15) == 7, "");
-static_assert(GeoSequence(2, 16) == 8, "");
-
-static_assert(GeoSequence(8, 1024) == 32, "");
-static_assert(GeoSequence(8, 1280) == 33, "");
-static_assert(GeoSequence(8, 1536) == 34, "");
-static_assert(GeoSequence(8, 1792) == 35, "");
-static_assert(GeoSequence(9, 2048) == 36, "");
-
-#define GeoSequenceZip(third_index, bytes) (GeoSequence(third_index, bytes) - 32)
-static_assert(GeoSequenceZip(8, 1024) == 0, "");
-
-#define BigPadIndex(bytes)   GeoSequenceZip(ThirdBitIndex(bytes), bytes) 
-
-#define BigIndexSize(index )  ((((index + 32) & 0x3) | 0x4) << (((index +32) >> 2) ))
-#define CeilGeoBytes(third_index, bytes) ((ShiftRightMask(third_index) + (bytes))& ~ShiftRightMask(third_index))
-static_assert(CeilGeoBytes(8, 1024) == 1024, "");
-static_assert(CeilGeoBytes(8, 1025) == 1280, "");
-static_assert(CeilGeoBytes(8, 1279) == 1280, "");
-static_assert(CeilGeoBytes(8, 1280) == 1280, "");
-static_assert(CeilGeoBytes(8, 1281) == 1536, "");
-static_assert(CeilGeoBytes(8, 1535) == 1536, "");
-
-#define CeilThirdIndex(third_index, bytes) (bytes >= (1ULL << (third_index+3)) ? (third_index)+1 : (third_index))
-static_assert(CeilThirdIndex(8, 1024) == 8, "");
-static_assert(CeilThirdIndex(8, 1025) == 8, "");
-static_assert(CeilThirdIndex(8, 2047) == 8, "");
-static_assert(CeilThirdIndex(8, 2048) == 9, "");
-static_assert(CeilThirdIndex(8, 2049) == 9, "");
-
 
 #ifndef  ZMALLOC_H
 #define ZMALLOC_H
@@ -210,6 +28,22 @@ static_assert(CeilThirdIndex(8, 2049) == 9, "");
 
 namespace zsummer
 {
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     using s8 = char;
     using u8 = unsigned char;
     using s16 = short int;
@@ -308,6 +142,189 @@ namespace zsummer
 #define global_zmalloc(bytes) zmalloc::instance().alloc_memory(bytes)
 #define global_zfree(addr) zmalloc::instance().free_memory(addr)
 
+
+
+#ifdef WIN32
+    /*
+    * left to right scan
+    * num:<1>  return 0
+    * num:<2>  return 1
+    * num:<3>  return 1
+    * num:<4>  return 2
+    * num:<0>  return (u32)-1
+    */
+
+    inline u32 zmalloc_first_bit_index(u64 num)
+    {
+        DWORD index = (DWORD)-1;
+        _BitScanReverse64(&index, num);
+        return (u32)index;
+    }
+    /*
+    * right to left scan
+    */
+
+    inline u32 zmalloc_last_bit_index(u64 num)
+    {
+        DWORD index = -1;
+        _BitScanForward64(&index, num);
+        return (u32)index;
+    }
+
+#else
+#define zmalloc_first_bit_index(num) ((u32)(sizeof(u64) * 8 - __builtin_clzll((u64)num) - 1))
+#define zmalloc_last_bit_index(num) ((u32)(__builtin_ctzll((u64)num)))
+#endif
+
+
+
+    static const u32 ZMALLOC_FIRST_BIT_INDEX_TABLE[] =
+    {
+        /*
+        1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16
+        */
+        0,
+        0, 1, 1, 2, 2, 2, 2, 3, 3, 3,  3,  3,  3,  3,  3,  4,
+        4, 4, 4, 4, 4, 4, 4, 4, 4, 4,  4,  4,  4,  4,  4,  5, //32
+        5, 5, 5, 5, 5, 5, 5, 5, 5, 5,  5,  5,  5,  5,  5,  5,
+        5, 5, 5, 5, 5, 5, 5, 5, 5, 5,  5,  5,  5,  5,  5,  6, //64
+        6, 6, 6, 6, 6, 6, 6, 6, 6, 6,  6,  6,  6,  6,  6,  6,
+        6, 6, 6, 6, 6, 6, 6, 6, 6, 6,  6,  6,  6,  6,  6,  6,
+        6, 6, 6, 6, 6, 6, 6, 6, 6, 6,  6,  6,  6,  6,  6,  6,
+        6, 6, 6, 6, 6, 6, 6, 6, 6, 6,  6,  6,  6,  6,  6,  7, //128
+        7, 7, 7, 7, 7, 7, 7, 7, 7, 7,  7,  7,  7,  7,  7,  7,
+        7, 7, 7, 7, 7, 7, 7, 7, 7, 7,  7,  7,  7,  7,  7,  7,
+        7, 7, 7, 7, 7, 7, 7, 7, 7, 7,  7,  7,  7,  7,  7,  7,
+        7, 7, 7, 7, 7, 7, 7, 7, 7, 7,  7,  7,  7,  7,  7,  7,
+        7, 7, 7, 7, 7, 7, 7, 7, 7, 7,  7,  7,  7,  7,  7,  7,
+        7, 7, 7, 7, 7, 7, 7, 7, 7, 7,  7,  7,  7,  7,  7,  7,
+        7, 7, 7, 7, 7, 7, 7, 7, 7, 7,  7,  7,  7,  7,  7,  7,
+        7, 7, 7, 7, 7, 7, 7, 7, 7, 7,  7,  7,  7,  7,  7,//8, //256
+    };
+    static constexpr u32 ZMALLOC_FIRST_BIT_INDEX_TABLE_BYTES = sizeof(ZMALLOC_FIRST_BIT_INDEX_TABLE) / sizeof(u32);
+
+#define first_bit_index(bytes) ( (bytes) < ZMALLOC_FIRST_BIT_INDEX_TABLE_BYTES ? ZMALLOC_FIRST_BIT_INDEX_TABLE[bytes] : zmalloc_first_bit_index(bytes) )
+
+
+
+
+
+    template<class Integer>
+    inline Integer zmalloc_fill_right(Integer num)
+    {
+        static_assert(std::is_same<Integer, u32>::value, "only support u32 type");
+        num |= num >> 1U;
+        num |= num >> 2U;
+        num |= num >> 4U;
+        num |= num >> 8U;
+        num |= num >> 16U;
+        return num;
+    }
+
+#define FirstBit001(num)   (zmalloc_fill_right((num) >> 1) + 1)
+#define CeilFirstBit001(num)   (zmalloc_fill_right((num) -1) + 1) 
+#define CeilFirstBit CeilFirstBit001   //next power of 2
+#define FirstBit FirstBit001   //next power of 2
+#define NextPowerOf2 CeilFirstBit
+#define IsPowerOf2(num)  (!(num & (num-1)))
+
+#define LastBit(x) ((x) & -(x))
+    //#define LastBit(num)  (num &(~(num & (num-1))))
+
+#define BSMax(x, y) ((x) > (y) ? (x) : (y))
+#define BSMin(x, y) ((x) < (y) ? (x) : (y))
+
+
+
+
+#define ShiftSize(shift) (1U << (shift))
+#define ShiftSize64(shift) (1ULL << (shift))
+#define ShiftRightMask(shift) (ShiftSize(shift) -1U)
+#define ShiftRightMask64(shift) (ShiftSize64(shift) -1ULL)
+
+
+
+#define AlignBytesSize(bytes, up) ( ( (bytes) + ((up) - 1U) ) & ~((up) - 1U) )  
+#define IsAlignBytesSize(bytes, up) (!((bytes) & ((up) - 1U)))
+
+    static_assert(AlignBytesSize(0, 4) == 0, "");
+    static_assert(AlignBytesSize(1, 4) == 4, "");
+    static_assert(AlignBytesSize(1, 4096) == 4096, "");
+    static_assert(AlignBytesSize((1ULL << 50) + 1, (1ULL << 50)) == (1ULL << 50) * 2, "");
+    static_assert(AlignBytesSize((1ULL << 50) * 2 + 1, (1ULL << 50)) == (1ULL << 50) * 3, "");
+
+    static_assert(IsAlignBytesSize(0, 4), "");
+    static_assert(!IsAlignBytesSize(1, 4), "");
+    static_assert(IsAlignBytesSize(4, 4), "");
+
+
+
+
+#define AlignUpUnitSize(bytes, shift) (((bytes) + ShiftRightMask64(shift)) >> (shift))
+    static_assert(AlignUpUnitSize(0, 10) == 0, "");
+    static_assert(AlignUpUnitSize(1, 10) == 1, "");
+    static_assert(AlignUpUnitSize(1 << 10, 10) == 1, "");
+    static_assert(AlignUpUnitSize((1 << 10) + 1, 10) == 2, "");
+    static_assert(AlignUpUnitSize(1 << 10, 10) == 1, "");
+    static_assert(AlignUpUnitSize((1ULL << 50) + 1, 50) == 2, "");
+
+#define AlignObjSize(bytes) AlignBytesSize(bytes, sizeof(std::max_align_t)) 
+    static_assert(AlignObjSize(1) == sizeof(std::max_align_t), "");
+    static_assert(AlignObjSize(0) == 0, "");
+
+
+#define MIN_PAGE_SHIFT 12
+
+
+
+
+
+
+#define ThirdBitIndex(bytes) ((first_bit_index(bytes >> 10) + 10) - 2)
+#define GeoPostPart(third_index, bytes) (((bytes) >> (third_index)) & 0x3)
+#define GeoSequence(third_index, bytes) (((third_index) << 2) + GeoPostPart(third_index, bytes))
+    static constexpr u32 geo_sequence_test_1 = GeoSequence(0, 7);
+    static_assert(GeoSequence(0, 4) == 0, "");
+    static_assert(GeoSequence(0, 5) == 1, "");
+    static_assert(GeoSequence(0, 6) == 2, "");
+    static_assert(GeoSequence(0, 7) == 3, "");
+
+    static_assert(GeoSequence(1, 8) == 4, "");
+    static_assert(GeoSequence(1, 9) == 4, "");
+    static_assert(GeoSequence(1, 10) == 5, "");
+    static_assert(GeoSequence(1, 11) == 5, "");
+    static_assert(GeoSequence(1, 12) == 6, "");
+    static_assert(GeoSequence(1, 13) == 6, "");
+    static_assert(GeoSequence(1, 14) == 7, "");
+    static_assert(GeoSequence(1, 15) == 7, "");
+    static_assert(GeoSequence(2, 16) == 8, "");
+
+    static_assert(GeoSequence(8, 1024) == 32, "");
+    static_assert(GeoSequence(8, 1280) == 33, "");
+    static_assert(GeoSequence(8, 1536) == 34, "");
+    static_assert(GeoSequence(8, 1792) == 35, "");
+    static_assert(GeoSequence(9, 2048) == 36, "");
+
+#define GeoSequenceZip(third_index, bytes) (GeoSequence(third_index, bytes) - 32)
+    static_assert(GeoSequenceZip(8, 1024) == 0, "");
+
+#define BigPadIndex(bytes)   GeoSequenceZip(ThirdBitIndex(bytes), bytes) 
+
+#define BigIndexSize(index )  ((((index + 32) & 0x3) | 0x4) << (((index +32) >> 2) ))
+#define CeilGeoBytes(third_index, bytes) ((ShiftRightMask(third_index) + (bytes))& ~ShiftRightMask(third_index))
+    static_assert(CeilGeoBytes(8, 1024) == 1024, "");
+    static_assert(CeilGeoBytes(8, 1025) == 1280, "");
+    static_assert(CeilGeoBytes(8, 1279) == 1280, "");
+    static_assert(CeilGeoBytes(8, 1280) == 1280, "");
+    static_assert(CeilGeoBytes(8, 1281) == 1536, "");
+    static_assert(CeilGeoBytes(8, 1535) == 1536, "");
+
+#define CeilThirdIndex(third_index, bytes) (bytes >= (1ULL << (third_index+3)) ? (third_index)+1 : (third_index))
+    static_assert(CeilThirdIndex(8, 1024) == 8, "");
+    static_assert(CeilThirdIndex(8, 1025) == 8, "");
+    static_assert(CeilThirdIndex(8, 2047) == 8, "");
+    static_assert(CeilThirdIndex(8, 2048) == 9, "");
+    static_assert(CeilThirdIndex(8, 2049) == 9, "");
 
 
 #if ZMALLOC_OPEN_CHECK
@@ -744,7 +761,7 @@ namespace zsummer
 
             if (bitmap != 0)
             {
-                u32 bin_id = small_id + FastFirstBitIndex(bitmap & -bitmap);
+                u32 bin_id = small_id + first_bit_index(bitmap & -bitmap);
                 chunk = zstate.bin_[level][bin_id].next_node;
                 PickFreeChunk(zstate, chunk);
             }
@@ -820,7 +837,7 @@ namespace zsummer
 
             if (bitmap != 0)
             {
-                u32 bin_id = id + FastFirstBitIndex(bitmap & -bitmap);
+                u32 bin_id = id + first_bit_index(bitmap & -bitmap);
                 chunk = zstate.bin_[level][bin_id].next_node;
                 PickFreeChunk(zstate, chunk);
             }
