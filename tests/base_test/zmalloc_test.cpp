@@ -25,7 +25,7 @@ s32 ZMallocIOTest()
 {
     std::unique_ptr<zmalloc> zstate(new zmalloc());
     memset(zstate.get(), 0, sizeof(zmalloc));
-    zstate->max_reserve_seg_count_ = 20;
+    zstate->max_reserve_field_count_ = 20;
     zstate->set_global(zstate.get());
     zstate->set_page_callback(&SysMalloc, &SysFree);
 
@@ -89,7 +89,7 @@ s32 ZMallocIOTest()
     global_zfree(global_zmalloc(7 * 1024 * 1024));
     global_zfree(global_zmalloc(50 * 1024 * 1024));
     zstate->clear_cache();
-    AssertTest(zstate->used_seg_count_ + zstate->reserve_seg_count_, 0U, "");
+    AssertTest(zstate->used_field_count_ + zstate->reserve_field_count_, 0U, "");
 
     return 0;
 }
