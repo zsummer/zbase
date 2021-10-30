@@ -83,14 +83,6 @@ static constexpr u32 FAST_FIRST_BIT_SIZE = sizeof(FIRST_BIT_INDEX_TABLE) / sizeo
 #define FastFirstBitIndex(bytes) ( (bytes) < FAST_FIRST_BIT_SIZE ? FIRST_BIT_INDEX_TABLE[bytes] : FirstBitIndex(bytes) )
 
 
-#ifdef WIN32
-#define EXPECT(x, N) (x)
-#else
-#define EXPECT(x, N) __builtin_expect((x), N)
-#endif
-#define LIKELY(x) EXPECT(!!(x), 1) //x expect tue      
-#define UNLIKELY(x) EXPECT(!!(x), 0) //x expect false 
-
 
 
 

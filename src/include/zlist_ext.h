@@ -53,7 +53,7 @@ namespace zsummer
     template<class _List>
     struct ListExtIterator
     {
-        using _Node = typename _List::Node;
+        using _Node = typename _List::node_type;
         using _Ty = typename _List::value_type;
         using difference_type = typename _List::difference_type;
         using iterator_category = std::bidirectional_iterator_tag;
@@ -115,7 +115,7 @@ namespace zsummer
     template<class _List>
     struct ConstListExtIterator
     {
-        using _Node = typename _List::Node;
+        using _Node = typename _List::node_type;
         using _Ty = typename _List::value_type;
         using difference_type = typename _List::difference_type;
         using iterator_category = std::bidirectional_iterator_tag;
@@ -178,7 +178,7 @@ namespace zsummer
     class zlist_ext
     {
     public:
-        struct Node;
+        struct node_type;
         using value_type = _Ty;
         using size_type = size_t;
         using difference_type = ptrdiff_t;
@@ -201,13 +201,13 @@ namespace zsummer
         using space_type = typename std::aligned_storage<sizeof(_Ty), alignof(_Ty)>::type;
 
     public:
-        struct Node
+        struct node_type
         {
             u32 front;
             u32 next;
             space_type *space;
         };
-        static _Ty* MAY_ALIAS node_cast(Node* node) { return reinterpret_cast<_Ty*>(node->space); }
+        static _Ty* MAY_ALIAS node_cast(node_type* node) { return reinterpret_cast<_Ty*>(node->space); }
     public:
 
         zlist_ext()
@@ -266,7 +266,7 @@ namespace zsummer
         reference back() { return *node_cast(&data_[data_[end_id_].front]); }
         const_reference back() const { *node_cast(&data_[data_[end_id_].front]); }
 
- //       static constexpr u32 static_buf_size(u32 obj_count) { return sizeof(zlist_ext<_Ty, 1>) + sizeof(Node) * (obj_count - 1); }
+ //       static constexpr u32 static_buf_size(u32 obj_count) { return sizeof(zlist_ext<_Ty, 1>) + sizeof(node_type) * (obj_count - 1); }
 
 
         const size_type size() const noexcept { return used_count_; }
@@ -274,7 +274,7 @@ namespace zsummer
         const bool empty() const noexcept { return !used_count_; }
         const bool full() const noexcept { return size() == max_size(); }
         size_type capacity() const { return max_size(); }
-        const Node* data() const noexcept { return data_; }
+        const node_type* data() const noexcept { return data_; }
         const bool is_valid_node(void* addr) const noexcept
         {
             u64 ufixed_addr = (u64)&fixed_space_[0];
@@ -323,7 +323,7 @@ namespace zsummer
     private:
         bool push_free_node(u32 id)
         {
-            Node* node = &data_[id];
+            node_type* node = &data_[id];
             node->next = free_id_;
             node->front = end_id_;
             free_id_ = id;
@@ -337,7 +337,7 @@ namespace zsummer
             {
                 return false;
             }
-            Node* node = &data_[id];
+            node_type* node = &data_[id];
             if (used_id_ >= end_id_)
             {
                 return false; //empty
@@ -558,7 +558,7 @@ namespace zsummer
         u32 free_id_;
         u32 used_id_;
         u32 end_id_;
-        Node data_[_Size + 1];
+        node_type data_[_Size + 1];
         space_type fixed_space_[_FixedSize];
         space_type* dync_space_;// space_type dync_space_[Size - _FixedSize];_
     };
