@@ -10,7 +10,7 @@
 #define Now() std::chrono::duration<double>(std::chrono::system_clock().now().time_since_epoch()).count()
 
 
-
+using namespace zsummer;
 static u64 SysFree(void* addr)
 {
     free(addr);
@@ -26,7 +26,7 @@ s32 ZMallocIOTest()
     std::unique_ptr<zmalloc> zstate(new zmalloc());
     memset(zstate.get(), 0, sizeof(zmalloc));
     zstate->max_reserve_seg_count_ = 20;
-    zstate->SetGlobal(zstate.get(), &SysMalloc, &SysFree);
+    zstate->set_page_callback(zstate.get(), &SysMalloc, &SysFree);
 
 
     double  last_time = Now();
@@ -48,36 +48,36 @@ s32 ZMallocIOTest()
 
 
     void* pz = global_zmalloc(0);
-    zstate->Check();
+    zstate->check_health();
     global_zfree(pz);
-    zstate->Check();
+    zstate->check_health();
     pz = global_zmalloc(0);
-    zstate->Check();
+    zstate->check_health();
     global_zfree(pz);
-    zstate->Check();
+    zstate->check_health();
     pz = global_zmalloc(10 * 1024);
-    zstate->Check();
+    zstate->check_health();
     void* pz2 = global_zmalloc(2 * 1024);
-    zstate->Check();
+    zstate->check_health();
     global_zfree(pz);
-    zstate->Check();
+    zstate->check_health();
     pz = global_zmalloc(10 * 1024);
-    zstate->Check();
+    zstate->check_health();
     global_zfree(pz);
-    zstate->Check();
+    zstate->check_health();
     global_zfree(pz2);
-    zstate->Check();
+    zstate->check_health();
     pz = global_zmalloc(10 * 1024);
-    zstate->Check();
+    zstate->check_health();
     global_zfree(pz);
-    zstate->Check();
+    zstate->check_health();
     pz = global_zmalloc(102 * 1024);
-    zstate->Check();
+    zstate->check_health();
     global_zfree(pz);
-    zstate->Check();
+    zstate->check_health();
     global_zfree(global_zmalloc(1012));
-    zstate->Check();
-    zstate->Release();
+    zstate->check_health();
+    zstate->clear_cache();
 
 
     global_zfree(global_zmalloc(234));
@@ -87,7 +87,7 @@ s32 ZMallocIOTest()
     global_zfree(global_zmalloc(111));
     global_zfree(global_zmalloc(7 * 1024 * 1024));
     global_zfree(global_zmalloc(50 * 1024 * 1024));
-    zstate->Release();
+    zstate->clear_cache();
     AssertTest(zstate->used_seg_count_ + zstate->reserve_seg_count_, 0U, "");
 
     return 0;
