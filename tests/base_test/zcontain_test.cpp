@@ -602,7 +602,7 @@ s32 ZListTest()
     AssertTest(bound_test.is_valid_node((void*)((u64)&bound_test - 1 )), false, "");
 
     AssertTest(bound_test.is_valid_node((void*)((u64)&bound_test + sizeof(bound_test))), false, "");
-    AssertTest(!bound_test.is_valid_node((void*)((u64)&bound_test + sizeof(zlist<int, 100>::Node) * 99 )), false, "");
+    AssertTest(!bound_test.is_valid_node((void*)((u64)&bound_test + sizeof(zlist<int, 100>::node_type) * 99 )), false, "");
 
 
     for (size_t i = 0; i < 100; i++)
