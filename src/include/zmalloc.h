@@ -230,16 +230,21 @@ namespace zsummer
         static const u32 BITMAP_LEVEL = 2;
         static const u32 SALE_SYS_ALLOC_SIZE = (4 * 1024 * 1024);
     public:
-        static zmalloc& instance();
-        static zmalloc* instance_ptr();
-        static void* alloc_memory(u64 bytes);
-        static u64  free_memory(void* addr);
+        inline static zmalloc& instance();
+        inline static zmalloc* instance_ptr();
+        inline static void* default_page_alloc(u64 );
+        inline static u64 default_page_free(void*);
+        inline static void set_global(zmalloc* state);
+        inline void set_page_callback(page_alloc_func page_alloc, page_free_func page_free);
 
-        void set_page_callback(zmalloc* zstate, page_alloc_func page_alloc, page_free_func page_free);
-        void check_health();
-        void clear_cache();
-        const char* SummaryStatic();
-        void Summary();
+        inline void* alloc_memory(u64 bytes);
+        inline u64  free_memory(void* addr);
+
+        
+        inline void check_health();
+        inline void clear_cache();
+        inline const char* SummaryStatic();
+        inline void Summary();
 
     public:
         struct chunk_type
@@ -267,6 +272,9 @@ namespace zsummer
         };
     public:
         u32 inited_;
+        page_alloc_func page_alloc_;
+        page_free_func page_free_;
+
         u32 max_reserve_seg_count_;
         u64 req_total_count_;
         u64 free_total_count_;
@@ -283,6 +291,7 @@ namespace zsummer
         u64 sale_real_bytes_;
         u64 return_real_bytes_;
 
+
         u32 used_seg_count_;
         Segment* used_seg_list_;
         u32 reserve_seg_count_;
@@ -296,8 +305,8 @@ namespace zsummer
         u64 free_counter_[BITMAP_LEVEL][BINMAP_SIZE];
     };
 
-#define global_zmalloc(bytes) zmalloc::alloc_memory(bytes)
-#define global_zfree(addr) zmalloc::free_memory(addr)
+#define global_zmalloc(bytes) zmalloc::instance().alloc_memory(bytes)
+#define global_zfree(addr) zmalloc::instance().free_memory(addr)
 
 
 
@@ -372,8 +381,7 @@ namespace zsummer
 
 
     zmalloc* g_zmalloc_state = NULL;
-    zmalloc::page_alloc_func g_large_alloc = NULL;
-    zmalloc::page_free_func g_large_free = NULL;
+
 
     zmalloc& zmalloc::instance()
     {
@@ -383,11 +391,45 @@ namespace zsummer
     {
         return g_zmalloc_state;
     }
-    void zmalloc::set_page_callback(zmalloc* zstate, page_alloc_func page_alloc, page_free_func page_free)
+
+    void* zmalloc::default_page_alloc(u64 req_size)
     {
-        g_zmalloc_state = zstate;
-        g_large_alloc = page_alloc;
-        g_large_free = page_free;
+        char* addr = (char*)malloc(req_size + 8);
+        if (addr == NULL)
+        {
+            return NULL;
+        }
+        *((u64*)addr) = req_size;
+        return addr + sizeof(u64);
+   }
+
+    u64 zmalloc::default_page_free(void* addr)
+    {
+        if (addr == NULL)
+        {
+            return 0;
+        }
+        char* req_addr = ((char*)addr) - sizeof(u64);
+        u64 req_size = *((u64*)req_addr);
+        if (req_size > 1*1024*1024*1024*1024ULL) //1 T
+        {
+            //will memory leak;  
+            return 0;
+        }
+        free(req_addr);
+        return req_size;
+    }
+
+
+    void zmalloc::set_global(zmalloc* state)
+    {
+        g_zmalloc_state = state;
+    }
+
+    void zmalloc::set_page_callback(page_alloc_func page_alloc, page_free_func page_free)
+    {
+        page_alloc_ = page_alloc;
+        page_free_ = page_free;
     }
     /*
     static void DebugAssertChunk(chunk_type* c);
@@ -472,7 +514,15 @@ namespace zsummer
         }
         else
         {
-            segment = (Segment*)g_large_alloc(bytes);
+            if (zstate.page_alloc_)
+            {
+                segment = (Segment*)zstate.page_alloc_(bytes);
+            }
+            else
+            {
+                segment = (Segment*)zstate.default_page_alloc(bytes);
+            }
+            
             zstate.sale_real_bytes_ += bytes;
         }
         if (segment == NULL)
@@ -568,7 +618,11 @@ namespace zsummer
         }
         CHECK_STATE(zstate);
         zstate.return_real_bytes_ += segment->segment_size;
-        return g_large_free(segment);
+        if (zstate.page_free_)
+        {
+            return zstate.page_free_(segment);
+        }
+         return zstate.default_page_free(segment);
     }
 
     inline void InsertFreeChunk(zmalloc& zstate, free_chunk_type* chunk, u32 bin_id)
@@ -633,15 +687,19 @@ namespace zsummer
         return new_chunk;
     }
 
-
+ 
     void* zmalloc::alloc_memory(u64 req_bytes)
     {
-        zmalloc& zstate = instance();
+        zmalloc& zstate = *this;
         if (!zstate.inited_)
         {
-            u32 cache_max = zstate.max_reserve_seg_count_;
+            auto cache_max_reserve_seg_count = zstate.max_reserve_seg_count_;
+            auto cache_page_alloc = zstate.page_alloc_;
+            auto cache_page_free = zstate.page_free_;
             memset(&zstate, 0, sizeof(zmalloc));
-            zstate.max_reserve_seg_count_ = cache_max;
+            zstate.max_reserve_seg_count_= cache_max_reserve_seg_count;
+            zstate.page_alloc_ = cache_page_alloc;
+            zstate.page_free_ = cache_page_free;
             zstate.inited_ = 1;
             for (u32 level = 0; level < BITMAP_LEVEL; level++)
             {
@@ -820,7 +878,7 @@ namespace zsummer
 
     u64 zmalloc::free_memory(void* addr)
     {
-        zmalloc& zstate = instance();
+        zmalloc& zstate = *this;
         if (addr == NULL)
         {
             //LogError() << "free null";
@@ -948,7 +1006,15 @@ namespace zsummer
             reserve_seg_list_ = reserve_seg_list_->next;
             reserve_seg_count_--;
             return_real_bytes_ += release_seg->segment_size;
-            g_large_free(release_seg);
+            if (page_free_)
+            {
+                page_free_(release_seg);
+            }
+            else
+            {
+                default_page_free(release_seg);
+            }
+            
         }
         Summary();
     }

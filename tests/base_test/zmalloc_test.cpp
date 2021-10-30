@@ -26,7 +26,8 @@ s32 ZMallocIOTest()
     std::unique_ptr<zmalloc> zstate(new zmalloc());
     memset(zstate.get(), 0, sizeof(zmalloc));
     zstate->max_reserve_seg_count_ = 20;
-    zstate->set_page_callback(zstate.get(), &SysMalloc, &SysFree);
+    zstate->set_global(zstate.get());
+    zstate->set_page_callback(&SysMalloc, &SysFree);
 
 
     double  last_time = Now();
