@@ -35,17 +35,7 @@ namespace zsummer
     using f32 = float;
     using f64 = double;
 
-#if __GNUG__ && __GNUC__ < 5
-#define IS_TRIVIALLY_COPYABLE(T) __has_trivial_copy(T)
-#else
-#define IS_TRIVIALLY_COPYABLE(T) std::is_trivially_copyable<T>::value
-#endif
 
-#if __GNUG__
-#define MAY_ALIAS __attribute__((__may_alias__))
-#else
-#define MAY_ALIAS
-#endif
 
     template<class _List>
     struct ConstListExtIterator;
