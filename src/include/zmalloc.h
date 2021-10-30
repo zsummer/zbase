@@ -225,7 +225,7 @@ using u64 = unsigned long long;
 using f32 = float;
 using f64 = double;
 
-class ZMalloc
+class zmalloc
 {
 public:
     using LargeAlloc = void* (*)(u64);
@@ -234,12 +234,12 @@ public:
     static const u32 BITMAP_LEVEL = 2;
     static const u32 SALE_SYS_ALLOC_SIZE = (4 * 1024 * 1024);
 public:
-    static ZMalloc& Instance();
-    static ZMalloc* InstancePtr();
+    static zmalloc& Instance();
+    static zmalloc* InstancePtr();
     static void* Alloc(u64 bytes);
     static u64  Free(void* addr);
 
-    void SetGlobal(ZMalloc* zstate, LargeAlloc large_alloc, LargeFree large_free);
+    void SetGlobal(zmalloc* zstate, LargeAlloc large_alloc, LargeFree large_free);
     void Check();
     void Release();
     const char* SummaryStatic();
@@ -300,8 +300,8 @@ public:
     u64 free_counter_[BITMAP_LEVEL][BINMAP_SIZE];
 };
 
-#define zmalloc(bytes) ZMalloc::Alloc(bytes)
-#define zfree(addr) ZMalloc::Free(addr)
+#define global_zmalloc(bytes) zmalloc::Alloc(bytes)
+#define global_zfree(addr) zmalloc::Free(addr)
 
 
 
@@ -319,12 +319,12 @@ public:
 #endif
 
 
-using Chunk = ZMalloc::Chunk;
-using FreeChunk = ZMalloc::FreeChunk;
-using Segment = ZMalloc::Segment;
-static const u32 BINMAP_SIZE = ZMalloc::BINMAP_SIZE;
-static const u32 BITMAP_LEVEL = ZMalloc::BITMAP_LEVEL;
-static const u32 SALE_SYS_ALLOC_SIZE = ZMalloc::SALE_SYS_ALLOC_SIZE;
+using Chunk = zmalloc::Chunk;
+using FreeChunk = zmalloc::FreeChunk;
+using Segment = zmalloc::Segment;
+static const u32 BINMAP_SIZE = zmalloc::BINMAP_SIZE;
+static const u32 BITMAP_LEVEL = zmalloc::BITMAP_LEVEL;
+static const u32 SALE_SYS_ALLOC_SIZE = zmalloc::SALE_SYS_ALLOC_SIZE;
 static const u32 LEAST_ALIGN_SHIFT = 4U;
 
 enum ChunkFlags : u32
@@ -375,19 +375,19 @@ static_assert(offsetof(FreeChunk, prev_node) == sizeof(Chunk), "struct memory la
 #define Level(p) (fc(p)->flags & CHUNK_LEVEL_MASK)
 
 
-ZMalloc* g_zmalloc_state = NULL;
-ZMalloc::LargeAlloc g_large_alloc = NULL;
-ZMalloc::LargeFree g_large_free = NULL;
+zmalloc* g_zmalloc_state = NULL;
+zmalloc::LargeAlloc g_large_alloc = NULL;
+zmalloc::LargeFree g_large_free = NULL;
 
-ZMalloc& ZMalloc::Instance()
+zmalloc& zmalloc::Instance()
 {
     return *g_zmalloc_state;
 }
-ZMalloc* ZMalloc::InstancePtr()
+zmalloc* zmalloc::InstancePtr()
 {
     return g_zmalloc_state;
 }
-void ZMalloc::SetGlobal(ZMalloc* zstate, LargeAlloc large_alloc, LargeFree large_free)
+void zmalloc::SetGlobal(zmalloc* zstate, LargeAlloc large_alloc, LargeFree large_free)
 {
     g_zmalloc_state = zstate;
     g_large_alloc = large_alloc;
@@ -395,10 +395,10 @@ void ZMalloc::SetGlobal(ZMalloc* zstate, LargeAlloc large_alloc, LargeFree large
 }
 /*
 static void DebugAssertChunk(Chunk* c);
-static void DebugAssertAllSegment(ZMalloc& zstate);
-static void DebugAssertBitmap(ZMalloc& zstate);
+static void DebugAssertAllSegment(zmalloc& zstate);
+static void DebugAssertBitmap(zmalloc& zstate);
 static void DebugAssertFreeChunk(FreeChunk* c);
-static void DebugAssertFreeChunkList(ZMalloc& zstate, FreeChunk* c);
+static void DebugAssertFreeChunkList(zmalloc& zstate, FreeChunk* c);
 */
 
 static_assert(sizeof(Segment) == ShiftSize(LEAST_ALIGN_SHIFT + 1), "segment align");
@@ -441,7 +441,7 @@ static_assert(AlignBytes(17, 4) == 32, "");
 
 
 
-inline FreeChunk* NewSegment(ZMalloc& zstate, u32 bytes, u32 flag)
+inline FreeChunk* NewSegment(zmalloc& zstate, u32 bytes, u32 flag)
 {
     bytes += sizeof(Segment) + CHUNK_PADDING_SIZE + sizeof(FreeChunk) * 2;
     static_assert(BIG_MAX_REQUEST + CHUNK_PADDING_SIZE + sizeof(FreeChunk) * 2 + sizeof(Segment) <= SALE_SYS_ALLOC_SIZE, "");
@@ -526,7 +526,7 @@ inline FreeChunk* NewSegment(ZMalloc& zstate, u32 bytes, u32 flag)
 }
 
 
-inline u64 FreeSegment(ZMalloc& zstate, Segment* segment)
+inline u64 FreeSegment(zmalloc& zstate, Segment* segment)
 {
     if (zstate.used_seg_list_ == segment)
     {
@@ -575,7 +575,7 @@ inline u64 FreeSegment(ZMalloc& zstate, Segment* segment)
     return g_large_free(segment);
 }
 
-inline void InsertFreeChunk(ZMalloc& zstate, FreeChunk* chunk, u32 bin_id)
+inline void InsertFreeChunk(zmalloc& zstate, FreeChunk* chunk, u32 bin_id)
 {
     u32 level = Level(chunk);
     SetShift(zstate.bitmap_[level], bin_id);
@@ -588,7 +588,7 @@ inline void InsertFreeChunk(ZMalloc& zstate, FreeChunk* chunk, u32 bin_id)
     CHECK_FCL(zstate, chunk);
 }
 
-inline void InsertSmallFreeChunk(ZMalloc& zstate, FreeChunk* chunk)
+inline void InsertSmallFreeChunk(zmalloc& zstate, FreeChunk* chunk)
 {
     u32 bin_id = ((chunk->this_size - CHUNK_PADDING_SIZE) >> SMALL_GRADE_SHIFT);
     if (bin_id >= BINMAP_SIZE)
@@ -597,7 +597,7 @@ inline void InsertSmallFreeChunk(ZMalloc& zstate, FreeChunk* chunk)
     }
     InsertFreeChunk(zstate, chunk, bin_id);
 }
-inline void InsertBigFreeChunk(ZMalloc& zstate, FreeChunk* chunk)
+inline void InsertBigFreeChunk(zmalloc& zstate, FreeChunk* chunk)
 {
     u32 bytes = chunk->this_size - CHUNK_PADDING_SIZE;
     u32 third_index = ThirdBitIndex(bytes);
@@ -608,7 +608,7 @@ inline void InsertBigFreeChunk(ZMalloc& zstate, FreeChunk* chunk)
 //typedef void (*InsertFree)(FreeChunk* chunk);
 //static const InsertFree InsertFreeChunkFunc[] = { &InsertSmallFreeChunk , &InsertBigFreeChunk };
 
-inline bool PickFreeChunk(ZMalloc& zstate, FreeChunk* chunk)
+inline bool PickFreeChunk(zmalloc& zstate, FreeChunk* chunk)
 {
     CHECK_FCL(zstate, chunk);
     u32 bin_id = chunk->bin_id;
@@ -638,13 +638,13 @@ inline FreeChunk* ExploitBackFreeChunk(FreeChunk* devide_chunk, u32 new_chunk_si
 }
 
 
-void* ZMalloc::Alloc(u64 req_bytes)
+void* zmalloc::Alloc(u64 req_bytes)
 {
-    ZMalloc& zstate = Instance();
+    zmalloc& zstate = Instance();
     if (!zstate.inited_)
     {
         u32 cache_max = zstate.max_reserve_seg_count_;
-        memset(&zstate, 0, sizeof(ZMalloc));
+        memset(&zstate, 0, sizeof(zmalloc));
         zstate.max_reserve_seg_count_ = cache_max;
         zstate.inited_ = 1;
         for (u32 level = 0; level < BITMAP_LEVEL; level++)
@@ -822,9 +822,9 @@ void* ZMalloc::Alloc(u64 req_bytes)
 }
 
 
-u64 ZMalloc::Free(void* addr)
+u64 zmalloc::Free(void* addr)
 {
-    ZMalloc& zstate = Instance();
+    zmalloc& zstate = Instance();
     if (addr == NULL)
     {
         //LogError() << "free null";
@@ -919,13 +919,13 @@ u64 ZMalloc::Free(void* addr)
 
 
 
-void ZMalloc::Check()
+void zmalloc::Check()
 {
     //DebugAssertAllSegment(Instance());
     //DebugAssertBitmap(Instance());
 }
 
-void ZMalloc::Release()
+void zmalloc::Release()
 {
     Summary();
     for (size_t i = 0; i < BITMAP_LEVEL; i++)
@@ -956,7 +956,7 @@ void ZMalloc::Release()
     }
     Summary();
 }
-const char* ZMalloc::SummaryStatic()
+const char* zmalloc::SummaryStatic()
 {
     static const size_t bufsz = 10 * 1024;
     static char buffer[bufsz] = { 0 };
@@ -1001,7 +1001,7 @@ const char* ZMalloc::SummaryStatic()
     }
     return buffer;
 }
-void ZMalloc::Summary()
+void zmalloc::Summary()
 {
     //LOGFMTD("%s", SummaryStatic());
 }
@@ -1050,7 +1050,7 @@ void DebugAssertFreeChunk(FreeChunk* c)
     DebugAssert(!(!InUse(c) && !InUse(Front(c))), "good in use");
 }
 
-void DebugAssertFreeChunkList(ZMalloc& zstate, FreeChunk* c)
+void DebugAssertFreeChunkList(zmalloc& zstate, FreeChunk* c)
 {
     DebugAssertChunk(c);
     if (c != zstate.dv_[Level(c)])
@@ -1141,7 +1141,7 @@ void DebugAssertSegment(Segment* seg_list, u32 seg_list_size, u32 max_list_size)
     DebugAssert(seg == seg_list, "reserve size");
 }
 
-void DebugAssertAllSegment(ZMalloc& zstate)
+void DebugAssertAllSegment(zmalloc& zstate)
 {
     DebugAssertSegment(zstate.reserve_seg_list_, zstate.reserve_seg_count_, zstate.max_reserve_seg_count_);
     DebugAssertSegment(zstate.used_seg_list_, zstate.used_seg_count_, ~0U);
@@ -1204,7 +1204,7 @@ void DebugAssertAllSegment(ZMalloc& zstate)
     //LogInfo() << "check all segment success. seg count:" << seg_count << ", total chunk:" << c_count <<", free chunk:" << fc_count;
 }
 
-void DebugAssertBitmap(ZMalloc& zstate)
+void DebugAssertBitmap(zmalloc& zstate)
 {
     for (u32 small_type = 0; small_type < 2; small_type++)
     {
