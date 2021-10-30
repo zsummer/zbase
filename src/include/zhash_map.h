@@ -38,45 +38,45 @@ namespace zsummer
 
 
 
-    template<class Bucket, class Key, class _Ty, u32 INVALID_NODE_ID, u32 HASH_COUNT>
-    struct HashMapIterator
+    template<class node_type, class Key, class _Ty, u32 INVALID_NODE_ID, u32 HASH_COUNT>
+    struct zhash_map_iterator
     {
         using value_type = std::pair<const Key, _Ty>;
-        Bucket* pool_;
+        node_type* node_pool_;
         u32 cur_node_id_;
         u32 max_node_id_; //迭代器使用过程中不更新 即迭代器一旦创建 不保证能迭代到新增元素;   
 
-        operator Bucket* () const { return pool_[cur_node_id_]; }
-        operator const Bucket* ()const { return pool_[cur_node_id_]; }
-        HashMapIterator()
+        operator node_type* () const { return node_pool_[cur_node_id_]; }
+        operator const node_type* ()const { return node_pool_[cur_node_id_]; }
+        zhash_map_iterator()
         {
-            pool_ = NULL;
+            node_pool_ = NULL;
             cur_node_id_ = INVALID_NODE_ID;
             max_node_id_ = 0;
         }
-        HashMapIterator(Bucket* pool,  u32 node_id, u32 max_node_id)
+        zhash_map_iterator(node_type* pool,  u32 node_id, u32 max_node_id)
         {
-            pool_ = pool;
+            node_pool_ = pool;
             cur_node_id_ = node_id;
             max_node_id_ = max_node_id;
         }
-        HashMapIterator(const HashMapIterator& other)
+        zhash_map_iterator(const zhash_map_iterator& other)
         {
-            pool_ = other.pool_;
+            node_pool_ = other.node_pool_;
             cur_node_id_ = other.cur_node_id_;
             max_node_id_ = other.max_node_id_;
         }
 
         void next()
         {
-            if (pool_ == NULL)
+            if (node_pool_ == NULL)
             {
                 return;
             }
 
             for (u32 i = cur_node_id_ + 1; i < max_node_id_; i++)
             {
-                if (pool_[i].hash_id < HASH_COUNT)
+                if (node_pool_[i].hash_id < HASH_COUNT)
                 {
                     cur_node_id_ = i;
                     return;
@@ -86,36 +86,36 @@ namespace zsummer
             return;
         }
 
-        HashMapIterator& operator ++()
+        zhash_map_iterator& operator ++()
         {
             next();
             return *this;
         }
 
-        HashMapIterator operator ++(int)
+        zhash_map_iterator operator ++(int)
         {
-            HashMapIterator result(*this);
+            zhash_map_iterator result(*this);
             next();
             return result;
         }
 
         value_type* operator ->()
         {
-            return (value_type*)&pool_[cur_node_id_].val_space;
+            return (value_type*)&node_pool_[cur_node_id_].val_space;
         }
         value_type& operator *()
         {
-            return *((value_type*)&pool_[cur_node_id_].val_space);
+            return *((value_type*)&node_pool_[cur_node_id_].val_space);
         }
     };
 
-    template<class Bucket, class Key, class _Ty, u32 INVALID_NODE_ID, u32 HASH_COUNT>
-    bool operator == (const HashMapIterator<Bucket, Key, _Ty, INVALID_NODE_ID, HASH_COUNT>& n1, const HashMapIterator<Bucket, Key, _Ty, INVALID_NODE_ID, HASH_COUNT>& n2)
+    template<class node_type, class Key, class _Ty, u32 INVALID_NODE_ID, u32 HASH_COUNT>
+    bool operator == (const zhash_map_iterator<node_type, Key, _Ty, INVALID_NODE_ID, HASH_COUNT>& n1, const zhash_map_iterator<node_type, Key, _Ty, INVALID_NODE_ID, HASH_COUNT>& n2)
     {
-        return n1.pool_ == n2.pool_ && n1.cur_node_id_ == n2.cur_node_id_;
+        return n1.node_pool_ == n2.node_pool_ && n1.cur_node_id_ == n2.cur_node_id_;
     }
-    template<class Bucket, class Key, class _Ty, u32 INVALID_NODE_ID, u32 HASH_COUNT>
-    bool operator != (const HashMapIterator<Bucket, Key, _Ty, INVALID_NODE_ID, HASH_COUNT>& n1, const HashMapIterator<Bucket, Key, _Ty, INVALID_NODE_ID, HASH_COUNT>& n2)
+    template<class node_type, class Key, class _Ty, u32 INVALID_NODE_ID, u32 HASH_COUNT>
+    bool operator != (const zhash_map_iterator<node_type, Key, _Ty, INVALID_NODE_ID, HASH_COUNT>& n1, const zhash_map_iterator<node_type, Key, _Ty, INVALID_NODE_ID, HASH_COUNT>& n2)
     {
         return !(n1 == n2);
     }
@@ -148,7 +148,7 @@ namespace zsummer
             u32 hash_id;
             space_type val_space;
         };
-        using iterator = HashMapIterator<node_type, key_type, mapped_type, INVALID_NODE_ID, HASH_COUNT>;
+        using iterator = zhash_map_iterator<node_type, key_type, mapped_type, INVALID_NODE_ID, HASH_COUNT>;
         using const_iterator = const iterator;
         Hash hasher;
         KeyEqual key_equal;
