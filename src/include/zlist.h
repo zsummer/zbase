@@ -201,7 +201,7 @@ namespace zsummer
             u32 next;
             space_type space;
         };
-        static _Ty* MAY_ALIAS node_cast(node_type* node) { return reinterpret_cast<_Ty*>(&node->space); }
+        static _Ty* node_cast(node_type* node) { return reinterpret_cast<_Ty*>(&node->space); }
     public:
 
         zlist()

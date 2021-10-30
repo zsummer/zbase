@@ -115,7 +115,7 @@ namespace zsummer
             Node* data = (Node*)&space_[node_begin_];
             while (used_id_ != end_id_)
             {
-                _Ty* MAY_ALIAS pty = reinterpret_cast<_Ty*>(&data[used_id_].space);
+                _Ty*  pty = reinterpret_cast<_Ty*>(&data[used_id_].space);
                 pty->~_Ty();
                 u32 free_id = used_id_;
                 used_id_ = data[used_id_].next;
