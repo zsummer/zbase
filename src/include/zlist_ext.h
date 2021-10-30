@@ -37,128 +37,126 @@ namespace zsummer
 
 
 
-    template<class _List>
-    struct ConstListExtIterator;
+    template<class list_type>
+    struct const_zlist_ext_iterator;
 
-    template<class _List>
-    struct ListExtIterator
+    template<class list_type>
+    struct zlist_ext_iterator
     {
-        using _Node = typename _List::node_type;
-        using _Ty = typename _List::value_type;
-        using difference_type = typename _List::difference_type;
+        using node_type = typename list_type::node_type;
+        using difference_type = typename list_type::difference_type;
         using iterator_category = std::bidirectional_iterator_tag;
-        using value_type = typename _List::value_type;
-        using pointer = typename _List::pointer;
-        using reference = typename _List::reference;
+        using value_type = typename list_type::value_type;
+        using pointer = typename list_type::pointer;
+        using reference = typename list_type::reference;
 
-        ListExtIterator(const _Node* const head, u32 id) { head_ = const_cast<_Node*>(head); id_ = id; }
-        ListExtIterator(const ListExtIterator<_List>& other) { head_ = const_cast<_Node*>(other.head_); id_ = other.id_; }
-        ListExtIterator(const ConstListExtIterator<_List>& other) { head_ = const_cast<_Node*>(other.head_); id_ = other.id_; }
-        ListExtIterator() :ListExtIterator(NULL, 0) {}
-        ListExtIterator& operator ++()
+        zlist_ext_iterator(const node_type* const head, u32 id) { head_ = const_cast<node_type*>(head); id_ = id; }
+        zlist_ext_iterator(const zlist_ext_iterator<list_type>& other) { head_ = const_cast<node_type*>(other.head_); id_ = other.id_; }
+        zlist_ext_iterator(const const_zlist_ext_iterator<list_type>& other) { head_ = const_cast<node_type*>(other.head_); id_ = other.id_; }
+        zlist_ext_iterator() :zlist_ext_iterator(NULL, 0) {}
+        zlist_ext_iterator& operator ++()
         {
             id_ = (head_ + id_)->next;
             return *this;
         }
-        ListExtIterator& operator --()
+        zlist_ext_iterator& operator --()
         {
             id_ = (head_ + id_)->front;
             return *this;
         }
-        ListExtIterator operator ++(int)
+        zlist_ext_iterator operator ++(int)
         {
-            ListExtIterator old = *this;
+            zlist_ext_iterator old = *this;
             id_ = (head_ + id_)->next;
             return old;
         }
-        ListExtIterator operator --(int)
+        zlist_ext_iterator operator --(int)
         {
-            ListExtIterator old = *this;
+            zlist_ext_iterator old = *this;
             id_ = (head_ + id_)->front;
             return old;
         }
 
         pointer operator ->() const
         {
-            return _List::node_cast(head_ + id_);
+            return list_type::node_cast(head_ + id_);
         }
         reference operator *() const
         {
-            return *_List::node_cast(head_ + id_);
+            return *list_type::node_cast(head_ + id_);
         }
 
     public:
-        _Node* head_;
+        node_type* head_;
         u32 id_;
     };
-    template<class _List>
-    bool operator == (const ListExtIterator<_List>& n1, const ListExtIterator<_List>& n2)
+    template<class list_type>
+    bool operator == (const zlist_ext_iterator<list_type>& n1, const zlist_ext_iterator<list_type>& n2)
     {
         return n1.head_ == n2.head_ && n1.id_ == n2.id_;
     }
-    template<class _List>
-    bool operator != (const ListExtIterator<_List>& n1, const ListExtIterator<_List>& n2)
+    template<class list_type>
+    bool operator != (const zlist_ext_iterator<list_type>& n1, const zlist_ext_iterator<list_type>& n2)
     {
         return !(n1 == n2);
     }
 
-    template<class _List>
-    struct ConstListExtIterator
+    template<class list_type>
+    struct const_zlist_ext_iterator
     {
-        using _Node = typename _List::node_type;
-        using _Ty = typename _List::value_type;
-        using difference_type = typename _List::difference_type;
+        using node_type = typename list_type::node_type;
+        using difference_type = typename list_type::difference_type;
         using iterator_category = std::bidirectional_iterator_tag;
-        using value_type = typename _List::value_type;
-        using const_pointer = typename _List::const_pointer;
-        using const_reference = typename _List::const_reference;
+        using value_type = typename list_type::value_type;
+        using const_pointer = typename list_type::const_pointer;
+        using const_reference = typename list_type::const_reference;
 
-        ConstListExtIterator(const _Node* const head, u32 id) { head_ = const_cast<_Node*>(head); id_ = id; }
-        ConstListExtIterator(const ConstListExtIterator<_List>& other) { head_ = const_cast<_Node*>(other.head_); id_ = other.id_; }
-        ConstListExtIterator(const ListExtIterator<_List>& other) { head_ = const_cast<_Node*>(other.head_); id_ = other.id_; }
-        ConstListExtIterator() :ConstListExtIterator(NULL, 0) {}
-        ConstListExtIterator& operator ++()
+        const_zlist_ext_iterator(const node_type* const head, u32 id) { head_ = const_cast<node_type*>(head); id_ = id; }
+        const_zlist_ext_iterator(const const_zlist_ext_iterator<list_type>& other) { head_ = const_cast<node_type*>(other.head_); id_ = other.id_; }
+        const_zlist_ext_iterator(const zlist_ext_iterator<list_type>& other) { head_ = const_cast<node_type*>(other.head_); id_ = other.id_; }
+        const_zlist_ext_iterator() :const_zlist_ext_iterator(NULL, 0) {}
+        const_zlist_ext_iterator& operator ++()
         {
             id_ = (head_ + id_)->next;
             return *this;
         }
-        ConstListExtIterator& operator --()
+        const_zlist_ext_iterator& operator --()
         {
             id_ = (head_ + id_)->front;
             return *this;
         }
-        ConstListExtIterator operator ++(int)
+        const_zlist_ext_iterator operator ++(int)
         {
-            ConstListExtIterator old = *this;
+            const_zlist_ext_iterator old = *this;
             id_ = (head_ + id_)->next;
             return old;
         }
-        ConstListExtIterator operator --(int)
+        const_zlist_ext_iterator operator --(int)
         {
-            ConstListExtIterator old = *this;
+            const_zlist_ext_iterator old = *this;
             id_ = (head_ + id_)->front;
             return old;
         }
 
         const_pointer operator ->() const
         {
-            return _List::node_cast(head_ + id_);
+            return list_type::node_cast(head_ + id_);
         }
         const_reference operator *() const
         {
-            return *_List::node_cast(head_ + id_);
+            return *list_type::node_cast(head_ + id_);
         }
     public:
-        _Node* head_;
+        node_type* head_;
         u32 id_;
     };
-    template<class _List>
-    bool operator == (const ConstListExtIterator<_List>& n1, const ConstListExtIterator<_List>& n2)
+    template<class list_type>
+    bool operator == (const const_zlist_ext_iterator<list_type>& n1, const const_zlist_ext_iterator<list_type>& n2)
     {
         return n1.head_ == n2.head_ && n1.id_ == n2.id_;
     }
-    template<class _List>
-    bool operator != (const ConstListExtIterator<_List>& n1, const ConstListExtIterator<_List>& n2)
+    template<class list_type>
+    bool operator != (const const_zlist_ext_iterator<list_type>& n1, const const_zlist_ext_iterator<list_type>& n2)
     {
         return !(n1 == n2);
     }
@@ -183,8 +181,8 @@ namespace zsummer
         static_assert(_FixedSize > 0, "");
         static_assert(_FixedSize <= _Size, "");
 
-        using iterator = ListExtIterator<zlist_ext<_Ty, _Size, _FixedSize>>;
-        using const_iterator = ConstListExtIterator<zlist_ext<_Ty, _Size, _FixedSize>>;
+        using iterator = zlist_ext_iterator<zlist_ext<_Ty, _Size, _FixedSize>>;
+        using const_iterator = const_zlist_ext_iterator<zlist_ext<_Ty, _Size, _FixedSize>>;
 
         using reverse_iterator = std::reverse_iterator<iterator>;
         using const_reverse_iterator = std::reverse_iterator<const_iterator>;
