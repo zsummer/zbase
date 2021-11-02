@@ -46,7 +46,7 @@ namespace zsummer
         using page_free_func = u64(*)(void*);
         static const u32 BINMAP_SIZE = (sizeof(u64) * 8U);
         static const u32 BITMAP_LEVEL = 2;
-        static const u32 SALE_SYS_ALLOC_SIZE = (4 * 1024 * 1024);
+        static const u32 DEFAULT_PAGE_SIZE = (4 * 1024 * 1024);
     public:
         inline static zmalloc& instance();
         inline static zmalloc* instance_ptr();
@@ -211,66 +211,46 @@ namespace zsummer
         return num;
     }
 
-#define FirstBit001(num)   (zmalloc_fill_right((num) >> 1) + 1)
-#define CeilFirstBit001(num)   (zmalloc_fill_right((num) -1) + 1) 
-#define CeilFirstBit CeilFirstBit001   //next power of 2
-#define FirstBit FirstBit001   //next power of 2
-#define NextPowerOf2 CeilFirstBit
-#define IsPowerOf2(num)  (!(num & (num-1)))
+#define zmalloc_floor_power_of_2(num)   (zmalloc_fill_right((num) >> 1) + 1)
+#define zmalloc_ceil_power_of_2(num)   (zmalloc_fill_right((num - 1) ) + 1)
+#define zmalloc_is_power_of_2(num)  (!(num & (num-1)))
+#define zmalloc_last_bit_size(x) ((x) & -(x))
 
-#define LastBit(x) ((x) & -(x))
-    //#define LastBit(num)  (num &(~(num & (num-1))))
-
-#define BSMax(x, y) ((x) > (y) ? (x) : (y))
-#define BSMin(x, y) ((x) < (y) ? (x) : (y))
+#define zmalloc_order_size(shift) (1U << (shift))
+#define zmalloc_order_size_64(shift) (1ULL << (shift))
+#define zmalloc_order_mask(shift) (zmalloc_order_size(shift) -1U)
+#define zmalloc_order_mask_64(shift) (zmalloc_order_size_64(shift) -1ULL)
 
 
+#define zmalloc_align_value(bytes, up) ( ( (bytes) + ((up) - 1U) ) & ~((up) - 1U) )  
+#define zmalloc_is_align_value(bytes, up) (!((bytes) & ((up) - 1U)))
 
+    static_assert(zmalloc_align_value(0, 4) == 0, "");
+    static_assert(zmalloc_align_value(1, 4) == 4, "");
+    static_assert(zmalloc_align_value(1, 4096) == 4096, "");
+    static_assert(zmalloc_align_value((1ULL << 50) + 1, (1ULL << 50)) == (1ULL << 50) * 2, "");
+    static_assert(zmalloc_align_value((1ULL << 50) * 2 + 1, (1ULL << 50)) == (1ULL << 50) * 3, "");
+    static_assert(zmalloc_is_align_value(0, 4), "");
+    static_assert(!zmalloc_is_align_value(1, 4), "");
+    static_assert(zmalloc_is_align_value(4, 4), "");
 
-#define ShiftSize(shift) (1U << (shift))
-#define ShiftSize64(shift) (1ULL << (shift))
-#define ShiftRightMask(shift) (ShiftSize(shift) -1U)
-#define ShiftRightMask64(shift) (ShiftSize64(shift) -1ULL)
+#define zmalloc_align_default_value(bytes) zmalloc_align_value(bytes, sizeof(std::max_align_t)) 
+    static_assert(zmalloc_align_default_value(1) == sizeof(std::max_align_t), "");
+    static_assert(zmalloc_align_default_value(0) == 0, "");
 
+#define zmalloc_align_up_value(bytes, shift) (((bytes) + zmalloc_order_mask_64(shift)) >> (shift))
+    static_assert(zmalloc_align_up_value(0, 10) == 0, "");
+    static_assert(zmalloc_align_up_value(1, 10) == 1, "");
+    static_assert(zmalloc_align_up_value(1 << 10, 10) == 1, "");
+    static_assert(zmalloc_align_up_value((1 << 10) + 1, 10) == 2, "");
+    static_assert(zmalloc_align_up_value(1 << 10, 10) == 1, "");
+    static_assert(zmalloc_align_up_value((1ULL << 50) + 1, 50) == 2, "");
 
-
-#define AlignBytesSize(bytes, up) ( ( (bytes) + ((up) - 1U) ) & ~((up) - 1U) )  
-#define IsAlignBytesSize(bytes, up) (!((bytes) & ((up) - 1U)))
-
-    static_assert(AlignBytesSize(0, 4) == 0, "");
-    static_assert(AlignBytesSize(1, 4) == 4, "");
-    static_assert(AlignBytesSize(1, 4096) == 4096, "");
-    static_assert(AlignBytesSize((1ULL << 50) + 1, (1ULL << 50)) == (1ULL << 50) * 2, "");
-    static_assert(AlignBytesSize((1ULL << 50) * 2 + 1, (1ULL << 50)) == (1ULL << 50) * 3, "");
-
-    static_assert(IsAlignBytesSize(0, 4), "");
-    static_assert(!IsAlignBytesSize(1, 4), "");
-    static_assert(IsAlignBytesSize(4, 4), "");
-
-
-
-
-#define AlignUpUnitSize(bytes, shift) (((bytes) + ShiftRightMask64(shift)) >> (shift))
-    static_assert(AlignUpUnitSize(0, 10) == 0, "");
-    static_assert(AlignUpUnitSize(1, 10) == 1, "");
-    static_assert(AlignUpUnitSize(1 << 10, 10) == 1, "");
-    static_assert(AlignUpUnitSize((1 << 10) + 1, 10) == 2, "");
-    static_assert(AlignUpUnitSize(1 << 10, 10) == 1, "");
-    static_assert(AlignUpUnitSize((1ULL << 50) + 1, 50) == 2, "");
-
-#define AlignObjSize(bytes) AlignBytesSize(bytes, sizeof(std::max_align_t)) 
-    static_assert(AlignObjSize(1) == sizeof(std::max_align_t), "");
-    static_assert(AlignObjSize(0) == 0, "");
 
 
 #define MIN_PAGE_SHIFT 12
 
-
-
-
-
-
-#define ThirdBitIndex(bytes) ((first_bit_index(bytes >> 10) + 10) - 2)
+#define zmalloc_third_bit_index(bytes) ((first_bit_index(bytes >> 10) + 10) - 2)
 #define GeoPostPart(third_index, bytes) (((bytes) >> (third_index)) & 0x3)
 #define GeoSequence(third_index, bytes) (((third_index) << 2) + GeoPostPart(third_index, bytes))
     static constexpr u32 geo_sequence_test_1 = GeoSequence(0, 7);
@@ -298,10 +278,10 @@ namespace zsummer
 #define GeoSequenceZip(third_index, bytes) (GeoSequence(third_index, bytes) - 32)
     static_assert(GeoSequenceZip(8, 1024) == 0, "");
 
-#define BigPadIndex(bytes)   GeoSequenceZip(ThirdBitIndex(bytes), bytes) 
+#define BigPadIndex(bytes)   GeoSequenceZip(zmalloc_third_bit_index(bytes), bytes) 
 
 #define BigIndexSize(index )  ((((index + 32) & 0x3) | 0x4) << (((index +32) >> 2) ))
-#define CeilGeoBytes(third_index, bytes) ((ShiftRightMask(third_index) + (bytes))& ~ShiftRightMask(third_index))
+#define CeilGeoBytes(third_index, bytes) ((zmalloc_order_mask(third_index) + (bytes))& ~zmalloc_order_mask(third_index))
     static_assert(CeilGeoBytes(8, 1024) == 1024, "");
     static_assert(CeilGeoBytes(8, 1025) == 1280, "");
     static_assert(CeilGeoBytes(8, 1279) == 1280, "");
@@ -336,7 +316,7 @@ namespace zsummer
     using page_type = zmalloc::page_type;
     static const u32 BINMAP_SIZE = zmalloc::BINMAP_SIZE;
     static const u32 BITMAP_LEVEL = zmalloc::BITMAP_LEVEL;
-    static const u32 SALE_SYS_ALLOC_SIZE = zmalloc::SALE_SYS_ALLOC_SIZE;
+    static const u32 DEFAULT_PAGE_SIZE = zmalloc::DEFAULT_PAGE_SIZE;
     static const u32 LEAST_ALIGN_SHIFT = 4U;
 
     enum ChunkFlags : u32
@@ -353,8 +333,8 @@ namespace zsummer
 
 
     static_assert(CHUNK_FREE_SIZE - CHUNK_PADDING_SIZE == sizeof(void*) * 2, "check memory layout.");
-    static_assert(ShiftSize(LEAST_ALIGN_SHIFT) == sizeof(void*) * 2, "check memory layout.");
-    static_assert(sizeof(chunk_type) == ShiftSize(LEAST_ALIGN_SHIFT), "payload addr in chunk must align the least align.");
+    static_assert(zmalloc_order_size(LEAST_ALIGN_SHIFT) == sizeof(void*) * 2, "check memory layout.");
+    static_assert(sizeof(chunk_type) == zmalloc_order_size(LEAST_ALIGN_SHIFT), "payload addr in chunk must align the least align.");
 
 #ifdef __GNUC__
 #pragma GCC diagnostic push
@@ -369,9 +349,9 @@ namespace zsummer
 #define u(p) ((u64)(p))
 #define fc(p) ((free_chunk_type*)(p))
 
-#define UnsetShift(bitmap, shift)  ((bitmap) &= ~ShiftSize64(shift))
-#define SetShift(bitmap, shift) ((bitmap) |= ShiftSize64(shift))
-#define HasShift(bitmap, shift)  ((bitmap) & ShiftSize64(shift))
+#define UnsetShift(bitmap, shift)  ((bitmap) &= ~zmalloc_order_size_64(shift))
+#define SetShift(bitmap, shift) ((bitmap) |= zmalloc_order_size_64(shift))
+#define HasShift(bitmap, shift)  ((bitmap) & zmalloc_order_size_64(shift))
 
 #define CUnsetBit(chunk, val)  ((chunk)->flags &= ~(val))
 #define CSetBit(chunk, val) ((chunk)->flags |= (val))
@@ -446,7 +426,7 @@ namespace zsummer
     static void DebugAssertFreeChunkList(zmalloc& zstate, free_chunk_type* c);
     */
 
-    static_assert(sizeof(page_type) == ShiftSize(LEAST_ALIGN_SHIFT + 1), "page align");
+    static_assert(sizeof(page_type) == zmalloc_order_size(LEAST_ALIGN_SHIFT + 1), "page align");
     static const u32 FIELD_SIZE = sizeof(page_type);
 
 #define Thispage_type(firstp) ((page_type*)(u(firstp) - FIELD_SIZE - sizeof(free_chunk_type)))
@@ -456,8 +436,8 @@ namespace zsummer
 
 
     static const u32  SMALL_GRADE_SHIFT = 4U;
-    static const u32  SMALL_GRADE_SIZE = ShiftSize(SMALL_GRADE_SHIFT);
-    static const u32  SMALL_GRADE_MASK = ShiftRightMask(SMALL_GRADE_SHIFT);
+    static const u32  SMALL_GRADE_SIZE = zmalloc_order_size(SMALL_GRADE_SHIFT);
+    static const u32  SMALL_GRADE_MASK = zmalloc_order_mask(SMALL_GRADE_SHIFT);
     static const u32  SMALL_LEAST_SIZE = SMALL_GRADE_SIZE + CHUNK_PADDING_SIZE;
     static const u32  SMALL_MAX_REQUEST = (BINMAP_SIZE << SMALL_GRADE_SHIFT);
 
@@ -465,14 +445,14 @@ namespace zsummer
 
 
     static_assert(SMALL_LEAST_SIZE >= sizeof(free_chunk_type), "");
-    static_assert(ShiftSize(LEAST_ALIGN_SHIFT) >= sizeof(void*) * 2, "");
+    static_assert(zmalloc_order_size(LEAST_ALIGN_SHIFT) >= sizeof(void*) * 2, "");
     static_assert(SMALL_GRADE_SHIFT >= LEAST_ALIGN_SHIFT, "");
-    static_assert(IsPowerOf2(SMALL_GRADE_SHIFT), "");
+    static_assert(zmalloc_is_power_of_2(SMALL_GRADE_SHIFT), "");
     static_assert(BINMAP_SIZE == sizeof(u64) * 8, "");
-    static_assert(SALE_SYS_ALLOC_SIZE >= BIG_MAX_REQUEST + sizeof(page_type) + sizeof(chunk_type), "");
-    static_assert(IsPowerOf2(SALE_SYS_ALLOC_SIZE), "");
+    static_assert(DEFAULT_PAGE_SIZE >= BIG_MAX_REQUEST + sizeof(page_type) + sizeof(chunk_type), "");
+    static_assert(zmalloc_is_power_of_2(DEFAULT_PAGE_SIZE), "");
 
-#define AlignBytes(bytes, grade_shift)  (((bytes) + ShiftRightMask(grade_shift) ) & ~ShiftRightMask(grade_shift)) 
+#define AlignBytes(bytes, grade_shift)  (((bytes) + zmalloc_order_mask(grade_shift) ) & ~zmalloc_order_mask(grade_shift)) 
 #define FloorGradeIndex(bytes, grade_shift)   ((bytes) >> (grade_shift))
 #define BinIndex(bytes, grade_shift )  (FloorGradeIndex((bytes), (grade_shift)) -1)
 
@@ -489,18 +469,18 @@ namespace zsummer
     free_chunk_type* zmalloc::alloc_page(u32 bytes, u32 flag)
     {
         bytes += sizeof(page_type) + CHUNK_PADDING_SIZE + sizeof(free_chunk_type) * 2;
-        static_assert(BIG_MAX_REQUEST + CHUNK_PADDING_SIZE + sizeof(free_chunk_type) * 2 + sizeof(page_type) <= SALE_SYS_ALLOC_SIZE, "");
-        static_assert(SALE_SYS_ALLOC_SIZE >= 1024 * 4, "");
-        static_assert(IsPowerOf2(SALE_SYS_ALLOC_SIZE), "");
+        static_assert(BIG_MAX_REQUEST + CHUNK_PADDING_SIZE + sizeof(free_chunk_type) * 2 + sizeof(page_type) <= DEFAULT_PAGE_SIZE, "");
+        static_assert(DEFAULT_PAGE_SIZE >= 1024 * 4, "");
+        static_assert(zmalloc_is_power_of_2(DEFAULT_PAGE_SIZE), "");
         sale_total_count_++;
         bool dirct = flag & CHUNK_IS_DIRECT;
         if (!dirct)
         {
-            bytes = SALE_SYS_ALLOC_SIZE;
+            bytes = DEFAULT_PAGE_SIZE;
         }
         else
         {
-            bytes = NextPowerOf2(bytes);
+            bytes = zmalloc_ceil_power_of_2(bytes);
         }
         page_type* page = NULL;
         if (!dirct && reserve_page_count_ > 0)
@@ -657,7 +637,7 @@ namespace zsummer
     void zmalloc::push_big_chunk(free_chunk_type* chunk)
     {
         u32 bytes = chunk->this_size - CHUNK_PADDING_SIZE;
-        u32 third_index = ThirdBitIndex(bytes);
+        u32 third_index = zmalloc_third_bit_index(bytes);
         u32 bin_id = GeoSequenceZip(third_index, bytes);
         push_chunk(chunk, bin_id);
     }
@@ -790,7 +770,7 @@ namespace zsummer
         {
             constexpr u32 level = 1;
             u32 padding = ((u32)req_bytes + 255) & ~255U;
-            u32 third_index = ThirdBitIndex(padding);
+            u32 third_index = zmalloc_third_bit_index(padding);
             padding = CeilGeoBytes(third_index, padding);
             third_index = CeilThirdIndex(third_index, padding);
 
@@ -957,7 +937,7 @@ namespace zsummer
             return bytes;
         }
 
-        if (chunk->this_size >= SALE_SYS_ALLOC_SIZE - sizeof(page_type) - sizeof(free_chunk_type) * 2)
+        if (chunk->this_size >= DEFAULT_PAGE_SIZE - sizeof(page_type) - sizeof(free_chunk_type) * 2)
         {
             page_type* page = Thispage_type(chunk);
             free_page(page);
@@ -1038,12 +1018,12 @@ namespace zsummer
             "total sale:%.04lfm, total return:%.04lfm\n"
             "sale real:%.04lfm, return real:%.04lfm\n"
             "avg inner frag:%llu%%.\n",
-            SALE_SYS_ALLOC_SIZE, max_reserve_page_count_,
+            DEFAULT_PAGE_SIZE, max_reserve_page_count_,
             used_page_count_, reserve_page_count_, (sale_real_bytes_ - return_real_bytes_) / 1024.0 / 1024.0, (alloc_total_bytes_ - free_total_bytes_) / 1024.0 / 1024.0,
             sale_total_count_ / 1000.0, return_total_count_ / 1000.0, sale_cache_count_ / 1000.0, return_cache_count_ / 1000.0,
             req_total_count_ / 1000.0, free_total_count_ / 1000.0,
             req_total_bytes_ / 1024.0 / 1024.0, alloc_total_bytes_ / 1024.0 / 1024.0, free_total_bytes_ / 1024.0 / 1024.0,
-            (sale_cache_count_ * SALE_SYS_ALLOC_SIZE + sale_real_bytes_) / 1024.0 / 1024.0, (return_cache_count_ * SALE_SYS_ALLOC_SIZE + return_real_bytes_) / 1024.0 / 1024.0,
+            (sale_cache_count_ * DEFAULT_PAGE_SIZE + sale_real_bytes_) / 1024.0 / 1024.0, (return_cache_count_ * DEFAULT_PAGE_SIZE + return_real_bytes_) / 1024.0 / 1024.0,
             sale_real_bytes_ / 1024.0 / 1024.0, return_real_bytes_ / 1024.0 / 1024.0,
             req_total_bytes_ * 100 / (alloc_total_bytes_ == 0 ? 1 : alloc_total_bytes_));
         u32 c = 0;
@@ -1098,8 +1078,8 @@ namespace zsummer
         DebugAssert(c->this_size >= SMALL_LEAST_SIZE, "good this size");
         if (!CHasBit(c, CHUNK_IS_DIRECT))
         {
-            DebugAssert(c->this_size <= SALE_SYS_ALLOC_SIZE - sizeof(page_type) - sizeof(free_chunk_type) * 2, "good this size");
-            DebugAssert(c->this_size + Next(c)->this_size + Front(c)->this_size <= SALE_SYS_ALLOC_SIZE - (u32)sizeof(page_type), "good this size");
+            DebugAssert(c->this_size <= DEFAULT_PAGE_SIZE - sizeof(page_type) - sizeof(free_chunk_type) * 2, "good this size");
+            DebugAssert(c->this_size + Next(c)->this_size + Front(c)->this_size <= DEFAULT_PAGE_SIZE - (u32)sizeof(page_type), "good this size");
         }
 
         if (Level(c) > 0)
@@ -1154,7 +1134,7 @@ namespace zsummer
             else
             {
                 DebugAssert((c->this_size - CHUNK_PADDING_SIZE) >= (u32)(c->bin_id) << SMALL_GRADE_SHIFT, "chunk size too large");
-                if (c->this_size < 63 * ShiftSize(SMALL_GRADE_SHIFT) + CHUNK_PADDING_SIZE)
+                if (c->this_size < 63 * zmalloc_order_size(SMALL_GRADE_SHIFT) + CHUNK_PADDING_SIZE)
                 {
                     DebugAssert((c->this_size - CHUNK_PADDING_SIZE) < (u32)(c->bin_id + 1) << SMALL_GRADE_SHIFT, "chunk size too small");
                 }
@@ -1179,7 +1159,7 @@ namespace zsummer
         page_type* front_field = page;
         while (page)
         {
-            DebugAssert(IsPowerOf2(page->page_size), "align");
+            DebugAssert(zmalloc_is_power_of_2(page->page_size), "align");
 
 
             if (CHasBit(FirstChunk(page), CHUNK_IS_DIRECT))
@@ -1188,7 +1168,7 @@ namespace zsummer
             }
             else
             {
-                DebugAssert(page->page_size >= SALE_SYS_ALLOC_SIZE, "align");
+                DebugAssert(page->page_size >= DEFAULT_PAGE_SIZE, "align");
                 DebugAssert(page->page_size >= BIG_MAX_REQUEST, "align");
             }
 
