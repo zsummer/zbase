@@ -35,91 +35,87 @@ namespace zsummer
     using f32 = float;
     using f64 = double;
 
-#if __GNUG__ && __GNUC__ < 5
-#define IS_TRIVIALLY_COPYABLE(T) __has_trivial_copy(T)
-#else
-#define IS_TRIVIALLY_COPYABLE(T) std::is_trivially_copyable<T>::value
-#endif
 
 
-    template<class Bucket, class Key, class _Ty, u32 INVALID_POOL_SIZE, u32 HASH_COUNT>
-    struct HashMapIterator
+
+    template<class node_type, class Key, class _Ty, u32 INVALID_NODE_ID, u32 HASH_COUNT>
+    struct zhash_map_iterator
     {
         using value_type = std::pair<const Key, _Ty>;
-        Bucket* pool_;
-        u32 cur_obj_id_;
-        u32 max_obj_id_; //迭代器使用过程中不更新 即迭代器一旦创建 不保证能迭代到新增元素;   
+        node_type* node_pool_;
+        u32 cur_node_id_;
+        u32 max_node_id_; //迭代器使用过程中不更新 即迭代器一旦创建 不保证能迭代到新增元素;   
 
-        operator Bucket* () const { return pool_[cur_obj_id_]; }
-        operator const Bucket* ()const { return pool_[cur_obj_id_]; }
-        HashMapIterator()
+        operator node_type* () const { return node_pool_[cur_node_id_]; }
+        operator const node_type* ()const { return node_pool_[cur_node_id_]; }
+        zhash_map_iterator()
         {
-            pool_ = NULL;
-            cur_obj_id_ = INVALID_POOL_SIZE;
-            max_obj_id_ = 0;
+            node_pool_ = NULL;
+            cur_node_id_ = INVALID_NODE_ID;
+            max_node_id_ = 0;
         }
-        HashMapIterator(Bucket* pool,  u32 obj_id, u32 max_obj_id)
+        zhash_map_iterator(node_type* pool,  u32 node_id, u32 max_node_id)
         {
-            pool_ = pool;
-            cur_obj_id_ = obj_id;
-            max_obj_id_ = max_obj_id;
+            node_pool_ = pool;
+            cur_node_id_ = node_id;
+            max_node_id_ = max_node_id;
         }
-        HashMapIterator(const HashMapIterator& other)
+        zhash_map_iterator(const zhash_map_iterator& other)
         {
-            pool_ = other.pool_;
-            cur_obj_id_ = other.cur_obj_id_;
-            max_obj_id_ = other.max_obj_id_;
+            node_pool_ = other.node_pool_;
+            cur_node_id_ = other.cur_node_id_;
+            max_node_id_ = other.max_node_id_;
         }
 
         void next()
         {
-            if (pool_ == NULL)
+            if (node_pool_ == NULL)
             {
                 return;
             }
 
-            for (u32 i = cur_obj_id_ + 1; i < max_obj_id_; i++)
+            for (u32 i = cur_node_id_ + 1; i < max_node_id_; i++)
             {
-                if (pool_[i].hash_id < HASH_COUNT)
+                if (node_pool_[i].hash_id < HASH_COUNT)
                 {
-                    cur_obj_id_ = i;
+                    cur_node_id_ = i;
                     return;
                 }
             }
-            cur_obj_id_ = INVALID_POOL_SIZE;
+            cur_node_id_ = INVALID_NODE_ID;
             return;
         }
 
-        HashMapIterator& operator ++()
+        zhash_map_iterator& operator ++()
         {
             next();
             return *this;
         }
 
-        HashMapIterator operator ++(int)
+        zhash_map_iterator operator ++(int)
         {
-            HashMapIterator result(*this);
+            zhash_map_iterator result(*this);
             next();
             return result;
         }
 
         value_type* operator ->()
         {
-            return (value_type*)&pool_[cur_obj_id_].val_space;
+            return (value_type*)&node_pool_[cur_node_id_].val_space;
         }
         value_type& operator *()
         {
-            return *((value_type*)&pool_[cur_obj_id_].val_space);
+            return *((value_type*)&node_pool_[cur_node_id_].val_space);
         }
     };
 
-    template<class Bucket, class Key, class _Ty, u32 INVALID_POOL_SIZE, u32 HASH_COUNT>
-    bool operator == (const HashMapIterator<Bucket, Key, _Ty, INVALID_POOL_SIZE, HASH_COUNT>& n1, const HashMapIterator<Bucket, Key, _Ty, INVALID_POOL_SIZE, HASH_COUNT>& n2)
+    template<class node_type, class Key, class _Ty, u32 INVALID_NODE_ID, u32 HASH_COUNT>
+    bool operator == (const zhash_map_iterator<node_type, Key, _Ty, INVALID_NODE_ID, HASH_COUNT>& n1, const zhash_map_iterator<node_type, Key, _Ty, INVALID_NODE_ID, HASH_COUNT>& n2)
     {
-        return n1.pool_ == n2.pool_ && n1.cur_obj_id_ == n2.cur_obj_id_;
+        return n1.node_pool_ == n2.node_pool_ && n1.cur_node_id_ == n2.cur_node_id_;
     }
-    template<class Bucket, class Key, class _Ty, u32 INVALID_POOL_SIZE, u32 HASH_COUNT>
-    bool operator != (const HashMapIterator<Bucket, Key, _Ty, INVALID_POOL_SIZE, HASH_COUNT>& n1, const HashMapIterator<Bucket, Key, _Ty, INVALID_POOL_SIZE, HASH_COUNT>& n2)
+    template<class node_type, class Key, class _Ty, u32 INVALID_NODE_ID, u32 HASH_COUNT>
+    bool operator != (const zhash_map_iterator<node_type, Key, _Ty, INVALID_NODE_ID, HASH_COUNT>& n1, const zhash_map_iterator<node_type, Key, _Ty, INVALID_NODE_ID, HASH_COUNT>& n2)
     {
         return !(n1 == n2);
     }
@@ -135,10 +131,10 @@ namespace zsummer
 
         using size_type = u32;
         const static size_type FREE_POOL_SIZE = 0;
-        const static size_type POOL_SIZE = _Size;
-        const static size_type INVALID_POOL_SIZE = POOL_SIZE + 1;
-        const static size_type HASH_COUNT = POOL_SIZE * 2;
-        constexpr size_type max_size() const { return POOL_SIZE; }
+        const static size_type NODE_COUNT = _Size;
+        const static size_type INVALID_NODE_ID = NODE_COUNT + 1;
+        const static size_type HASH_COUNT = NODE_COUNT * 2;
+        constexpr size_type max_size() const { return NODE_COUNT; }
         //constexpr size_type max_bucket_count() const { return HASH_COUNT; }
         using key_type = Key;
         using mapped_type = _Ty;
@@ -146,80 +142,80 @@ namespace zsummer
         using reference = value_type&;
         using const_reference = const value_type&;
         using space_type = typename std::aligned_storage<sizeof(value_type), alignof(value_type)>::type;
-        struct bucket
+        struct node_type
         {
             u32 next;
             u32 hash_id;
             space_type val_space;
         };
-        using iterator = HashMapIterator<bucket, key_type, mapped_type, INVALID_POOL_SIZE, HASH_COUNT>;
+        using iterator = zhash_map_iterator<node_type, key_type, mapped_type, INVALID_NODE_ID, HASH_COUNT>;
         using const_iterator = const iterator;
         Hash hasher;
         KeyEqual key_equal;
     private:
         u32 buckets_[HASH_COUNT];
-        bucket obj_pool_[INVALID_POOL_SIZE];
-        u32 first_valid_;
+        node_type node_pool_[INVALID_NODE_ID];
+        u32 first_valid_node_id_;
         u32 exploit_offset_;
         u32 count_;
-        iterator mi(u32 obj_id) { return iterator(obj_pool_, obj_id, exploit_offset_ + 1); }
-        static reference rf(bucket& b) { return *reinterpret_cast<value_type*>(&b.val_space); }
+        iterator mi(u32 node_id) { return iterator(node_pool_, node_id, exploit_offset_ + 1); }
+        static reference rf(node_type& b) { return *reinterpret_cast<value_type*>(&b.val_space); }
 
         void reset()
         {
             exploit_offset_ = 0;
             count_ = 0;
-            first_valid_ = 0;
-            obj_pool_[FREE_POOL_SIZE].next = 0;
-            obj_pool_[FREE_POOL_SIZE].hash_id = HASH_COUNT;
+            first_valid_node_id_ = 0;
+            node_pool_[FREE_POOL_SIZE].next = 0;
+            node_pool_[FREE_POOL_SIZE].hash_id = HASH_COUNT;
             memset(buckets_, 0, sizeof(u32) * HASH_COUNT);
         }
 
         u32 pop_free()
         {
-            if (obj_pool_[FREE_POOL_SIZE].next != 0)
+            if (node_pool_[FREE_POOL_SIZE].next != 0)
             {
-                u32 ret = obj_pool_[FREE_POOL_SIZE].next;
-                obj_pool_[ret].hash_id = HASH_COUNT;
-                obj_pool_[FREE_POOL_SIZE].next = obj_pool_[ret].next;
+                u32 ret = node_pool_[FREE_POOL_SIZE].next;
+                node_pool_[ret].hash_id = HASH_COUNT;
+                node_pool_[FREE_POOL_SIZE].next = node_pool_[ret].next;
                 count_++;
-                if (first_valid_ == 0 || ret < first_valid_)
+                if (first_valid_node_id_ == 0 || ret < first_valid_node_id_)
                 {
-                    first_valid_ = ret;
+                    first_valid_node_id_ = ret;
                 }
                 return ret;
             }
-            if (exploit_offset_ < POOL_SIZE)
+            if (exploit_offset_ < NODE_COUNT)
             {
                 u32 ret = ++exploit_offset_;
-                obj_pool_[ret].hash_id = HASH_COUNT;
+                node_pool_[ret].hash_id = HASH_COUNT;
                 count_++;
-                if (first_valid_ == 0 || ret < first_valid_)
+                if (first_valid_node_id_ == 0 || ret < first_valid_node_id_)
                 {
-                    first_valid_ = ret;
+                    first_valid_node_id_ = ret;
                 }
                 return ret;
             }
             return 0;
         }
 
-        void push_free(u32 obj_id)
+        void push_free(u32 node_id)
         {
-            obj_pool_[obj_id].hash_id = HASH_COUNT;
-            obj_pool_[obj_id].next = obj_pool_[FREE_POOL_SIZE].next;
-            obj_pool_[FREE_POOL_SIZE].next = obj_id;
+            node_pool_[node_id].hash_id = HASH_COUNT;
+            node_pool_[node_id].next = node_pool_[FREE_POOL_SIZE].next;
+            node_pool_[FREE_POOL_SIZE].next = node_id;
             count_--;
-            if (obj_id == first_valid_)
+            if (node_id == first_valid_node_id_)
             {
-                first_valid_ = next_b(first_valid_+1).cur_obj_id_;
+                first_valid_node_id_ = next_b(first_valid_node_id_+1).cur_node_id_;
             }
         }
 
-        iterator next_b(u32 obj_id)
+        iterator next_b(u32 node_id)
         {
-            for (u32 i = obj_id; i <= exploit_offset_; i++)
+            for (u32 i = node_id; i <= exploit_offset_; i++)
             {
-                if (obj_pool_[i].hash_id != HASH_COUNT)
+                if (node_pool_[i].hash_id != HASH_COUNT)
                 {
                     return mi(i);
                 }
@@ -244,40 +240,40 @@ namespace zsummer
             u32 ukey = (u32)hasher(val.first);
             u32 hash_id = ukey % HASH_COUNT;
 
-            u32 new_obj_id = pop_free();
-            if (new_obj_id == 0)
+            u32 new_node_id = pop_free();
+            if (new_node_id == 0)
             {
                 return { end(), false };
             }
-            bucket& obj = obj_pool_[new_obj_id];
-            obj.next = 0;
-            obj.hash_id = (u32)hash_id;
+            node_type& node = node_pool_[new_node_id];
+            node.next = 0;
+            node.hash_id = (u32)hash_id;
             if (!std::is_trivial<_Ty>::value)
             {
-                new (&obj.val_space) value_type(val);
+                new (&node.val_space) value_type(val);
             }
             else
             {
-                memcpy(&obj.val_space, &val, sizeof(val));
-                //rf(obj) = val;
+                memcpy(&node.val_space, &val, sizeof(val));
+                //rf(node) = val;
             }
 
             if (buckets_[hash_id] != 0)
             {
-                obj.next = buckets_[hash_id];
+                node.next = buckets_[hash_id];
             }
-            buckets_[hash_id] = new_obj_id;
-            return { mi(new_obj_id), true };
+            buckets_[hash_id] = new_node_id;
+            return { mi(new_node_id), true };
         }
 
     public:
-        iterator begin() noexcept { return next_b(first_valid_); }
-        const_iterator begin() const noexcept { return next_b(first_valid_); }
-        const_iterator cbegin() const noexcept { return next_b(first_valid_); }
+        iterator begin() noexcept { return next_b(first_valid_node_id_); }
+        const_iterator begin() const noexcept { return next_b(first_valid_node_id_); }
+        const_iterator cbegin() const noexcept { return next_b(first_valid_node_id_); }
 
-        iterator end() noexcept { return mi(INVALID_POOL_SIZE); }
-        const_iterator end() const noexcept { return mi(INVALID_POOL_SIZE); }
-        const_iterator cend() const noexcept { return mi(INVALID_POOL_SIZE); }
+        iterator end() noexcept { return mi(INVALID_NODE_ID); }
+        const_iterator end() const noexcept { return mi(INVALID_NODE_ID); }
+        const_iterator cend() const noexcept { return mi(INVALID_NODE_ID); }
 
     public:
         zhash_map()
@@ -315,7 +311,7 @@ namespace zsummer
         }
         const size_type size() const noexcept { return count_; }
         const bool empty() const noexcept { return !size(); }
-        const bool full() const noexcept { return size() == POOL_SIZE; }
+        const bool full() const noexcept { return size() == NODE_COUNT; }
         size_type bucket_size(size_type bid)
         {
             return count_;
@@ -342,29 +338,29 @@ namespace zsummer
         {
             u32 ukey = (u32)hasher(key);
             u32 hash_id = ukey % HASH_COUNT;
-            u32 obj_id = buckets_[hash_id];
-            while (obj_id != 0 && rf(obj_pool_ [obj_id]).first != key)
+            u32 node_id = buckets_[hash_id];
+            while (node_id != 0 && rf(node_pool_ [node_id]).first != key)
             {
-                obj_id = obj_pool_[obj_id].next;
+                node_id = node_pool_[node_id].next;
             }
-            if (obj_id != 0)
+            if (node_id != 0)
             {
-                return mi(obj_id);
+                return mi(node_id);
             }
             return end();
         }
 
         iterator erase(iterator iter)
         {
-            u32 obj_id = iter.cur_obj_id_;
-            if (obj_id == 0 || obj_id > exploit_offset_)
+            u32 node_id = iter.cur_node_id_;
+            if (node_id == 0 || node_id > exploit_offset_)
             {
                 return end();
             }
-            bucket& obj = obj_pool_[obj_id];
+            node_type& node = node_pool_[node_id];
 
-            //return erase(rf(obj).first);
-            u32 hash_id = obj.hash_id;
+            //return erase(rf(node).first);
+            u32 hash_id = node.hash_id;
             
             if (hash_id >= HASH_COUNT)
             {
@@ -375,30 +371,30 @@ namespace zsummer
                 return end();
             }
             
-            u32 pre_obj_id = buckets_[hash_id];
-            if (pre_obj_id == obj_id)
+            u32 pre_node_id = buckets_[hash_id];
+            if (pre_node_id == node_id)
             {
-                buckets_[hash_id] = obj_pool_[obj_id].next;
+                buckets_[hash_id] = node_pool_[node_id].next;
             }
             else
             {
-                u32 cur_obj_id = pre_obj_id;
-                while (obj_pool_[cur_obj_id].next != 0 && obj_pool_[cur_obj_id].next != obj_id)
+                u32 cur_node_id = pre_node_id;
+                while (node_pool_[cur_node_id].next != 0 && node_pool_[cur_node_id].next != node_id)
                 {
-                    cur_obj_id = obj_pool_[cur_obj_id].next;
+                    cur_node_id = node_pool_[cur_node_id].next;
                 }
-                if (obj_pool_[cur_obj_id].next != obj_id)
+                if (node_pool_[cur_node_id].next != node_id)
                 {
                     return end();
                 }
-                obj_pool_[cur_obj_id].next = obj_pool_[obj_id].next;
+                node_pool_[cur_node_id].next = node_pool_[node_id].next;
             }
 
             if (!std::is_trivial<_Ty>::value)
             {
-                rf(obj).second.~_Ty();
+                rf(node).second.~_Ty();
             }
-            push_free(obj_id);
+            push_free(node_id);
             return begin();
         }
 
@@ -406,38 +402,38 @@ namespace zsummer
         {
             u32 ukey = (u32)hasher(key);
             u32 hash_id = ukey % HASH_COUNT;
-            u32 pre_obj_id = buckets_[hash_id];
-            if (pre_obj_id == 0)
+            u32 pre_node_id = buckets_[hash_id];
+            if (pre_node_id == 0)
             {
                 return end();
             }
 
-            u32 obj_id = 0;
-            if (rf(obj_pool_[pre_obj_id]).first == key)
+            u32 node_id = 0;
+            if (rf(node_pool_[pre_node_id]).first == key)
             {
-                obj_id = pre_obj_id;
-                buckets_[hash_id] = obj_pool_[pre_obj_id].next;
+                node_id = pre_node_id;
+                buckets_[hash_id] = node_pool_[pre_node_id].next;
             }
             else
             {
-                u32 cur_obj_id = pre_obj_id;
-                while (obj_pool_[cur_obj_id].next != 0 && rf(obj_pool_[obj_pool_[cur_obj_id].next]).first != key)
+                u32 cur_node_id = pre_node_id;
+                while (node_pool_[cur_node_id].next != 0 && rf(node_pool_[node_pool_[cur_node_id].next]).first != key)
                 {
-                    cur_obj_id = obj_pool_[cur_obj_id].next;
+                    cur_node_id = node_pool_[cur_node_id].next;
                 }
-                if (rf(obj_pool_[obj_pool_[cur_obj_id].next]).first != key)
+                if (rf(node_pool_[node_pool_[cur_node_id].next]).first != key)
                 {
                     return end();
                 }
-                obj_id = obj_pool_[cur_obj_id].next;
-                obj_pool_[cur_obj_id].next = obj_pool_[obj_pool_[cur_obj_id].next].next;
+                node_id = node_pool_[cur_node_id].next;
+                node_pool_[cur_node_id].next = node_pool_[node_pool_[cur_node_id].next].next;
             }
 
             if (!std::is_trivial<_Ty>::value)
             {
-                rf(obj_pool_[obj_id]).second.~_Ty();
+                rf(node_pool_[node_id]).second.~_Ty();
             }
-            push_free(obj_id);
+            push_free(node_id);
             return begin();
         }
 
