@@ -33,7 +33,7 @@ typedef float f32;
 #include "zcontain_stress.h"
 #include "zlist_stress.h"
 #include "zcontain_test.h"
-
+#include "zmalloc_test.h"
 
 
 int main(int argc, char *argv[])
@@ -49,6 +49,7 @@ int main(int argc, char *argv[])
 
     LogDebug() << " main begin test. ";
     volatile double cycles = 0.0f;
+    ZMallocTest();
     SortTest();
     ContainerTest();
     ContainerStress();
