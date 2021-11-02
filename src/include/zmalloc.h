@@ -140,7 +140,7 @@ namespace zsummer
         using block_free_func = u64(*)(void*);
         static const u32 BINMAP_SIZE = (sizeof(u64) * 8U);
         static const u32 BITMAP_LEVEL = 2;
-        static const u32 DEFAULT_PAGE_SIZE = (4 * 1024 * 1024);
+        static const u32 DEFAULT_BLOCK_SIZE = (4 * 1024 * 1024);
     public:
         inline static zmalloc& instance();
         inline static zmalloc* instance_ptr();
@@ -208,8 +208,8 @@ namespace zsummer
         static_assert(SMALL_GRADE_SHIFT >= LEAST_ALIGN_SHIFT, "");
         static_assert(zmalloc_is_power_of_2(SMALL_GRADE_SHIFT), "");
         static_assert(BINMAP_SIZE == sizeof(u64) * 8, "");
-        static_assert(DEFAULT_PAGE_SIZE >= BIG_MAX_REQUEST + sizeof(block_type) + sizeof(chunk_type), "");
-        static_assert(zmalloc_is_power_of_2(DEFAULT_PAGE_SIZE), "");
+        static_assert(DEFAULT_BLOCK_SIZE >= BIG_MAX_REQUEST + sizeof(block_type) + sizeof(chunk_type), "");
+        static_assert(zmalloc_is_power_of_2(DEFAULT_BLOCK_SIZE), "");
         static_assert(sizeof(zmalloc::block_type) == zmalloc_order_size(zmalloc::LEAST_ALIGN_SHIFT + 1), "block align");
         static const u32 BLOCK_TYPE_SIZE = sizeof(zmalloc::block_type);
     private:
@@ -222,6 +222,7 @@ namespace zsummer
         inline free_chunk_type* exploit_new_chunk(free_chunk_type* devide_chunk, u32 new_chunk_size);
     public:
         u32 inited_;
+        u32 block_power_is_2_;
         block_alloc_func block_alloc_;
         block_free_func block_free_;
 
@@ -262,20 +263,18 @@ namespace zsummer
 
 
 
-#define ZMALLOC_OPEN_CHECK 1
-#if ZMALLOC_OPEN_CHECK
+#define ZMALLOC_OPEN_CHECK 0
     inline void zmalloc_debug_chunk(zmalloc::chunk_type* c);
     inline void zmalloc_debug_free_chunk(zmalloc::free_chunk_type* c);
     inline void zmalloc_debug_free_chunk_list(zmalloc& zstate, zmalloc::free_chunk_type* c);
     inline void zmalloc_debug_block_list(zmalloc::block_type* block_list, u32 block_list_size, u32 max_list_size);
     inline void zmalloc_debug_block(zmalloc& zstate);
     inline void zmalloc_debug_bitmap(zmalloc& zstate);
-
+#if ZMALLOC_OPEN_CHECK
 #define CHECK_STATE(state) zmalloc_debug_block(state)
 #define CHECK_C(c) zmalloc_debug_chunk(c)
 #define CHECK_FC(c) zmalloc_debug_free_chunk(c)
 #define CHECK_FCL(state, c) zmalloc_debug_free_chunk_list(state, c)
-
 #else
 #define CHECK_STATE(state)  (void)(state)
 #define CHECK_C(c) (void)(c)
@@ -390,16 +389,16 @@ namespace zsummer
     zmalloc::free_chunk_type* zmalloc::alloc_block(u32 bytes, u32 flag)
     {
         bytes += sizeof(block_type) + CHUNK_PADDING_SIZE + sizeof(free_chunk_type) * 2;
-        static_assert(BIG_MAX_REQUEST + CHUNK_PADDING_SIZE + sizeof(free_chunk_type) * 2 + sizeof(block_type) <= DEFAULT_PAGE_SIZE, "");
-        static_assert(DEFAULT_PAGE_SIZE >= 1024 * 4, "");
-        static_assert(zmalloc_is_power_of_2(DEFAULT_PAGE_SIZE), "");
+        static_assert(BIG_MAX_REQUEST + CHUNK_PADDING_SIZE + sizeof(free_chunk_type) * 2 + sizeof(block_type) <= DEFAULT_BLOCK_SIZE, "");
+        static_assert(DEFAULT_BLOCK_SIZE >= 1024 * 4, "");
+        static_assert(zmalloc_is_power_of_2(DEFAULT_BLOCK_SIZE), "");
         sale_total_count_++;
         bool dirct = flag & CHUNK_IS_DIRECT;
         if (!dirct)
         {
-            bytes = DEFAULT_PAGE_SIZE;
+            bytes = DEFAULT_BLOCK_SIZE;
         }
-        else
+        else if(block_power_is_2_)
         {
             bytes = zmalloc_ceil_power_of_2(bytes);
         }
@@ -604,10 +603,12 @@ namespace zsummer
             auto cache_max_reserve_block_count = max_reserve_block_count_;
             auto cache_block_alloc = block_alloc_;
             auto cache_block_free = block_free_;
+            auto block_allloc_power_of_2 = block_power_is_2_;
             memset(this, 0, sizeof(zmalloc));
             max_reserve_block_count_= cache_max_reserve_block_count;
             block_alloc_ = cache_block_alloc;
             block_free_ = cache_block_free;
+            block_power_is_2_ = block_allloc_power_of_2;
             inited_ = 1;
             for (u32 level = 0; level < BITMAP_LEVEL; level++)
             {
@@ -855,7 +856,7 @@ namespace zsummer
             return bytes;
         }
 
-        if (chunk->this_size >= DEFAULT_PAGE_SIZE - sizeof(block_type) - sizeof(free_chunk_type) * 2)
+        if (chunk->this_size >= DEFAULT_BLOCK_SIZE - sizeof(block_type) - sizeof(free_chunk_type) * 2)
         {
             block_type* block = zmalloc_get_block(chunk);
             free_block(block);
@@ -879,8 +880,8 @@ namespace zsummer
 
     void zmalloc::check_health()
     {
-        //zmalloc_debug_block(instance());
-        //zmalloc_debug_bitmap(instance());
+        zmalloc_debug_block(instance());
+        zmalloc_debug_bitmap(instance());
     }
 
     void zmalloc::clear_cache()
@@ -936,12 +937,12 @@ namespace zsummer
             "total sale:%.04lfm, total return:%.04lfm\n"
             "sale real:%.04lfm, return real:%.04lfm\n"
             "avg inner frag:%llu%%.\n",
-            DEFAULT_PAGE_SIZE, max_reserve_block_count_,
+            DEFAULT_BLOCK_SIZE, max_reserve_block_count_,
             used_block_count_, reserve_block_count_, (sale_real_bytes_ - return_real_bytes_) / 1024.0 / 1024.0, (alloc_total_bytes_ - free_total_bytes_) / 1024.0 / 1024.0,
             sale_total_count_ / 1000.0, return_total_count_ / 1000.0, sale_cache_count_ / 1000.0, return_cache_count_ / 1000.0,
             req_total_count_ / 1000.0, free_total_count_ / 1000.0,
             req_total_bytes_ / 1024.0 / 1024.0, alloc_total_bytes_ / 1024.0 / 1024.0, free_total_bytes_ / 1024.0 / 1024.0,
-            (sale_cache_count_ * DEFAULT_PAGE_SIZE + sale_real_bytes_) / 1024.0 / 1024.0, (return_cache_count_ * DEFAULT_PAGE_SIZE + return_real_bytes_) / 1024.0 / 1024.0,
+            (sale_cache_count_ * DEFAULT_BLOCK_SIZE + sale_real_bytes_) / 1024.0 / 1024.0, (return_cache_count_ * DEFAULT_BLOCK_SIZE + return_real_bytes_) / 1024.0 / 1024.0,
             sale_real_bytes_ / 1024.0 / 1024.0, return_real_bytes_ / 1024.0 / 1024.0,
             req_total_bytes_ * 100 / (alloc_total_bytes_ == 0 ? 1 : alloc_total_bytes_));
         u32 c = 0;
@@ -994,8 +995,8 @@ namespace zsummer
         ZMALLOC_ASSERT(c->this_size >= zmalloc::SMALL_LEAST_SIZE, "good this size");
         if (!zmalloc_has_chunk(c, zmalloc::CHUNK_IS_DIRECT))
         {
-            ZMALLOC_ASSERT(c->this_size <= zmalloc::DEFAULT_PAGE_SIZE - sizeof(zmalloc::block_type) - sizeof(zmalloc::free_chunk_type) * 2, "good this size");
-            ZMALLOC_ASSERT(c->this_size + zmalloc_next_chunk(c)->this_size + zmalloc_front_chunk(c)->this_size <= zmalloc::DEFAULT_PAGE_SIZE - (u32)sizeof(zmalloc::block_type), "good this size");
+            ZMALLOC_ASSERT(c->this_size <= zmalloc::DEFAULT_BLOCK_SIZE - sizeof(zmalloc::block_type) - sizeof(zmalloc::free_chunk_type) * 2, "good this size");
+            ZMALLOC_ASSERT(c->this_size + zmalloc_next_chunk(c)->this_size + zmalloc_front_chunk(c)->this_size <= zmalloc::DEFAULT_BLOCK_SIZE - (u32)sizeof(zmalloc::block_type), "good this size");
         }
 
         if (zmalloc_chunk_level(c) > 0)
@@ -1084,7 +1085,7 @@ namespace zsummer
             }
             else
             {
-                ZMALLOC_ASSERT(block->block_size >= zmalloc::DEFAULT_PAGE_SIZE, "align");
+                ZMALLOC_ASSERT(block->block_size >= zmalloc::DEFAULT_BLOCK_SIZE, "align");
                 ZMALLOC_ASSERT(block->block_size >= zmalloc::BIG_MAX_REQUEST, "align");
             }
 
