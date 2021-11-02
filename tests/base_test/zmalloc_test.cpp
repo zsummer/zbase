@@ -11,15 +11,7 @@
 
 
 using namespace zsummer;
-static u64 SysFree(void* addr)
-{
-    free(addr);
-    return 0;
-}
-static void* SysMalloc(u64 bytes)
-{
-    return malloc(bytes);
-}
+
 
 s32 ZMallocIOTest()
 {
@@ -27,70 +19,72 @@ s32 ZMallocIOTest()
     memset(zstate.get(), 0, sizeof(zmalloc));
     zstate->max_reserve_block_count_ = 20;
     zstate->set_global(zstate.get());
-    zstate->set_block_callback(&SysMalloc, &SysFree);
+
+    static const u32 rand_size = 1000 * 10000;
+    static_assert(rand_size > zmalloc::DEFAULT_BLOCK_SIZE, "");
+    u32* rand_array = new u32[rand_size];
+    for (u32 i = 0; i < zmalloc::DEFAULT_BLOCK_SIZE; i++)
+    {
+        rand_array[i] = i;
+    }
+    for (u32 i = zmalloc::DEFAULT_BLOCK_SIZE; i < rand_size; i++)
+    {
+        rand_array[i] = rand();
+    }
 
 
-    double  last_time = Now();
-    for (u64 i = 0; i < 10 * 100; i++)
+    PROF_DEFINE_COUNTER(cost);
+    PROF_START_COUNTER(cost);
+    for (u64 i = 0; i < rand_size; i++)
     {
         global_zfree(global_zmalloc(1));
     }
-    double  now = Now();
-    LogDebug() << "zalloc & global_zfree " << 10 * 1000 / 10000 << " w  fixed 512B  use:" << now - last_time;
+    PROF_OUTPUT_MULTI_COUNT_CPU("global_zfree(global_zmalloc(1))", rand_size, cost.stop_and_save().cycles());
 
-    for (u64 i = 0; i < 10 * 1000; i++)
+    PROF_START_COUNTER(cost);
+    for (u64 i = 0; i < rand_size; i++)
     {
-        u32 rand_size = rand() % (zmalloc::DEFAULT_PAGE_SIZE / 2);
+        u32 test_size = rand_array[i] % (1024);
+        void* p = global_zmalloc(test_size);
+        global_zfree(p);
+    }
+    PROF_OUTPUT_MULTI_COUNT_CPU("global_zfree(global_zmalloc(0~1024))", rand_size, cost.stop_and_save().cycles());
+
+    PROF_START_COUNTER(cost);
+    for (u64 i = 0; i < rand_size; i++)
+    {
+        u32 test_size = (rand_array[i] % (zmalloc::BIG_MAX_REQUEST - zmalloc::SMALL_MAX_REQUEST)) + zmalloc::SMALL_MAX_REQUEST;
+        void* p = global_zmalloc(test_size);
+        global_zfree(p);
+    }
+    PROF_OUTPUT_MULTI_COUNT_CPU("global_zfree(global_zmalloc(1024~512k))", rand_size, cost.stop_and_save().cycles());
+
+    PROF_START_COUNTER(cost);
+    for (u64 i = 0; i < rand_size; i++)
+    {
+        u32 test_size = rand_array[i] % (zmalloc::DEFAULT_BLOCK_SIZE/2);
+        void* p = global_zmalloc(test_size);
+        global_zfree(p);
+    }
+    PROF_OUTPUT_MULTI_COUNT_CPU("global_zfree(global_zmalloc(0~2M))", rand_size, cost.stop_and_save().cycles());
+
+
+    for (u64 i = 0; i < rand_size; i++)
+    {
+        u32 rand_size = rand_array[i] % (zmalloc::DEFAULT_BLOCK_SIZE * 2);
         void* p = global_zmalloc(rand_size);
         memset(p, 0, rand_size);
         global_zfree(p);
+        zstate->check_health();
     }
-
-
 
     void* pz = global_zmalloc(0);
     zstate->check_health();
     global_zfree(pz);
-    zstate->check_health();
-    pz = global_zmalloc(0);
-    zstate->check_health();
-    global_zfree(pz);
-    zstate->check_health();
-    pz = global_zmalloc(10 * 1024);
-    zstate->check_health();
-    void* pz2 = global_zmalloc(2 * 1024);
-    zstate->check_health();
-    global_zfree(pz);
-    zstate->check_health();
-    pz = global_zmalloc(10 * 1024);
-    zstate->check_health();
-    global_zfree(pz);
-    zstate->check_health();
-    global_zfree(pz2);
-    zstate->check_health();
-    pz = global_zmalloc(10 * 1024);
-    zstate->check_health();
-    global_zfree(pz);
-    zstate->check_health();
-    pz = global_zmalloc(102 * 1024);
-    zstate->check_health();
-    global_zfree(pz);
-    zstate->check_health();
-    global_zfree(global_zmalloc(1012));
-    zstate->check_health();
-    zstate->clear_cache();
 
-
-    global_zfree(global_zmalloc(234));
-    global_zfree(global_zmalloc(666));
-    global_zfree(global_zmalloc(555));
-    global_zfree(global_zmalloc(888));
-    global_zfree(global_zmalloc(111));
-    global_zfree(global_zmalloc(7 * 1024 * 1024));
-    global_zfree(global_zmalloc(50 * 1024 * 1024));
     zstate->clear_cache();
     AssertTest(zstate->used_block_count_ + zstate->reserve_block_count_, 0U, "");
-
+    delete[]rand_array;
     return 0;
 }
 
