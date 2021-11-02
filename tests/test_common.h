@@ -65,6 +65,15 @@ using f64 = double;
     } \
 }
 
+#define AssertBoolTest(expr, desc)   \
+{\
+    if (!(expr)) \
+    { \
+        LogError() <<" " << desc << " failed.";  \
+        return 1U;  \
+    } \
+}
+
 
 template<int CLASS = 0>
 class RAIIVal
