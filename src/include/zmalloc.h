@@ -42,18 +42,18 @@ namespace zsummer
     class zmalloc
     {
     public:
-        using page_alloc_func = void* (*)(u64);
-        using page_free_func = u64(*)(void*);
+        using block_alloc_func = void* (*)(u64);
+        using block_free_func = u64(*)(void*);
         static const u32 BINMAP_SIZE = (sizeof(u64) * 8U);
         static const u32 BITMAP_LEVEL = 2;
         static const u32 DEFAULT_PAGE_SIZE = (4 * 1024 * 1024);
     public:
         inline static zmalloc& instance();
         inline static zmalloc* instance_ptr();
-        inline static void* default_page_alloc(u64 );
-        inline static u64 default_page_free(void*);
+        inline static void* default_block_alloc(u64 );
+        inline static u64 default_block_free(void*);
         inline static void set_global(zmalloc* state);
-        inline void set_page_callback(page_alloc_func page_alloc, page_free_func page_free);
+        inline void set_block_callback(block_alloc_func block_alloc, block_free_func block_free);
         inline void* alloc_memory(u64 bytes);
         inline u64  free_memory(void* addr);
 
@@ -78,17 +78,17 @@ namespace zsummer
             free_chunk_type* next_node;
         };
 
-        struct page_type
+        struct block_type
         {
-            u32 page_size;
+            u32 block_size;
             u32 fence;
             u64 reserve;
-            page_type* next;
-            page_type* front;
+            block_type* next;
+            block_type* front;
         };
     private:
-        inline free_chunk_type* alloc_page(u32 bytes, u32 flag);
-        inline u64 free_page(page_type* page);
+        inline free_chunk_type* alloc_block(u32 bytes, u32 flag);
+        inline u64 free_block(block_type* block);
         inline void push_chunk(free_chunk_type* chunk, u32 bin_id);
         inline void push_small_chunk(free_chunk_type* chunk);
         inline void push_big_chunk(free_chunk_type* chunk);
@@ -96,10 +96,10 @@ namespace zsummer
         inline free_chunk_type* exploit_new_chunk(free_chunk_type* devide_chunk, u32 new_chunk_size);
     public:
         u32 inited_;
-        page_alloc_func page_alloc_;
-        page_free_func page_free_;
+        block_alloc_func block_alloc_;
+        block_free_func block_free_;
 
-        u32 max_reserve_page_count_;
+        u32 max_reserve_block_count_;
         u64 req_total_count_;
         u64 free_total_count_;
         u64 req_total_bytes_;
@@ -116,10 +116,10 @@ namespace zsummer
         u64 return_real_bytes_;
 
 
-        u32 used_page_count_;
-        page_type* used_page_list_;
-        u32 reserve_page_count_;
-        page_type* reserve_page_list_;
+        u32 used_block_count_;
+        block_type* used_block_list_;
+        u32 reserve_block_count_;
+        block_type* reserve_block_list_;
         u64 bitmap_[BITMAP_LEVEL];
 
         free_chunk_type* dv_[BITMAP_LEVEL];
@@ -249,56 +249,40 @@ namespace zsummer
 
 
 #define MIN_PAGE_SHIFT 12
+#define zmalloc_align_third_bit_value(value)  (value + (zmalloc_fill_right(value) >> 3) )
+#define zmalloc_align_third_bit_order(value)  (zmalloc_first_bit_index(value ) - 2)
+#define zmalloc_third_sequence(third_order, value) (    ((third_order) << 2)   +    (((value) >> (third_order)) & 0x3)   )
 
-#define zmalloc_third_bit_index(bytes) ((first_bit_index(bytes >> 10) + 10) - 2)
-#define GeoPostPart(third_index, bytes) (((bytes) >> (third_index)) & 0x3)
-#define GeoSequence(third_index, bytes) (((third_index) << 2) + GeoPostPart(third_index, bytes))
-    static constexpr u32 geo_sequence_test_1 = GeoSequence(0, 7);
-    static_assert(GeoSequence(0, 4) == 0, "");
-    static_assert(GeoSequence(0, 5) == 1, "");
-    static_assert(GeoSequence(0, 6) == 2, "");
-    static_assert(GeoSequence(0, 7) == 3, "");
+    static constexpr u32 geo_sequence_test_1 = zmalloc_third_sequence(0, 7);
+    static_assert(zmalloc_third_sequence(0, 4) == 0, "");
+    static_assert(zmalloc_third_sequence(0, 5) == 1, "");
+    static_assert(zmalloc_third_sequence(0, 6) == 2, "");
+    static_assert(zmalloc_third_sequence(0, 7) == 3, "");
 
-    static_assert(GeoSequence(1, 8) == 4, "");
-    static_assert(GeoSequence(1, 9) == 4, "");
-    static_assert(GeoSequence(1, 10) == 5, "");
-    static_assert(GeoSequence(1, 11) == 5, "");
-    static_assert(GeoSequence(1, 12) == 6, "");
-    static_assert(GeoSequence(1, 13) == 6, "");
-    static_assert(GeoSequence(1, 14) == 7, "");
-    static_assert(GeoSequence(1, 15) == 7, "");
-    static_assert(GeoSequence(2, 16) == 8, "");
+    static_assert(zmalloc_third_sequence(1, 8) == 4, "");
+    static_assert(zmalloc_third_sequence(1, 9) == 4, "");
+    static_assert(zmalloc_third_sequence(1, 10) == 5, "");
+    static_assert(zmalloc_third_sequence(1, 11) == 5, "");
+    static_assert(zmalloc_third_sequence(1, 12) == 6, "");
+    static_assert(zmalloc_third_sequence(1, 13) == 6, "");
+    static_assert(zmalloc_third_sequence(1, 14) == 7, "");
+    static_assert(zmalloc_third_sequence(1, 15) == 7, "");
+    static_assert(zmalloc_third_sequence(2, 16) == 8, "");
 
-    static_assert(GeoSequence(8, 1024) == 32, "");
-    static_assert(GeoSequence(8, 1280) == 33, "");
-    static_assert(GeoSequence(8, 1536) == 34, "");
-    static_assert(GeoSequence(8, 1792) == 35, "");
-    static_assert(GeoSequence(9, 2048) == 36, "");
+    static_assert(zmalloc_third_sequence(8, 1024) == 32, "");
+    static_assert(zmalloc_third_sequence(8, 1280) == 33, "");
+    static_assert(zmalloc_third_sequence(8, 1536) == 34, "");
+    static_assert(zmalloc_third_sequence(8, 1792) == 35, "");
+    static_assert(zmalloc_third_sequence(9, 2048) == 36, "");
 
-#define GeoSequenceZip(third_index, bytes) (GeoSequence(third_index, bytes) - 32)
-    static_assert(GeoSequenceZip(8, 1024) == 0, "");
+#define zmalloc_third_sequence_compress(sequence) (sequence - 32)
+#define zmalloc_resolve_order_size(index )  ((((index + 32) & 0x3) | 0x4) << (((index +32) >> 2) ))
 
-#define BigPadIndex(bytes)   GeoSequenceZip(zmalloc_third_bit_index(bytes), bytes) 
 
-#define BigIndexSize(index )  ((((index + 32) & 0x3) | 0x4) << (((index +32) >> 2) ))
-#define CeilGeoBytes(third_index, bytes) ((zmalloc_order_mask(third_index) + (bytes))& ~zmalloc_order_mask(third_index))
-    static_assert(CeilGeoBytes(8, 1024) == 1024, "");
-    static_assert(CeilGeoBytes(8, 1025) == 1280, "");
-    static_assert(CeilGeoBytes(8, 1279) == 1280, "");
-    static_assert(CeilGeoBytes(8, 1280) == 1280, "");
-    static_assert(CeilGeoBytes(8, 1281) == 1536, "");
-    static_assert(CeilGeoBytes(8, 1535) == 1536, "");
-
-#define CeilThirdIndex(third_index, bytes) (bytes >= (1ULL << (third_index+3)) ? (third_index)+1 : (third_index))
-    static_assert(CeilThirdIndex(8, 1024) == 8, "");
-    static_assert(CeilThirdIndex(8, 1025) == 8, "");
-    static_assert(CeilThirdIndex(8, 2047) == 8, "");
-    static_assert(CeilThirdIndex(8, 2048) == 9, "");
-    static_assert(CeilThirdIndex(8, 2049) == 9, "");
 
 
 #if ZMALLOC_OPEN_CHECK
-#define CHECK_STATE(state) DebugAssertAllpage_type(state)
+#define CHECK_STATE(state) DebugAssertAllblock_type(state)
 #define CHECK_C(c) DebugAssertChunk(c)
 #define CHECK_FC(c) DebugAssertFreeChunk(c)
 #define CHECK_FCL(state, c) DebugAssertFreeChunkList(state, c)
@@ -313,7 +297,7 @@ namespace zsummer
 
     using chunk_type = zmalloc::chunk_type;
     using free_chunk_type = zmalloc::free_chunk_type;
-    using page_type = zmalloc::page_type;
+    using block_type = zmalloc::block_type;
     static const u32 BINMAP_SIZE = zmalloc::BINMAP_SIZE;
     static const u32 BITMAP_LEVEL = zmalloc::BITMAP_LEVEL;
     static const u32 DEFAULT_PAGE_SIZE = zmalloc::DEFAULT_PAGE_SIZE;
@@ -379,7 +363,7 @@ namespace zsummer
         return g_zmalloc_state;
     }
 
-    void* zmalloc::default_page_alloc(u64 req_size)
+    void* zmalloc::default_block_alloc(u64 req_size)
     {
         char* addr = (char*)malloc(req_size + 8);
         if (addr == NULL)
@@ -390,7 +374,7 @@ namespace zsummer
         return addr + sizeof(u64);
    }
 
-    u64 zmalloc::default_page_free(void* addr)
+    u64 zmalloc::default_block_free(void* addr)
     {
         if (addr == NULL)
         {
@@ -413,26 +397,26 @@ namespace zsummer
         g_zmalloc_state = state;
     }
 
-    void zmalloc::set_page_callback(page_alloc_func page_alloc, page_free_func page_free)
+    void zmalloc::set_block_callback(block_alloc_func block_alloc, block_free_func block_free)
     {
-        page_alloc_ = page_alloc;
-        page_free_ = page_free;
+        block_alloc_ = block_alloc;
+        block_free_ = block_free;
     }
     /*
     static void DebugAssertChunk(chunk_type* c);
-    static void DebugAssertAllpage_type(zmalloc& zstate);
+    static void DebugAssertAllblock_type(zmalloc& zstate);
     static void DebugAssertBitmap(zmalloc& zstate);
     static void DebugAssertFreeChunk(free_chunk_type* c);
     static void DebugAssertFreeChunkList(zmalloc& zstate, free_chunk_type* c);
     */
 
-    static_assert(sizeof(page_type) == zmalloc_order_size(LEAST_ALIGN_SHIFT + 1), "page align");
-    static const u32 FIELD_SIZE = sizeof(page_type);
+    static_assert(sizeof(block_type) == zmalloc_order_size(LEAST_ALIGN_SHIFT + 1), "block align");
+    static const u32 FIELD_SIZE = sizeof(block_type);
 
-#define Thispage_type(firstp) ((page_type*)(u(firstp) - FIELD_SIZE - sizeof(free_chunk_type)))
-#define FirstChunk(page) c( u(page)+FIELD_SIZE + sizeof(free_chunk_type))
-#define SegHeadChunk(page) c( u(page)+FIELD_SIZE)
-    //static_assert(Thispage_type(FirstChunk(NULL)) == NULL, "");
+#define Thisblock_type(firstp) ((block_type*)(u(firstp) - FIELD_SIZE - sizeof(free_chunk_type)))
+#define FirstChunk(block) c( u(block)+FIELD_SIZE + sizeof(free_chunk_type))
+#define SegHeadChunk(block) c( u(block)+FIELD_SIZE)
+    //static_assert(Thisblock_type(FirstChunk(NULL)) == NULL, "");
 
 
     static const u32  SMALL_GRADE_SHIFT = 4U;
@@ -449,7 +433,7 @@ namespace zsummer
     static_assert(SMALL_GRADE_SHIFT >= LEAST_ALIGN_SHIFT, "");
     static_assert(zmalloc_is_power_of_2(SMALL_GRADE_SHIFT), "");
     static_assert(BINMAP_SIZE == sizeof(u64) * 8, "");
-    static_assert(DEFAULT_PAGE_SIZE >= BIG_MAX_REQUEST + sizeof(page_type) + sizeof(chunk_type), "");
+    static_assert(DEFAULT_PAGE_SIZE >= BIG_MAX_REQUEST + sizeof(block_type) + sizeof(chunk_type), "");
     static_assert(zmalloc_is_power_of_2(DEFAULT_PAGE_SIZE), "");
 
 #define AlignBytes(bytes, grade_shift)  (((bytes) + zmalloc_order_mask(grade_shift) ) & ~zmalloc_order_mask(grade_shift)) 
@@ -466,10 +450,10 @@ namespace zsummer
 
 
     
-    free_chunk_type* zmalloc::alloc_page(u32 bytes, u32 flag)
+    free_chunk_type* zmalloc::alloc_block(u32 bytes, u32 flag)
     {
-        bytes += sizeof(page_type) + CHUNK_PADDING_SIZE + sizeof(free_chunk_type) * 2;
-        static_assert(BIG_MAX_REQUEST + CHUNK_PADDING_SIZE + sizeof(free_chunk_type) * 2 + sizeof(page_type) <= DEFAULT_PAGE_SIZE, "");
+        bytes += sizeof(block_type) + CHUNK_PADDING_SIZE + sizeof(free_chunk_type) * 2;
+        static_assert(BIG_MAX_REQUEST + CHUNK_PADDING_SIZE + sizeof(free_chunk_type) * 2 + sizeof(block_type) <= DEFAULT_PAGE_SIZE, "");
         static_assert(DEFAULT_PAGE_SIZE >= 1024 * 4, "");
         static_assert(zmalloc_is_power_of_2(DEFAULT_PAGE_SIZE), "");
         sale_total_count_++;
@@ -482,51 +466,51 @@ namespace zsummer
         {
             bytes = zmalloc_ceil_power_of_2(bytes);
         }
-        page_type* page = NULL;
-        if (!dirct && reserve_page_count_ > 0)
+        block_type* block = NULL;
+        if (!dirct && reserve_block_count_ > 0)
         {
-            page = reserve_page_list_;
-            reserve_page_count_--;
-            if (page->next)
+            block = reserve_block_list_;
+            reserve_block_count_--;
+            if (block->next)
             {
-                reserve_page_list_ = page->next;
-                page->next->front = NULL;
+                reserve_block_list_ = block->next;
+                block->next->front = NULL;
             }
             else
             {
-                reserve_page_list_ = NULL;
+                reserve_block_list_ = NULL;
             }
             sale_cache_count_++;
             CHECK_STATE(*this);
         }
         else
         {
-            if (page_alloc_)
+            if (block_alloc_)
             {
-                page = (page_type*)page_alloc_(bytes);
+                block = (block_type*)block_alloc_(bytes);
             }
             else
             {
-                page = (page_type*)default_page_alloc(bytes);
+                block = (block_type*)default_block_alloc(bytes);
             }
             
             sale_real_bytes_ += bytes;
         }
-        if (page == NULL)
+        if (block == NULL)
         {
             return NULL;
         }
-        page->page_size = bytes;
-        page->fence = CHUNK_FENCE;
-        page->next = used_page_list_;
-        used_page_list_ = page;
-        page->front = NULL;
-        if (page->next)
+        block->block_size = bytes;
+        block->fence = CHUNK_FENCE;
+        block->next = used_block_list_;
+        used_block_list_ = block;
+        block->front = NULL;
+        if (block->next)
         {
-            page->next->front = page;
+            block->next->front = block;
         }
-        used_page_count_++;
-        free_chunk_type* head_chunk = fc(SegHeadChunk(page));
+        used_block_count_++;
+        free_chunk_type* head_chunk = fc(SegHeadChunk(block));
         head_chunk->flags = flag | CHUNK_IS_IN_USED;
         head_chunk->prev_size = 0;
         head_chunk->bin_id = 0;
@@ -535,10 +519,10 @@ namespace zsummer
         head_chunk->next_node = NULL;
         head_chunk->prev_node = NULL;
 
-        free_chunk_type* chunk = fc(FirstChunk(page));
+        free_chunk_type* chunk = fc(FirstChunk(block));
         chunk->flags = flag;
         chunk->prev_size = sizeof(free_chunk_type);
-        chunk->this_size = bytes - sizeof(page_type) - sizeof(free_chunk_type) * 2;
+        chunk->this_size = bytes - sizeof(block_type) - sizeof(free_chunk_type) * 2;
         chunk->bin_id = 0;
         chunk->fence = CHUNK_FENCE;
         chunk->next_node = NULL;
@@ -559,57 +543,57 @@ namespace zsummer
     }
 
 
-    u64 zmalloc::free_page(page_type* page)
+    u64 zmalloc::free_block(block_type* block)
     {
-        if (used_page_list_ == page)
+        if (used_block_list_ == block)
         {
-            used_page_list_ = page->next;
-            if (page->next)
+            used_block_list_ = block->next;
+            if (block->next)
             {
-                page->next->front = NULL;
+                block->next->front = NULL;
             }
         }
         else
         {
-            if (page->front)
+            if (block->front)
             {
-                page->front->next = page->next;
+                block->front->next = block->next;
             }
-            if (page->next)
+            if (block->next)
             {
-                page->next->front = page->front;
+                block->next->front = block->front;
             }
         }
-        used_page_count_--;
+        used_block_count_--;
         return_total_count_++;
 
-        if (!CHasBit(FirstChunk(page), CHUNK_IS_DIRECT) && reserve_page_count_ < max_reserve_page_count_)
+        if (!CHasBit(FirstChunk(block), CHUNK_IS_DIRECT) && reserve_block_count_ < max_reserve_block_count_)
         {
-            reserve_page_count_++;
-            if (reserve_page_list_ == NULL)
+            reserve_block_count_++;
+            if (reserve_block_list_ == NULL)
             {
-                reserve_page_list_ = page;
-                page->next = NULL;
-                page->front = NULL;
+                reserve_block_list_ = block;
+                block->next = NULL;
+                block->front = NULL;
             }
             else
             {
-                page->next = reserve_page_list_;
-                page->next->front = page;
-                page->front = NULL;
-                reserve_page_list_ = page;
+                block->next = reserve_block_list_;
+                block->next->front = block;
+                block->front = NULL;
+                reserve_block_list_ = block;
             }
             CHECK_STATE(*this);
             return_cache_count_++;
-            return page->page_size;
+            return block->block_size;
         }
         CHECK_STATE(*this);
-        return_real_bytes_ += page->page_size;
-        if (page_free_)
+        return_real_bytes_ += block->block_size;
+        if (block_free_)
         {
-            return page_free_(page);
+            return block_free_(block);
         }
-         return default_page_free(page);
+         return default_block_free(block);
     }
 
     void zmalloc::push_chunk(free_chunk_type* chunk, u32 bin_id)
@@ -637,8 +621,9 @@ namespace zsummer
     void zmalloc::push_big_chunk(free_chunk_type* chunk)
     {
         u32 bytes = chunk->this_size - CHUNK_PADDING_SIZE;
-        u32 third_index = zmalloc_third_bit_index(bytes);
-        u32 bin_id = GeoSequenceZip(third_index, bytes);
+        u32 third_order = zmalloc_align_third_bit_order(bytes);
+        u32 seq_id = zmalloc_third_sequence(third_order, bytes);
+        u32 bin_id = zmalloc_third_sequence_compress(seq_id);
         push_chunk(chunk, bin_id);
     }
 
@@ -679,13 +664,13 @@ namespace zsummer
     {
         if (!inited_)
         {
-            auto cache_max_reserve_page_count = max_reserve_page_count_;
-            auto cache_page_alloc = page_alloc_;
-            auto cache_page_free = page_free_;
+            auto cache_max_reserve_block_count = max_reserve_block_count_;
+            auto cache_block_alloc = block_alloc_;
+            auto cache_block_free = block_free_;
             memset(this, 0, sizeof(zmalloc));
-            max_reserve_page_count_= cache_max_reserve_page_count;
-            page_alloc_ = cache_page_alloc;
-            page_free_ = cache_page_free;
+            max_reserve_block_count_= cache_max_reserve_block_count;
+            block_alloc_ = cache_block_alloc;
+            block_free_ = cache_block_free;
             inited_ = 1;
             for (u32 level = 0; level < BITMAP_LEVEL; level++)
             {
@@ -736,7 +721,7 @@ namespace zsummer
             }
             else
             {
-                chunk = alloc_page(padding, 0);
+                chunk = alloc_block(padding, 0);
                 if (chunk == NULL)
                 {
                     //LogWarn() << "no more memory";
@@ -770,20 +755,16 @@ namespace zsummer
         {
             constexpr u32 level = 1;
             u32 padding = ((u32)req_bytes + 255) & ~255U;
-            u32 third_index = zmalloc_third_bit_index(padding);
-            padding = CeilGeoBytes(third_index, padding);
-            third_index = CeilThirdIndex(third_index, padding);
-
-            u32 id = GeoSequenceZip(third_index, padding);
-            static_assert(GeoSequenceZip(8, 1024) == 0, "least id test");
-            static_assert(GeoSequenceZip(8, 1280) == 1, "least id test");
-            static_assert(GeoSequenceZip(8, 1536) == 2, "least id test");
+            padding = zmalloc_align_third_bit_value(padding);
+            u32 third_order = zmalloc_align_third_bit_order(padding);
+            u32 align_id = zmalloc_third_sequence(third_order, padding);
+            u32 compress_id = zmalloc_third_sequence_compress(align_id);
 
             padding += CHUNK_PADDING_SIZE;
-            u64 bitmap = bitmap_[level] >> id;
+            u64 bitmap = bitmap_[level] >> compress_id;
             if (bitmap & 0x1)
             {
-                u32 bin_id = id + ((~bitmap) & 0x1);
+                u32 bin_id = compress_id;
                 chunk = bin_[level][bin_id].next_node;
                 pick_chunk(chunk);
                 goto BIG_RETURN;
@@ -806,13 +787,13 @@ namespace zsummer
 
             if (bitmap != 0)
             {
-                u32 bin_id = id + first_bit_index(bitmap & -bitmap);
+                u32 bin_id = compress_id + first_bit_index(bitmap & -bitmap);
                 chunk = bin_[level][bin_id].next_node;
                 pick_chunk(chunk);
             }
             else
             {
-                chunk = alloc_page(padding, CHUNK_IS_BIG);
+                chunk = alloc_block(padding, CHUNK_IS_BIG);
                 if (chunk == NULL)
                 {
                     //LogWarn() << "no more memory";
@@ -839,7 +820,7 @@ namespace zsummer
         BIG_RETURN:
             CSetBit(chunk, CHUNK_IS_IN_USED);
             chunk->fence = CHUNK_FENCE;
-            chunk->bin_id = id;
+            chunk->bin_id = compress_id;
             //alloc_counter_[CHUNK_IS_BIG][chunk->bin_id] ++;
             //RECORD_ALLOC(ALLOC_ZMALLOC, req_bytes);
             //RECORD_REQ_ALLOC_BYTES(ALLOC_ZMALLOC, req_bytes, chunk->this_size);
@@ -847,7 +828,7 @@ namespace zsummer
             return (void*)(u(chunk) + CHUNK_PADDING_SIZE);
         }
 
-        chunk = alloc_page((u32)req_bytes + CHUNK_PADDING_SIZE + SMALL_LEAST_SIZE, CHUNK_IS_DIRECT);
+        chunk = alloc_block((u32)req_bytes + CHUNK_PADDING_SIZE + SMALL_LEAST_SIZE, CHUNK_IS_DIRECT);
         if (chunk == NULL)
         {
             //LogWarn() << "no more memory";
@@ -895,8 +876,8 @@ namespace zsummer
         if (chunk->flags & CHUNK_IS_DIRECT)
         {
             CUnsetBit(chunk, CHUNK_IS_IN_USED);
-            page_type* page = Thispage_type(chunk);
-            free_page(page);
+            block_type* block = Thisblock_type(chunk);
+            free_block(block);
             return bytes;
         }
 
@@ -937,10 +918,10 @@ namespace zsummer
             return bytes;
         }
 
-        if (chunk->this_size >= DEFAULT_PAGE_SIZE - sizeof(page_type) - sizeof(free_chunk_type) * 2)
+        if (chunk->this_size >= DEFAULT_PAGE_SIZE - sizeof(block_type) - sizeof(free_chunk_type) * 2)
         {
-            page_type* page = Thispage_type(chunk);
-            free_page(page);
+            block_type* block = Thisblock_type(chunk);
+            free_block(block);
             return bytes;
         }
 
@@ -961,7 +942,7 @@ namespace zsummer
 
     void zmalloc::check_health()
     {
-        //DebugAssertAllpage_type(instance());
+        //DebugAssertAllblock_type(instance());
         //DebugAssertBitmap(instance());
     }
 
@@ -986,19 +967,19 @@ namespace zsummer
             dv_[i] = NULL;
 
         }
-        while (reserve_page_list_)
+        while (reserve_block_list_)
         {
-            page_type* release_field = reserve_page_list_;
-            reserve_page_list_ = reserve_page_list_->next;
-            reserve_page_count_--;
-            return_real_bytes_ += release_field->page_size;
-            if (page_free_)
+            block_type* release_field = reserve_block_list_;
+            reserve_block_list_ = reserve_block_list_->next;
+            reserve_block_count_--;
+            return_real_bytes_ += release_field->block_size;
+            if (block_free_)
             {
-                page_free_(release_field);
+                block_free_(release_field);
             }
             else
             {
-                default_page_free(release_field);
+                default_block_free(release_field);
             }
             
         }
@@ -1009,8 +990,8 @@ namespace zsummer
         static const size_t bufsz = 10 * 1024;
         static char buffer[bufsz] = { 0 };
         int used = 0;
-        int ret = snprintf(buffer, bufsz, "zmalloc summary: page size:%u, page cache:%u \n"
-            "used page:%u, cache page:%u, in hold:%0.4lfm, in used:%0.4lfm\n"
+        int ret = snprintf(buffer, bufsz, "zmalloc summary: block size:%u, block cache:%u \n"
+            "used block:%u, cache block:%u, in hold:%0.4lfm, in used:%0.4lfm\n"
             "sale total count:%.03lfk, return total count:%.03lfk\n"
             "sale cache count:%.03lfk, return cache count:%.03lfk\n"
             "total req count:%.03lfk, free count:%.03lfk\n"
@@ -1018,8 +999,8 @@ namespace zsummer
             "total sale:%.04lfm, total return:%.04lfm\n"
             "sale real:%.04lfm, return real:%.04lfm\n"
             "avg inner frag:%llu%%.\n",
-            DEFAULT_PAGE_SIZE, max_reserve_page_count_,
-            used_page_count_, reserve_page_count_, (sale_real_bytes_ - return_real_bytes_) / 1024.0 / 1024.0, (alloc_total_bytes_ - free_total_bytes_) / 1024.0 / 1024.0,
+            DEFAULT_PAGE_SIZE, max_reserve_block_count_,
+            used_block_count_, reserve_block_count_, (sale_real_bytes_ - return_real_bytes_) / 1024.0 / 1024.0, (alloc_total_bytes_ - free_total_bytes_) / 1024.0 / 1024.0,
             sale_total_count_ / 1000.0, return_total_count_ / 1000.0, sale_cache_count_ / 1000.0, return_cache_count_ / 1000.0,
             req_total_count_ / 1000.0, free_total_count_ / 1000.0,
             req_total_bytes_ / 1024.0 / 1024.0, alloc_total_bytes_ / 1024.0 / 1024.0, free_total_bytes_ / 1024.0 / 1024.0,
@@ -1078,8 +1059,8 @@ namespace zsummer
         DebugAssert(c->this_size >= SMALL_LEAST_SIZE, "good this size");
         if (!CHasBit(c, CHUNK_IS_DIRECT))
         {
-            DebugAssert(c->this_size <= DEFAULT_PAGE_SIZE - sizeof(page_type) - sizeof(free_chunk_type) * 2, "good this size");
-            DebugAssert(c->this_size + Next(c)->this_size + Front(c)->this_size <= DEFAULT_PAGE_SIZE - (u32)sizeof(page_type), "good this size");
+            DebugAssert(c->this_size <= DEFAULT_PAGE_SIZE - sizeof(block_type) - sizeof(free_chunk_type) * 2, "good this size");
+            DebugAssert(c->this_size + Next(c)->this_size + Front(c)->this_size <= DEFAULT_PAGE_SIZE - (u32)sizeof(block_type), "good this size");
         }
 
         if (Level(c) > 0)
@@ -1126,10 +1107,10 @@ namespace zsummer
             DebugAssert(c->this_size > CHUNK_PADDING_SIZE, "chunk size too small");
             if (Level(c))
             {
-                u32 index_size = BigIndexSize(c->bin_id);
+                u32 index_size = zmalloc_resolve_order_size(c->bin_id);
                 (void)index_size;
-                DebugAssert(c->this_size >= BigIndexSize(c->bin_id) + CHUNK_PADDING_SIZE, "chunk size too small");
-                DebugAssert(c->this_size < BigIndexSize(c->bin_id + 1) + CHUNK_PADDING_SIZE, "chunk size too large");
+                DebugAssert(c->this_size >= zmalloc_resolve_order_size(c->bin_id) + CHUNK_PADDING_SIZE, "chunk size too small");
+                DebugAssert(c->this_size < zmalloc_resolve_order_size(c->bin_id + 1) + CHUNK_PADDING_SIZE, "chunk size too large");
             }
             else
             {
@@ -1141,7 +1122,7 @@ namespace zsummer
             }
         }
     }
-    void DebugAssertpage_type(page_type* field_list, u32 field_list_size, u32 max_list_size)
+    void DebugAssertblock_type(block_type* field_list, u32 field_list_size, u32 max_list_size)
     {
         if (field_list == NULL)
         {
@@ -1155,56 +1136,56 @@ namespace zsummer
 
 
         u32 detect_size = 0;
-        page_type* page = field_list;
-        page_type* front_field = page;
-        while (page)
+        block_type* block = field_list;
+        block_type* front_field = block;
+        while (block)
         {
-            DebugAssert(zmalloc_is_power_of_2(page->page_size), "align");
+            DebugAssert(zmalloc_is_power_of_2(block->block_size), "align");
 
 
-            if (CHasBit(FirstChunk(page), CHUNK_IS_DIRECT))
+            if (CHasBit(FirstChunk(block), CHUNK_IS_DIRECT))
             {
 
             }
             else
             {
-                DebugAssert(page->page_size >= DEFAULT_PAGE_SIZE, "align");
-                DebugAssert(page->page_size >= BIG_MAX_REQUEST, "align");
+                DebugAssert(block->block_size >= DEFAULT_PAGE_SIZE, "align");
+                DebugAssert(block->block_size >= BIG_MAX_REQUEST, "align");
             }
 
             detect_size++;
-            front_field = page;
-            page = page->next;
+            front_field = block;
+            block = block->next;
         }
         DebugAssert(detect_size == field_list_size, "reserve size");
 
-        page = front_field;
+        block = front_field;
         while (front_field)
         {
             detect_size--;
-            page = front_field;
+            block = front_field;
             front_field = front_field->front;
         }
         DebugAssert(detect_size == 0, "reserve size");
-        DebugAssert(page == field_list, "reserve size");
+        DebugAssert(block == field_list, "reserve size");
     }
 
-    void DebugAssertAllpage_type(zmalloc& zstate)
+    void DebugAssertAllblock_type(zmalloc& zstate)
     {
-        DebugAssertpage_type(zstate.reserve_page_list_, zstate.reserve_page_count_, zstate.max_reserve_page_count_);
-        DebugAssertpage_type(zstate.used_page_list_, zstate.used_page_count_, ~0U);
+        DebugAssertblock_type(zstate.reserve_block_list_, zstate.reserve_block_count_, zstate.max_reserve_block_count_);
+        DebugAssertblock_type(zstate.used_block_list_, zstate.used_block_count_, ~0U);
 
-        page_type* page = zstate.used_page_list_;
-        page_type* last_field = page;
+        block_type* block = zstate.used_block_list_;
+        block_type* last_field = block;
         u32 c_count = 0;
         u32 fc_count = 0;
-        page = last_field;
-        while (page)
+        block = last_field;
+        while (block)
         {
             u32 field_bytes = 0;
             u32 field_c_count = 0;
             u32 field_fc_count = 0;
-            chunk_type* c = FirstChunk(page);
+            chunk_type* c = FirstChunk(block);
             while (c)
             {
                 c_count++;
@@ -1235,7 +1216,7 @@ namespace zsummer
                     DebugAssert(found, "found in bin");
                 }
 
-                if (field_bytes + FIELD_SIZE + (u32)sizeof(free_chunk_type) * 2U == page->page_size)
+                if (field_bytes + FIELD_SIZE + (u32)sizeof(free_chunk_type) * 2U == block->block_size)
                 {
                     if (fc(Next(c))->this_size == sizeof(free_chunk_type)
                         && InUse(fc(Next(c))))
@@ -1243,13 +1224,13 @@ namespace zsummer
                         break;
                     }
                 }
-                DebugAssert(field_bytes + FIELD_SIZE + (u32)sizeof(free_chunk_type) * 2U <= page->page_size, "max page");
+                DebugAssert(field_bytes + FIELD_SIZE + (u32)sizeof(free_chunk_type) * 2U <= block->block_size, "max block");
                 c = Next(c);
             };
-            last_field = page;
-            page = page->front;
+            last_field = block;
+            block = block->front;
         }
-        //LogInfo() << "check all page success. page count:" << field_count << ", total chunk:" << c_count <<", free chunk:" << fc_count;
+        //LogInfo() << "check all block success. block count:" << field_count << ", total chunk:" << c_count <<", free chunk:" << fc_count;
     }
 
     void DebugAssertBitmap(zmalloc& zstate)
