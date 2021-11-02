@@ -60,7 +60,7 @@ s32 ZMallocIOTest()
     PROF_OUTPUT_MULTI_COUNT_CPU("global_zfree(global_zmalloc(1024~512k))", rand_size, cost.stop_and_save().cycles());
 
     PROF_START_COUNTER(cost);
-    for (u64 i = 0; i < rand_size; i++)
+    for (u64 i = rand_size/2; i < rand_size; i++)
     {
         u32 test_size = rand_array[i] % (zmalloc::DEFAULT_BLOCK_SIZE/2);
         void* p = global_zmalloc(test_size);
@@ -69,7 +69,7 @@ s32 ZMallocIOTest()
     PROF_OUTPUT_MULTI_COUNT_CPU("global_zfree(global_zmalloc(0~2M))", rand_size, cost.stop_and_save().cycles());
 
 
-    for (u64 i = 0; i < rand_size; i++)
+    for (u64 i = 0; i < zmalloc::BIG_MAX_REQUEST * 2; i++)
     {
         u32 rand_size = rand_array[i] % (zmalloc::DEFAULT_BLOCK_SIZE * 2);
         void* p = global_zmalloc(rand_size);
