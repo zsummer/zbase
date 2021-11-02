@@ -192,16 +192,17 @@ namespace zsummer
         static const u32 CHUNK_FENCE = 0xdeadbeaf;
         static const u32 CHUNK_PADDING_SIZE = sizeof(chunk_type);
         static const u32 CHUNK_FREE_SIZE = sizeof(free_chunk_type);
-
-        static_assert(CHUNK_FREE_SIZE - CHUNK_PADDING_SIZE == sizeof(void*) * 2, "check memory layout.");
-        static_assert(zmalloc_order_size(LEAST_ALIGN_SHIFT) == sizeof(void*) * 2, "check memory layout.");
-        static_assert(sizeof(chunk_type) == zmalloc_order_size(LEAST_ALIGN_SHIFT), "payload addr in chunk must align the least align.");
         static const u32  SMALL_GRADE_SHIFT = 4U;
         static const u32  SMALL_GRADE_SIZE = zmalloc_order_size(SMALL_GRADE_SHIFT);
         static const u32  SMALL_GRADE_MASK = zmalloc_order_mask(SMALL_GRADE_SHIFT);
         static const u32  SMALL_LEAST_SIZE = SMALL_GRADE_SIZE + CHUNK_PADDING_SIZE;
         static const u32  SMALL_MAX_REQUEST = (BINMAP_SIZE << SMALL_GRADE_SHIFT);
         static const u32  BIG_MAX_REQUEST = 512 * 1024;
+
+        static_assert(CHUNK_FREE_SIZE - CHUNK_PADDING_SIZE == sizeof(void*) * 2, "check memory layout.");
+        static_assert(zmalloc_order_size(LEAST_ALIGN_SHIFT) == sizeof(void*) * 2, "check memory layout.");
+        static_assert(sizeof(chunk_type) == zmalloc_order_size(LEAST_ALIGN_SHIFT), "payload addr in chunk must align the least align.");
+
         static_assert(SMALL_LEAST_SIZE >= sizeof(zmalloc::free_chunk_type), "");
         static_assert(zmalloc_order_size(LEAST_ALIGN_SHIFT) >= sizeof(void*) * 2, "");
         static_assert(SMALL_GRADE_SHIFT >= LEAST_ALIGN_SHIFT, "");
@@ -898,17 +899,17 @@ namespace zsummer
         }
         while (reserve_block_list_)
         {
-            block_type* release_field = reserve_block_list_;
+            block_type* release_block = reserve_block_list_;
             reserve_block_list_ = reserve_block_list_->next;
             reserve_block_count_--;
-            return_real_bytes_ += release_field->block_size;
+            return_real_bytes_ += release_block->block_size;
             if (block_free_)
             {
-                block_free_(release_field);
+                block_free_(release_block);
             }
             else
             {
-                default_block_free(release_field);
+                default_block_free(release_block);
             }
             
         }
@@ -1051,22 +1052,22 @@ namespace zsummer
             }
         }
     }
-    void DebugAssertblock_type(block_type* field_list, u32 field_list_size, u32 max_list_size)
+    void DebugAssertblock_type(block_type* block_list, u32 block_list_size, u32 max_list_size)
     {
-        if (field_list == NULL)
+        if (block_list == NULL)
         {
-            DebugAssert(field_list_size == 0, "reserve size");
+            DebugAssert(block_list_size == 0, "reserve size");
         }
         else
         {
-            DebugAssert(field_list_size > 0, "reserve size");
+            DebugAssert(block_list_size > 0, "reserve size");
         }
-        DebugAssert(field_list_size <= max_list_size, "reserve size");
+        DebugAssert(block_list_size <= max_list_size, "reserve size");
 
 
         u32 detect_size = 0;
-        block_type* block = field_list;
-        block_type* front_field = block;
+        block_type* block = block_list;
+        block_type* front_block = block;
         while (block)
         {
             DebugAssert(zmalloc_is_power_of_2(block->block_size), "align");
@@ -1083,20 +1084,20 @@ namespace zsummer
             }
 
             detect_size++;
-            front_field = block;
+            front_block = block;
             block = block->next;
         }
-        DebugAssert(detect_size == field_list_size, "reserve size");
+        DebugAssert(detect_size == block_list_size, "reserve size");
 
-        block = front_field;
-        while (front_field)
+        block = front_block;
+        while (front_block)
         {
             detect_size--;
-            block = front_field;
-            front_field = front_field->front;
+            block = front_block;
+            front_block = front_block->front;
         }
         DebugAssert(detect_size == 0, "reserve size");
-        DebugAssert(block == field_list, "reserve size");
+        DebugAssert(block == block_list, "reserve size");
     }
 
     void DebugAssertAllblock_type(zmalloc& zstate)
@@ -1105,23 +1106,23 @@ namespace zsummer
         DebugAssertblock_type(zstate.used_block_list_, zstate.used_block_count_, ~0U);
 
         block_type* block = zstate.used_block_list_;
-        block_type* last_field = block;
+        block_type* last_block = block;
         u32 c_count = 0;
         u32 fc_count = 0;
-        block = last_field;
+        block = last_block;
         while (block)
         {
-            u32 field_bytes = 0;
-            u32 field_c_count = 0;
-            u32 field_fc_count = 0;
+            u32 block_bytes = 0;
+            u32 block_c_count = 0;
+            u32 block_fc_count = 0;
             chunk_type* c = zmalloc_get_chunk(block);
             while (c)
             {
                 c_count++;
-                field_c_count++;
-                field_fc_count += zmalloc_chunk_in_use(c) ? 0 : 1;
+                block_c_count++;
+                block_fc_count += zmalloc_chunk_in_use(c) ? 0 : 1;
                 fc_count += zmalloc_chunk_in_use(c) ? 0 : 1;
-                field_bytes += c->this_size;
+                block_bytes += c->this_size;
                 if (zmalloc_chunk_is_dirct(c))
                 {
                     DebugAssert(zmalloc_chunk_in_use(zmalloc_front_chunk(c)) && zmalloc_chunk_in_use(zmalloc_next_chunk(c)), "bound chunk");
@@ -1145,7 +1146,7 @@ namespace zsummer
                     DebugAssert(found, "found in bin");
                 }
 
-                if (field_bytes + BLOCK_TYPE_SIZE + (u32)sizeof(free_chunk_type) * 2U == block->block_size)
+                if (block_bytes + BLOCK_TYPE_SIZE + (u32)sizeof(free_chunk_type) * 2U == block->block_size)
                 {
                     if (zmalloc_free_chunk_cast(zmalloc_next_chunk(c))->this_size == sizeof(free_chunk_type)
                         && zmalloc_chunk_in_use(zmalloc_free_chunk_cast(zmalloc_next_chunk(c))))
@@ -1153,13 +1154,13 @@ namespace zsummer
                         break;
                     }
                 }
-                DebugAssert(field_bytes + BLOCK_TYPE_SIZE + (u32)sizeof(free_chunk_type) * 2U <= block->block_size, "max block");
+                DebugAssert(block_bytes + BLOCK_TYPE_SIZE + (u32)sizeof(free_chunk_type) * 2U <= block->block_size, "max block");
                 c = zmalloc_next_chunk(c);
             };
-            last_field = block;
+            last_block = block;
             block = block->front;
         }
-        //LogInfo() << "check all block success. block count:" << field_count << ", total chunk:" << c_count <<", free chunk:" << fc_count;
+        //LogInfo() << "check all block success. block count:" << block_count << ", total chunk:" << c_count <<", free chunk:" << fc_count;
     }
 
     void DebugAssertBitmap(zmalloc& zstate)
