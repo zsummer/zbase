@@ -192,11 +192,12 @@ namespace zsummer
         static const u32 CHUNK_FENCE = 0xdeadbeaf;
         static const u32 CHUNK_PADDING_SIZE = sizeof(chunk_type);
         static const u32 CHUNK_FREE_SIZE = sizeof(free_chunk_type);
-        static const u32  SMALL_GRADE_SHIFT = 4U;
-        static const u32  SMALL_GRADE_SIZE = zmalloc_order_size(SMALL_GRADE_SHIFT);
-        static const u32  SMALL_GRADE_MASK = zmalloc_order_mask(SMALL_GRADE_SHIFT);
-        static const u32  SMALL_LEAST_SIZE = SMALL_GRADE_SIZE + CHUNK_PADDING_SIZE;
-        static const u32  SMALL_MAX_REQUEST = (BINMAP_SIZE << SMALL_GRADE_SHIFT);
+        static const u32  FINE_GRAINED_SHIFT = 4U;
+        static const u32  FINE_GRAINED_SIZE = zmalloc_order_size(FINE_GRAINED_SHIFT);
+        static const u32  FINE_GRAINED_MASK = zmalloc_order_mask(FINE_GRAINED_SHIFT);
+        static const u32  SMALL_LEAST_SIZE = FINE_GRAINED_SIZE + CHUNK_PADDING_SIZE;
+        static const u32  SMALL_MAX_REQUEST = (BINMAP_SIZE << FINE_GRAINED_SHIFT);
+        static const u32  BIG_LEAST_SIZE = SMALL_MAX_REQUEST + CHUNK_PADDING_SIZE;
         static const u32  BIG_MAX_REQUEST = 512 * 1024;
 
         static_assert(CHUNK_FREE_SIZE - CHUNK_PADDING_SIZE == sizeof(void*) * 2, "check memory layout.");
@@ -205,8 +206,8 @@ namespace zsummer
 
         static_assert(SMALL_LEAST_SIZE >= sizeof(zmalloc::free_chunk_type), "");
         static_assert(zmalloc_order_size(LEAST_ALIGN_SHIFT) >= sizeof(void*) * 2, "");
-        static_assert(SMALL_GRADE_SHIFT >= LEAST_ALIGN_SHIFT, "");
-        static_assert(zmalloc_is_power_of_2(SMALL_GRADE_SHIFT), "");
+        static_assert(FINE_GRAINED_SHIFT >= LEAST_ALIGN_SHIFT, "");
+        static_assert(zmalloc_is_power_of_2(FINE_GRAINED_SHIFT), "");
         static_assert(BINMAP_SIZE == sizeof(u64) * 8, "");
         static_assert(DEFAULT_BLOCK_SIZE >= BIG_MAX_REQUEST + sizeof(block_type) + sizeof(chunk_type), "");
         static_assert(zmalloc_is_power_of_2(DEFAULT_BLOCK_SIZE), "");
@@ -547,7 +548,7 @@ namespace zsummer
 
     void zmalloc::push_small_chunk(free_chunk_type* chunk)
     {
-        u32 bin_id = ((chunk->this_size - CHUNK_PADDING_SIZE) >> SMALL_GRADE_SHIFT);
+        u32 bin_id = ((chunk->this_size - CHUNK_PADDING_SIZE) >> FINE_GRAINED_SHIFT);
         if (bin_id >= BINMAP_SIZE)
         {
             bin_id = BINMAP_SIZE - 1;
@@ -622,12 +623,12 @@ namespace zsummer
         req_total_bytes_ += req_bytes;
         req_total_count_++;
         free_chunk_type* chunk = NULL;
-        if (req_bytes < SMALL_MAX_REQUEST - SMALL_GRADE_SIZE)
+        if (req_bytes < SMALL_MAX_REQUEST - FINE_GRAINED_SIZE)
         {
             constexpr u32 level = 0;
-            u32 padding = req_bytes < SMALL_GRADE_SIZE ? SMALL_GRADE_SIZE : (u32)req_bytes + SMALL_GRADE_MASK;
-            u32 small_id = padding >> SMALL_GRADE_SHIFT;
-            padding = (small_id << SMALL_GRADE_SHIFT) + CHUNK_PADDING_SIZE;
+            u32 padding = req_bytes < FINE_GRAINED_SIZE ? FINE_GRAINED_SIZE : (u32)req_bytes + FINE_GRAINED_MASK;
+            u32 small_id = padding >> FINE_GRAINED_SHIFT;
+            padding = (small_id << FINE_GRAINED_SHIFT) + CHUNK_PADDING_SIZE;
             u64 bitmap = bitmap_[level] >> small_id;
             if (bitmap & 0x3)
             {
@@ -710,7 +711,7 @@ namespace zsummer
 
             if (dv_[level])
             {
-                if (dv_[level]->this_size >= padding + SMALL_MAX_REQUEST + CHUNK_PADDING_SIZE)
+                if (dv_[level]->this_size >= padding + BIG_LEAST_SIZE)
                 {
                     chunk = exploit_new_chunk(dv_[level], padding);
                     goto BIG_RETURN;
@@ -739,7 +740,7 @@ namespace zsummer
                 }
             }
 
-            if (chunk->this_size >= padding + SMALL_MAX_REQUEST + CHUNK_PADDING_SIZE)
+            if (chunk->this_size >= padding + BIG_LEAST_SIZE)
             {
                 free_chunk_type* dv_chunk = chunk;
                 chunk = exploit_new_chunk(dv_chunk, padding);
@@ -949,7 +950,7 @@ namespace zsummer
         while (ret > 0 && c < BINMAP_SIZE)
         {
             used += ret;
-            ret = snprintf(buffer + used, bufsz - used, "[%03u]\t[%u byte]:\t alloc:%llu  \tfree:%llu\n", c, ((c) << SMALL_GRADE_SHIFT), alloc_counter_[0][c], free_counter_[0][c]);
+            ret = snprintf(buffer + used, bufsz - used, "[%03u]\t[%u byte]:\t alloc:%llu  \tfree:%llu\n", c, ((c) << FINE_GRAINED_SHIFT), alloc_counter_[0][c], free_counter_[0][c]);
             c++;
         }
         c = 0;
@@ -1050,10 +1051,10 @@ namespace zsummer
             }
             else
             {
-                ZMALLOC_ASSERT((c->this_size - zmalloc::CHUNK_PADDING_SIZE) >= (u32)(c->bin_id) << zmalloc::SMALL_GRADE_SHIFT, "chunk size too large");
-                if (c->this_size < 63 * zmalloc_order_size(zmalloc::SMALL_GRADE_SHIFT) + zmalloc::CHUNK_PADDING_SIZE)
+                ZMALLOC_ASSERT((c->this_size - zmalloc::CHUNK_PADDING_SIZE) >= (u32)(c->bin_id) << zmalloc::FINE_GRAINED_SHIFT, "chunk size too large");
+                if (c->this_size < 63 * zmalloc_order_size(zmalloc::FINE_GRAINED_SHIFT) + zmalloc::CHUNK_PADDING_SIZE)
                 {
-                    ZMALLOC_ASSERT((c->this_size - zmalloc::CHUNK_PADDING_SIZE) < (u32)(c->bin_id + 1) << zmalloc::SMALL_GRADE_SHIFT, "chunk size too small");
+                    ZMALLOC_ASSERT((c->this_size - zmalloc::CHUNK_PADDING_SIZE) < (u32)(c->bin_id + 1) << zmalloc::FINE_GRAINED_SHIFT, "chunk size too small");
                 }
             }
         }
