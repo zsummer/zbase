@@ -27,22 +27,22 @@ s32 LinerStress(List& l, const std::string& desc,  bool is_static = false, V*p =
 {
     std::stringstream ss;
     ss << desc << ":" << LOAD_CAPACITY  << ": ";
-
+    PROF_DEFINE_COUNTER(cost);
+    
     if (true)
     {
-        PROF_DEFINE_REGISTER_DEFAULT(prof_cost, (ss.str() + "push_back").c_str());
-        prof_cost.start();
+        PROF_START_COUNTER(cost);
+
         for (int i = 0; i < LOAD_CAPACITY; i++)
         {
             l.push_back(V(i));
         }
-        prof_cost.record_current<LOAD_CAPACITY>();
+        PROF_OUTPUT_MULTI_COUNT_CPU((ss.str() + "push_back").c_str(), LOAD_CAPACITY, cost.stop_and_save().cycles());
         if (is_static)
         {
             l.push_back(V(LOAD_CAPACITY));
             l.push_back(V(LOAD_CAPACITY));
         }
-
         AssertCheck((int)l.size(), LOAD_CAPACITY, desc + ": error");
 
         int i = 0;
@@ -56,15 +56,15 @@ s32 LinerStress(List& l, const std::string& desc,  bool is_static = false, V*p =
             AssertCheck((int)v, i, desc + ": error");
             i++;
         }
-
+        
     }
 
     if (true)
     {
-        PROF_DEFINE_REGISTER_DEFAULT(prof_cost, (ss.str() + "clear").c_str());
-        prof_cost.start();
+        PROF_START_COUNTER(cost);
         l.clear();
-        prof_cost.record_current<LOAD_CAPACITY>();
+        PROF_OUTPUT_MULTI_COUNT_CPU((ss.str() + "clear").c_str(), 1, cost.stop_and_save().cycles());
+
         AssertCheck((int)l.size(), 0, desc + ": error");
         if (is_static)
         {
@@ -76,8 +76,7 @@ s32 LinerStress(List& l, const std::string& desc,  bool is_static = false, V*p =
 
     if (true)
     {
-        PROF_DEFINE_REGISTER_DEFAULT(prof_cost, (ss.str() + "insert begin & pop begin(capacity)").c_str());
-        prof_cost.start();
+        PROF_START_COUNTER(cost);
         for (int loop = 0; loop < 1; loop++)
         {
             for (int i = 0; i < LOAD_CAPACITY; i++)
@@ -93,38 +92,37 @@ s32 LinerStress(List& l, const std::string& desc,  bool is_static = false, V*p =
                 l.erase(l.begin());
             }
         }
-        prof_cost.record_current<LOAD_CAPACITY * 2>();
         AssertCheck((int)l.size(), 0, desc + ": error");
+        PROF_OUTPUT_MULTI_COUNT_CPU((ss.str() + "insert begin &erase begin").c_str(), LOAD_CAPACITY * 2, cost.stop_and_save().cycles());
     }
 
     if (true)
     {
-        PROF_DEFINE_REGISTER_DEFAULT(prof_cost, (ss.str() + "insert begin ").c_str());
-        prof_cost.start();
+        PROF_START_COUNTER(cost);
         for (int i = 0; i < LOAD_CAPACITY; i++)
         {
             l.insert(l.begin(), V(i));
         }
-        prof_cost.record_current<LOAD_CAPACITY * 2>();
+        PROF_OUTPUT_MULTI_COUNT_CPU((ss.str() + "insert begin").c_str(), LOAD_CAPACITY, cost.stop_and_save().cycles());
+
     }
 
     if (true)
     {
-        PROF_DEFINE_REGISTER_DEFAULT(prof_cost, (ss.str() + "pop begin ").c_str());
-        prof_cost.start();
+        PROF_START_COUNTER(cost);
         for (int i = 0; i < LOAD_CAPACITY; i++)
         {
             l.erase(l.begin());
         }
-        prof_cost.record_current<LOAD_CAPACITY * 2>();
+        PROF_OUTPUT_MULTI_COUNT_CPU((ss.str() + "pop begin").c_str(), LOAD_CAPACITY, cost.stop_and_save().cycles());
         AssertCheck((int)l.size(), 0, desc + ": error");
+
     }
 
 
     if (true)
     {
-        PROF_DEFINE_REGISTER_DEFAULT(prof_cost, (ss.str() + "insert end & pop end(capacity)").c_str());
-        prof_cost.start();
+        PROF_START_COUNTER(cost);
         for (int loop = 0; loop < 1; loop++)
         {
             for (int i = 0; i < LOAD_CAPACITY; i++)
@@ -142,20 +140,20 @@ s32 LinerStress(List& l, const std::string& desc,  bool is_static = false, V*p =
                 l.erase(iter);
             }
         }
-        prof_cost.record_current<LOAD_CAPACITY * 2>();
+        PROF_OUTPUT_MULTI_COUNT_CPU((ss.str() + "insert end & pop end(capacity)").c_str(), LOAD_CAPACITY * 2, cost.stop_and_save().cycles());
         if (is_static)
         {
             l.erase(l.end());
         }
         AssertCheck((int)l.size(), 0, desc + ": error");
+
     }
 
 
 
     if (true)
     {
-        PROF_DEFINE_REGISTER_DEFAULT(prof_cost, (ss.str() + "push back & pop back(capacity)").c_str());
-        prof_cost.start();
+        PROF_START_COUNTER(cost);
         for (int loop = 0; loop < 1; loop++)
         {
             for (int i = 0; i < LOAD_CAPACITY; i++)
@@ -171,29 +169,30 @@ s32 LinerStress(List& l, const std::string& desc,  bool is_static = false, V*p =
                 l.pop_back();
             }
         }
-        prof_cost.record_current<LOAD_CAPACITY * 2>();
+        PROF_OUTPUT_MULTI_COUNT_CPU((ss.str() + "push back & pop back(capacity)").c_str(), LOAD_CAPACITY * 2, cost.stop_and_save().cycles());
         AssertCheck((int)l.size(), 0, desc + ": error");
+
     }
 
 
     if (true)
     {
-        PROF_DEFINE_REGISTER_DEFAULT(prof_cost, (ss.str() + "push back & pop back (one item)").c_str());
-        prof_cost.start();
+        PROF_START_COUNTER(cost);
+        cost.start();
         for (int i = 0; i < LOAD_CAPACITY * LOOP_CAPACITY; i++)
         {
             l.push_back(V(i));
             l.pop_back();
         }
-        prof_cost.record_current<LOAD_CAPACITY * LOOP_CAPACITY>();
+        PROF_OUTPUT_MULTI_COUNT_CPU((ss.str() + "push back & pop back (one item)").c_str(), LOAD_CAPACITY * LOOP_CAPACITY * 2, cost.stop_and_save().cycles());
         AssertCheck((int)l.size(), 0, desc + ": error");
+
     }
 
 
     if (true)
     {
-        PROF_DEFINE_REGISTER_DEFAULT(prof_cost, (ss.str() + "push back & pop back(capacity loop 1000)").c_str());
-        prof_cost.start();
+        PROF_START_COUNTER(cost);
         for (int j = 0; j < 1000; j++)
         {
             for (int i = 0; i < LOAD_CAPACITY; i++)
@@ -205,8 +204,9 @@ s32 LinerStress(List& l, const std::string& desc,  bool is_static = false, V*p =
                 l.pop_back();
             }
         }
-        prof_cost.record_current<LOAD_CAPACITY * 2 * 1000>();
+        PROF_OUTPUT_MULTI_COUNT_CPU((ss.str() + "push back & pop back(capacity loop 1000)").c_str(), LOAD_CAPACITY * 2, cost.stop_and_save().cycles());
         AssertCheck((int)l.size(), 0, desc + ": error");
+
     }
 
     return 0;
@@ -217,31 +217,29 @@ s32 MapStress(Map& m, const std::string& desc, bool is_static = false, V* p = NU
 {
     std::stringstream ss;
     ss << desc << ":" <<  LOAD_CAPACITY << ": ";
-
+    PROF_DEFINE_COUNTER(cost);
     if (true)
     {
-        PROF_DEFINE_REGISTER_DEFAULT(prof_cost, (ss.str() + "insert").c_str());
-        prof_cost.start();
+        PROF_START_COUNTER(cost);
         for (int i = 0; i < LOAD_CAPACITY; i++)
         {
             m.insert({ i, V(i) });
         }
-        prof_cost.record_current<LOAD_CAPACITY>();
-       
+        PROF_OUTPUT_MULTI_COUNT_CPU((ss.str() + "insert").c_str(), LOAD_CAPACITY, cost.stop_and_save().cycles());
         if (is_static)
         {
             m.insert({ LOAD_CAPACITY, V(LOAD_CAPACITY) });
             m.insert({ LOAD_CAPACITY + 1,  V(LOAD_CAPACITY + 1) });
         }
         AssertCheck((int)m.size(), LOAD_CAPACITY, desc + ":has error");
+
     }
 
     if (true)
     {
-        PROF_DEFINE_REGISTER_DEFAULT(prof_cost, (ss.str() + "clear").c_str());
-        prof_cost.start();
+        PROF_START_COUNTER(cost);
         m.clear();
-        prof_cost.record_current<LOAD_CAPACITY>();
+        PROF_OUTPUT_MULTI_COUNT_CPU((ss.str() + "insert").c_str(), 1, cost.stop_and_save().cycles());
         AssertCheck((int)m.size(), 0, desc + ":has error");
 
     }
@@ -253,13 +251,12 @@ s32 MapStress(Map& m, const std::string& desc, bool is_static = false, V* p = NU
             m.insert({ i,  V(i) });
         }
         AssertCheck((int)m.size(), LOAD_CAPACITY, desc + ": error");
-        PROF_DEFINE_REGISTER_DEFAULT(prof_cost, (ss.str() + "erase key (capacity)").c_str());
-        prof_cost.start();
+        PROF_START_COUNTER(cost);
         for (int i = 0; i < LOAD_CAPACITY; i++)
         {
             m.erase(i);
         }
-        prof_cost.record_current<LOAD_CAPACITY>();
+        PROF_OUTPUT_MULTI_COUNT_CPU((ss.str() + "erase").c_str(), LOAD_CAPACITY, cost.stop_and_save().cycles());
         AssertCheck((int)m.size(), 0, desc + ":has error");
         for (int i = 0; i < LOAD_CAPACITY; i++)
         {
@@ -277,13 +274,12 @@ s32 MapStress(Map& m, const std::string& desc, bool is_static = false, V* p = NU
             m.insert({ i,  V(i) });
         }
         AssertCheck((int)m.size(), LOAD_CAPACITY, desc + ": error");
-        PROF_DEFINE_REGISTER_DEFAULT(prof_cost, (ss.str() + "revert erase key (capacity)").c_str());
-        prof_cost.start();
+        PROF_START_COUNTER(cost);
         for (int i = 0; i < LOAD_CAPACITY; i++)
         {
             m.erase(LOAD_CAPACITY - i - 1);
         }
-        prof_cost.record_current<LOAD_CAPACITY>();
+        PROF_OUTPUT_MULTI_COUNT_CPU((ss.str() + "revert erase key (capacity)").c_str(), LOAD_CAPACITY, cost.stop_and_save().cycles());
         AssertCheck((int)m.size(), 0, desc + ":has error");
         for (int i = 0; i < LOAD_CAPACITY; i++)
         {
@@ -301,13 +297,12 @@ s32 MapStress(Map& m, const std::string& desc, bool is_static = false, V* p = NU
             m.insert({ i,  V(i) });
         }
         AssertCheck((int)m.size(), LOAD_CAPACITY, desc + ": error");
-        PROF_DEFINE_REGISTER_DEFAULT(prof_cost, (ss.str() + "erase begin (capacity)").c_str());
-        prof_cost.start();
+        PROF_START_COUNTER(cost);
         for (int i = 0; i < LOAD_CAPACITY; i++)
         {
             m.erase(m.begin());
         }
-        prof_cost.record_current<LOAD_CAPACITY>();
+        PROF_OUTPUT_MULTI_COUNT_CPU((ss.str() + "erase begin (capacity)").c_str(), LOAD_CAPACITY, cost.stop_and_save().cycles());
         AssertCheck((int)m.size(), 0, desc + ":has error");
     }
 
@@ -320,9 +315,7 @@ s32 MapStress(Map& m, const std::string& desc, bool is_static = false, V* p = NU
             m.insert({ i,  V(i) });
         }
         AssertCheck((int)m.size(), LOAD_CAPACITY, desc + ": error");
-
-        PROF_DEFINE_REGISTER_DEFAULT(prof_cost, (ss.str() + "find(capacity)").c_str());
-        prof_cost.start();
+        PROF_START_COUNTER(cost);
         for (int i = 0; i < 1000 * 10000; i++)
         {
             if (m.find(i % LOAD_CAPACITY) == m.end())
@@ -330,7 +323,7 @@ s32 MapStress(Map& m, const std::string& desc, bool is_static = false, V* p = NU
                 LogError() << " stress test error";
             }
         }
-        prof_cost.record_current<1000 * 10000>();
+        PROF_OUTPUT_MULTI_COUNT_CPU((ss.str() + "find(capacity)").c_str(), 1000 * 10000, cost.stop_and_save().cycles());
     }
 
 
