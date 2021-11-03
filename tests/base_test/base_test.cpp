@@ -55,46 +55,6 @@ int main(int argc, char *argv[])
     ContainerStress();
     
 
-    if (false)
-    {
-        PROF_DEFINE_AUTO_SINGLE_RECORD(guard, 1000 * 10000, PROF_LEVEL_NORMAL, "PROF_CONNTER_CHRONO bat 1000w");
-        for (size_t i = 0; i < 1000 * 10000; i++)
-        {
-            cycles += prof_get_time_cycle<PROF_CONNTER_CHRONO>();
-        }
-    }
-
-    if (false)
-    {
-        PROF_DEFINE_AUTO_SINGLE_RECORD(guard, 1000 * 10000, PROF_LEVEL_NORMAL, "PROF_COUNTER_RDTSC_PURE bat 1000w");
-        for (size_t i = 0; i < 1000 * 10000; i++)
-        {
-            cycles += prof_get_time_cycle<PROF_COUNTER_RDTSC_PURE>();
-        }
-    }
-
-    if (false)
-    {
-        PROF_DEFINE_AUTO_SINGLE_RECORD(guard, 1000 * 10000, PROF_LEVEL_NORMAL, "PROF_COUNTER_RDTSC_NOFENCE bat 1000w");
-        for (size_t i = 0; i < 1000 * 10000; i++)
-        {
-            cycles += prof_get_time_cycle<PROF_COUNTER_RDTSC_NOFENCE>();
-        }
-    }
-
-
-    if (false)
-    {
-        PROF_DEFINE_REGISTER(rec, "PROF_COUNTER_CLOCK dis 1000w", PROF_COUNTER_RDTSC_BTB);
-        for (size_t i = 0; i < 1000 * 10000; i++)
-        {
-            PROF_REGISTER_START(rec);
-            cycles += prof_get_time_cycle<PROF_COUNTER_CLOCK>();
-            PROF_REGISTER_RECORD(rec);
-        }
-    }
-
-
     PROF_UPDATE_MERGE();
     PROF_SERIALIZE_FN_LOG();
 

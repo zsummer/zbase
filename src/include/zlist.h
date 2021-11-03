@@ -85,11 +85,11 @@ namespace zsummer
 
         pointer operator ->() const
         {
-            return list_type::node_cast(head_ + id_);
+            return list_type::node_cast(*(head_ + id_));
         }
         reference operator *() const
         {
-            return *list_type::node_cast(head_ + id_);
+            return *list_type::node_cast(*(head_ + id_));
         }
 
     public:
@@ -146,11 +146,11 @@ namespace zsummer
 
         const_pointer operator ->() const
         {
-            return list_type::node_cast(head_ + id_);
+            return list_type::node_cast(*(head_ + id_));
         }
         const_reference operator *() const
         {
-            return *list_type::node_cast(head_ + id_);
+            return *list_type::node_cast(*(head_ + id_));
         }
     public:
         node_type* head_;
@@ -199,7 +199,7 @@ namespace zsummer
             u32 next;
             space_type space;
         };
-        static _Ty* node_cast(node_type* node) { return reinterpret_cast<_Ty*>(&node->space); }
+        static _Ty* node_cast(node_type& node) { return reinterpret_cast<_Ty*>(&node.space); }
     public:
 
         zlist()
@@ -249,10 +249,10 @@ namespace zsummer
         const_reverse_iterator crend() const noexcept { return const_reverse_iterator(begin()); }
 
 
-        reference front() { return *node_cast(&data_[used_id_]); }
-        const_reference front() const { return *node_cast(&data_[used_id_]); }
-        reference back() { return *node_cast(&data_[data_[end_id_].front]); }
-        const_reference back() const { *node_cast(&data_[data_[end_id_].front]); }
+        reference front() { return *node_cast(data_[used_id_]); }
+        const_reference front() const { return *node_cast(data_[used_id_]); }
+        reference back() { return *node_cast(data_[data_[end_id_].front]); }
+        const_reference back() const { *node_cast(data_[data_[end_id_].front]); }
 
         static constexpr u32 static_buf_size(u32 obj_count) { return sizeof(zlist<_Ty, 1>) + sizeof(node_type) *( obj_count -1); }
 
@@ -302,10 +302,10 @@ namespace zsummer
     private:
         bool push_free_node(u32 id)
         {
-            node_type* node = &data_[id];
-            node->fence = FENCE_VAL;
-            node->next = free_id_;
-            node->front = end_id_;
+            node_type& node = data_[id];
+            node.fence = FENCE_VAL;
+            node.next = free_id_;
+            node.front = end_id_;
             free_id_ = id;
             return true;
         }
@@ -321,8 +321,8 @@ namespace zsummer
             {
                 return false;
             }
-            node_type* node = &data_[id];
-            if (node->fence != FENCE_VAL)
+            node_type& node = data_[id];
+            if (node.fence != FENCE_VAL)
             {
                 return false;
             }
@@ -337,13 +337,13 @@ namespace zsummer
 
             if (used_id_ == id)
             {
-                used_id_ = node->next;
+                used_id_ = node.next;
                 data_[used_id_].front = end_id_;
             }
             else
             {
-                data_[node->front].next = node->next;
-                data_[node->next].front = node->front;
+                data_[node.front].next = node.next;
+                data_[node.next].front = node.front;
             }
             used_count_--;
             return true;
@@ -373,6 +373,22 @@ namespace zsummer
             data_[pos_id].front = new_id;
             used_count_++;
         }
+
+        template<class T = _Ty>
+        u32 inject(u32 id, const _Ty & value, typename std::enable_if<std::is_trivial<T>::value>::type* = 0)
+        {
+            if (free_id_ >= end_id_)
+            {
+                return end_id_;
+            }
+            u32 new_id = free_id_;
+            free_id_ = data_[new_id].next;
+            inject(id, new_id);
+            *node_cast(data_[new_id]) = value;
+            return new_id;
+        }
+
+        template<class T = _Ty, typename std::enable_if < !std::is_trivial<T>{}, int > ::type = 0 >
         u32 inject(u32 id, const _Ty& value)
         {
             if (free_id_ >= end_id_)
@@ -385,6 +401,8 @@ namespace zsummer
             new (&data_[new_id].space) _Ty(value);
             return new_id;
         }
+
+
         template< class... Args >
         u32 inject_emplace(u32 id, Args&&... args)
         {
