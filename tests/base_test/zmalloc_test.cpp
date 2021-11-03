@@ -13,7 +13,7 @@
 using namespace zsummer;
 
 
-s32 ZMallocIOTest()
+s32 zmalloc_stress()
 {
     std::unique_ptr<zmalloc> zstate(new zmalloc());
     memset(zstate.get(), 0, sizeof(zmalloc));
@@ -83,7 +83,7 @@ s32 ZMallocIOTest()
     PROF_OUTPUT_MULTI_COUNT_CPU("global_zfree(global_zmalloc(0~2M))", rand_size, cost.stop_and_save().cycles());
 
 
-    for (size_t loop= 0; loop < 20; loop++)
+    for (size_t loop= 0; loop < 40; loop++)
     {
         PROF_START_COUNTER(cost);
         for (u64 i = cover_size/20 * loop; i < cover_size / 20 * (loop+1); i++)
@@ -93,6 +93,7 @@ s32 ZMallocIOTest()
             buffers->push_back(p);
         }
         PROF_OUTPUT_MULTI_COUNT_CPU("global_zmalloc(0~512k)", buffers->size(), cost.stop_and_save().cycles());
+        LogDebug() << zmalloc::instance().debug_string();
         PROF_START_COUNTER(cost);
         for (auto p : *buffers)
         {
@@ -102,7 +103,7 @@ s32 ZMallocIOTest()
         buffers->clear();
     }
 
-    for (size_t loop = 0; loop < 20; loop++)
+    for (size_t loop = 0; loop < 40; loop++)
     {
         PROF_START_COUNTER(cost);
         for (u64 i = cover_size / 20 * loop; i < cover_size / 20 * (loop + 1); i++)
@@ -171,7 +172,7 @@ s32 zmalloc_base_test()
 s32 ZMallocTest()
 {
     AssertTest(zmalloc_base_test(), 0, " zmalloc_base_test()");
-    AssertTest(ZMallocIOTest(), 0, " ZMallocIOTest()");
+    AssertTest(zmalloc_stress(), 0, " zmalloc_stress()");
     return 0;
 }
 
