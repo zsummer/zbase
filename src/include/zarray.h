@@ -132,6 +132,17 @@ namespace zsummer
             count_ = 0;
         }
 
+        template<class T = _Ty>
+        void push_back(const _Ty& value, typename std::enable_if<std::is_trivial<T>::value>::type* = 0)
+        {
+            if (full())
+            {
+                return;
+            }
+            *ptr(count_++) = value;
+        }
+
+        template<class T = _Ty, typename std::enable_if < !std::is_trivial<T>{}, int > ::type = 0 >
         void push_back(const _Ty& value)
         {
             if (full())
@@ -141,14 +152,13 @@ namespace zsummer
             new (ptr(count_++)) _Ty(value);
         }
 
-
         template<class T = _Ty>
-        void pop_back(typename std::enable_if<std::is_trivially_destructible<T>::value>::type* = 0)
+        void pop_back(typename std::enable_if<std::is_trivial<T>::value>::type* = 0)
         {
             count_--;
         }
 
-        template<class T = _Ty, typename std::enable_if < !std::is_trivially_destructible<T>{} && (std::is_class<T>{} || std::is_union<T>{}), int > ::type = 0 >
+        template<class T = _Ty, typename std::enable_if < !std::is_trivial<T>{}, int > ::type = 0 >
         void pop_back()
         {
             ptr(count_)->~_Ty();

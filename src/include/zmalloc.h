@@ -784,7 +784,6 @@ namespace zsummer
 
     u64 zmalloc::free_memory(void* addr)
     {
-        zmalloc& zstate = *this;
         if (addr == NULL)
         {
             //LogError() << "free null";

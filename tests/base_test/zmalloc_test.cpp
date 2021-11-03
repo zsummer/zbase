@@ -6,7 +6,7 @@
 #include "zcontain_test.h"
 #include "zmalloc.h"
 #include "zprof.h"
-
+#include "zarray.h"
 #define Now() std::chrono::duration<double>(std::chrono::system_clock().now().time_since_epoch()).count()
 
 
@@ -17,12 +17,16 @@ s32 ZMallocIOTest()
 {
     std::unique_ptr<zmalloc> zstate(new zmalloc());
     memset(zstate.get(), 0, sizeof(zmalloc));
-    zstate->max_reserve_block_count_ = 20;
+    zstate->max_reserve_block_count_ = 100;
     zstate->set_global(zstate.get());
 
     static const u32 rand_size = 1000 * 10000;
     static_assert(rand_size > zmalloc::DEFAULT_BLOCK_SIZE, "");
     u32* rand_array = new u32[rand_size];
+    static const u32 cover_size = zmalloc::BIG_MAX_REQUEST;
+    using Addr = void*;
+    zarray <Addr, cover_size> *buffers = new zarray <Addr, cover_size>();
+
     for (u32 i = 0; i < zmalloc::DEFAULT_BLOCK_SIZE; i++)
     {
         rand_array[i] = i;
@@ -31,6 +35,7 @@ s32 ZMallocIOTest()
     {
         rand_array[i] = rand();
     }
+
 
 
     PROF_DEFINE_COUNTER(cost);
@@ -67,6 +72,56 @@ s32 ZMallocIOTest()
         global_zfree(p);
     }
     PROF_OUTPUT_MULTI_COUNT_CPU("global_zfree(global_zmalloc(0~2M))", rand_size, cost.stop_and_save().cycles());
+
+    PROF_START_COUNTER(cost);
+    for (u64 i = rand_size / 2; i < rand_size; i++)
+    {
+        u32 test_size = rand_array[i] % (zmalloc::DEFAULT_BLOCK_SIZE / 2);
+        void* p = global_zmalloc(test_size);
+        global_zfree(p);
+    }
+    PROF_OUTPUT_MULTI_COUNT_CPU("global_zfree(global_zmalloc(0~2M))", rand_size, cost.stop_and_save().cycles());
+
+
+    for (size_t loop= 0; loop < 20; loop++)
+    {
+        PROF_START_COUNTER(cost);
+        for (u64 i = cover_size/20 * loop; i < cover_size / 20 * (loop+1); i++)
+        {
+            u32 test_size = rand_array[i] % (zmalloc::BIG_MAX_REQUEST);
+            void* p = global_zmalloc(test_size);
+            buffers->push_back(p);
+        }
+        PROF_OUTPUT_MULTI_COUNT_CPU("global_zmalloc(0~512k)", buffers->size(), cost.stop_and_save().cycles());
+        PROF_START_COUNTER(cost);
+        for (auto p : *buffers)
+        {
+            global_zfree(p);
+        }
+        PROF_OUTPUT_MULTI_COUNT_CPU("global_zfree(0~512k)", buffers->size(), cost.stop_and_save().cycles());
+        buffers->clear();
+    }
+
+    for (size_t loop = 0; loop < 20; loop++)
+    {
+        PROF_START_COUNTER(cost);
+        for (u64 i = cover_size / 20 * loop; i < cover_size / 20 * (loop + 1); i++)
+        {
+            u32 test_size = rand_array[i] % (zmalloc::BIG_MAX_REQUEST);
+            test_size = test_size == 0 ? 1 : test_size;
+            void* p = new char[test_size];
+            buffers->push_back(p);
+        }
+        PROF_OUTPUT_MULTI_COUNT_CPU("sys malloc(0~512k)", buffers->size(), cost.stop_and_save().cycles());
+        PROF_START_COUNTER(cost);
+        for (auto p : *buffers)
+        {
+            delete p;
+        }
+        PROF_OUTPUT_MULTI_COUNT_CPU("sys free(0~512k)", buffers->size(), cost.stop_and_save().cycles());
+        buffers->clear();
+    }
+
 
 
     for (u64 i = 0; i < zmalloc::BIG_MAX_REQUEST * 2; i++)

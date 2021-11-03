@@ -373,6 +373,22 @@ namespace zsummer
             data_[pos_id].front = new_id;
             used_count_++;
         }
+
+        template<class T = _Ty>
+        u32 inject(u32 id, const _Ty & value, typename std::enable_if<std::is_trivial<T>::value>::type* = 0)
+        {
+            if (free_id_ >= end_id_)
+            {
+                return end_id_;
+            }
+            u32 new_id = free_id_;
+            free_id_ = data_[new_id].next;
+            inject(id, new_id);
+            *node_cast(&data_[new_id]) = value;
+            return new_id;
+        }
+
+        template<class T = _Ty, typename std::enable_if < !std::is_trivial<T>{}, int > ::type = 0 >
         u32 inject(u32 id, const _Ty& value)
         {
             if (free_id_ >= end_id_)
@@ -385,6 +401,8 @@ namespace zsummer
             new (&data_[new_id].space) _Ty(value);
             return new_id;
         }
+
+
         template< class... Args >
         u32 inject_emplace(u32 id, Args&&... args)
         {
