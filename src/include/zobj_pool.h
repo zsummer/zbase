@@ -39,11 +39,7 @@ namespace zsummer
     using f32 = float;
     using f64 = double;
 
-#if __GNUG__ && __GNUC__ < 5
-#define IS_TRIVIALLY_COPYABLE(T) __has_trivial_copy(T)
-#else
-#define IS_TRIVIALLY_COPYABLE(T) std::is_trivially_copyable<T>::value
-#endif
+
 
     //list need init all nodes.
     template<class _Ty, bool _Has_Vtpr = false>

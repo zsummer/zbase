@@ -153,8 +153,7 @@ namespace zsummer
 
         inline void check_health();
         inline void clear_cache();
-        inline const char* SummaryStatic();
-        inline void Summary();
+        inline const char* debug_string();
 
     public:
         struct chunk_type
@@ -192,11 +191,12 @@ namespace zsummer
         static const u32 CHUNK_FENCE = 0xdeadbeaf;
         static const u32 CHUNK_PADDING_SIZE = sizeof(chunk_type);
         static const u32 CHUNK_FREE_SIZE = sizeof(free_chunk_type);
-        static const u32  SMALL_GRADE_SHIFT = 4U;
-        static const u32  SMALL_GRADE_SIZE = zmalloc_order_size(SMALL_GRADE_SHIFT);
-        static const u32  SMALL_GRADE_MASK = zmalloc_order_mask(SMALL_GRADE_SHIFT);
-        static const u32  SMALL_LEAST_SIZE = SMALL_GRADE_SIZE + CHUNK_PADDING_SIZE;
-        static const u32  SMALL_MAX_REQUEST = (BINMAP_SIZE << SMALL_GRADE_SHIFT);
+        static const u32  FINE_GRAINED_SHIFT = 4U;
+        static const u32  FINE_GRAINED_SIZE = zmalloc_order_size(FINE_GRAINED_SHIFT);
+        static const u32  FINE_GRAINED_MASK = zmalloc_order_mask(FINE_GRAINED_SHIFT);
+        static const u32  SMALL_LEAST_SIZE = FINE_GRAINED_SIZE + CHUNK_PADDING_SIZE;
+        static const u32  SMALL_MAX_REQUEST = (BINMAP_SIZE << FINE_GRAINED_SHIFT);
+        static const u32  BIG_LEAST_SIZE = SMALL_MAX_REQUEST + CHUNK_PADDING_SIZE;
         static const u32  BIG_MAX_REQUEST = 512 * 1024;
 
         static_assert(CHUNK_FREE_SIZE - CHUNK_PADDING_SIZE == sizeof(void*) * 2, "check memory layout.");
@@ -205,8 +205,8 @@ namespace zsummer
 
         static_assert(SMALL_LEAST_SIZE >= sizeof(zmalloc::free_chunk_type), "");
         static_assert(zmalloc_order_size(LEAST_ALIGN_SHIFT) >= sizeof(void*) * 2, "");
-        static_assert(SMALL_GRADE_SHIFT >= LEAST_ALIGN_SHIFT, "");
-        static_assert(zmalloc_is_power_of_2(SMALL_GRADE_SHIFT), "");
+        static_assert(FINE_GRAINED_SHIFT >= LEAST_ALIGN_SHIFT, "");
+        static_assert(zmalloc_is_power_of_2(FINE_GRAINED_SHIFT), "");
         static_assert(BINMAP_SIZE == sizeof(u64) * 8, "");
         static_assert(DEFAULT_BLOCK_SIZE >= BIG_MAX_REQUEST + sizeof(block_type) + sizeof(chunk_type), "");
         static_assert(zmalloc_is_power_of_2(DEFAULT_BLOCK_SIZE), "");
@@ -233,14 +233,14 @@ namespace zsummer
         u64 alloc_total_bytes_;
         u64 free_total_bytes_;
 
-        u64 sale_total_count_;
-        u64 return_total_count_;
+        u64 alloc_block_count_;
+        u64 free_block_count_;
 
-        u64 sale_cache_count_;
-        u64 return_cache_count_;
+        u64 alloc_block_cached_;
+        u64 free_block_cached_;
 
-        u64 sale_real_bytes_;
-        u64 return_real_bytes_;
+        u64 alloc_block_bytes_;
+        u64 free_block_bytes_;
 
 
         u32 used_block_count_;
@@ -392,7 +392,7 @@ namespace zsummer
         static_assert(BIG_MAX_REQUEST + CHUNK_PADDING_SIZE + sizeof(free_chunk_type) * 2 + sizeof(block_type) <= DEFAULT_BLOCK_SIZE, "");
         static_assert(DEFAULT_BLOCK_SIZE >= 1024 * 4, "");
         static_assert(zmalloc_is_power_of_2(DEFAULT_BLOCK_SIZE), "");
-        sale_total_count_++;
+        alloc_block_count_++;
         bool dirct = flag & CHUNK_IS_DIRECT;
         if (!dirct)
         {
@@ -416,7 +416,7 @@ namespace zsummer
             {
                 reserve_block_list_ = NULL;
             }
-            sale_cache_count_++;
+            alloc_block_cached_++;
             CHECK_STATE(*this);
         }
         else
@@ -430,7 +430,7 @@ namespace zsummer
                 block = (block_type*)default_block_alloc(bytes);
             }
             
-            sale_real_bytes_ += bytes;
+            alloc_block_bytes_ += bytes;
         }
         if (block == NULL)
         {
@@ -501,7 +501,7 @@ namespace zsummer
             }
         }
         used_block_count_--;
-        return_total_count_++;
+        free_block_count_++;
 
         if (!zmalloc_has_chunk(zmalloc_get_chunk(block), CHUNK_IS_DIRECT) && reserve_block_count_ < max_reserve_block_count_)
         {
@@ -520,11 +520,11 @@ namespace zsummer
                 reserve_block_list_ = block;
             }
             CHECK_STATE(*this);
-            return_cache_count_++;
+            free_block_cached_++;
             return block->block_size;
         }
         CHECK_STATE(*this);
-        return_real_bytes_ += block->block_size;
+        free_block_bytes_ += block->block_size;
         if (block_free_)
         {
             return block_free_(block);
@@ -547,7 +547,7 @@ namespace zsummer
 
     void zmalloc::push_small_chunk(free_chunk_type* chunk)
     {
-        u32 bin_id = ((chunk->this_size - CHUNK_PADDING_SIZE) >> SMALL_GRADE_SHIFT);
+        u32 bin_id = ((chunk->this_size - CHUNK_PADDING_SIZE) >> FINE_GRAINED_SHIFT);
         if (bin_id >= BINMAP_SIZE)
         {
             bin_id = BINMAP_SIZE - 1;
@@ -622,12 +622,12 @@ namespace zsummer
         req_total_bytes_ += req_bytes;
         req_total_count_++;
         free_chunk_type* chunk = NULL;
-        if (req_bytes < SMALL_MAX_REQUEST - SMALL_GRADE_SIZE)
+        if (req_bytes < SMALL_MAX_REQUEST - FINE_GRAINED_SIZE)
         {
             constexpr u32 level = 0;
-            u32 padding = req_bytes < SMALL_GRADE_SIZE ? SMALL_GRADE_SIZE : (u32)req_bytes + SMALL_GRADE_MASK;
-            u32 small_id = padding >> SMALL_GRADE_SHIFT;
-            padding = (small_id << SMALL_GRADE_SHIFT) + CHUNK_PADDING_SIZE;
+            u32 padding = req_bytes < FINE_GRAINED_SIZE ? FINE_GRAINED_SIZE : (u32)req_bytes + FINE_GRAINED_MASK;
+            u32 small_id = padding >> FINE_GRAINED_SHIFT;
+            padding = (small_id << FINE_GRAINED_SHIFT) + CHUNK_PADDING_SIZE;
             u64 bitmap = bitmap_[level] >> small_id;
             if (bitmap & 0x3)
             {
@@ -682,10 +682,10 @@ namespace zsummer
             zmalloc_set_chunk(chunk, CHUNK_IS_IN_USED);
             chunk->fence = CHUNK_FENCE;
             chunk->bin_id = small_id;
-            //alloc_counter_[!CHUNK_IS_BIG][chunk->bin_id] ++;
+            alloc_counter_[!CHUNK_IS_BIG][chunk->bin_id] ++;
             //RECORD_ALLOC(ALLOC_ZMALLOC, req_bytes);
             //RECORD_REQ_ALLOC_BYTES(ALLOC_ZMALLOC, req_bytes, chunk->this_size);
-            //alloc_total_bytes_ += chunk->this_size;
+            alloc_total_bytes_ += chunk->this_size;
             return (void*)(zmalloc_u64_cast(chunk) + CHUNK_PADDING_SIZE);
         }
         //(1008~BIG_MAX_REQUEST)
@@ -710,7 +710,7 @@ namespace zsummer
 
             if (dv_[level])
             {
-                if (dv_[level]->this_size >= padding + SMALL_MAX_REQUEST + CHUNK_PADDING_SIZE)
+                if (dv_[level]->this_size >= padding + BIG_LEAST_SIZE)
                 {
                     chunk = exploit_new_chunk(dv_[level], padding);
                     goto BIG_RETURN;
@@ -739,7 +739,7 @@ namespace zsummer
                 }
             }
 
-            if (chunk->this_size >= padding + SMALL_MAX_REQUEST + CHUNK_PADDING_SIZE)
+            if (chunk->this_size >= padding + BIG_LEAST_SIZE)
             {
                 free_chunk_type* dv_chunk = chunk;
                 chunk = exploit_new_chunk(dv_chunk, padding);
@@ -759,7 +759,7 @@ namespace zsummer
             zmalloc_set_chunk(chunk, CHUNK_IS_IN_USED);
             chunk->fence = CHUNK_FENCE;
             chunk->bin_id = compress_id;
-            //alloc_counter_[CHUNK_IS_BIG][chunk->bin_id] ++;
+            alloc_counter_[CHUNK_IS_BIG][chunk->bin_id] ++;
             //RECORD_ALLOC(ALLOC_ZMALLOC, req_bytes);
             //RECORD_REQ_ALLOC_BYTES(ALLOC_ZMALLOC, req_bytes, chunk->this_size);
             alloc_total_bytes_ += chunk->this_size;
@@ -783,7 +783,6 @@ namespace zsummer
 
     u64 zmalloc::free_memory(void* addr)
     {
-        zmalloc& zstate = *this;
         if (addr == NULL)
         {
             //LogError() << "free null";
@@ -805,8 +804,8 @@ namespace zsummer
         }
 #endif
         //RECORD_FREE(ALLOC_ZMALLOC, chunk->this_size);
-        //free_total_count_++;
-        //free_total_bytes_ += chunk->this_size;
+        free_total_count_++;
+        free_total_bytes_ += chunk->this_size;
 
         u32 level = zmalloc_chunk_level(chunk);
         u64 bytes = chunk->this_size - CHUNK_PADDING_SIZE;
@@ -886,7 +885,6 @@ namespace zsummer
 
     void zmalloc::clear_cache()
     {
-        Summary();
         for (size_t i = 0; i < BITMAP_LEVEL; i++)
         {
             /**/
@@ -910,7 +908,7 @@ namespace zsummer
             block_type* release_block = reserve_block_list_;
             reserve_block_list_ = reserve_block_list_->next;
             reserve_block_count_--;
-            return_real_bytes_ += release_block->block_size;
+            free_block_bytes_ += release_block->block_size;
             if (block_free_)
             {
                 block_free_(release_block);
@@ -921,57 +919,54 @@ namespace zsummer
             }
             
         }
-        Summary();
     }
-    const char* zmalloc::SummaryStatic()
+    const char* zmalloc::debug_string()
     {
         static const size_t bufsz = 10 * 1024;
         static char buffer[bufsz] = { 0 };
         int used = 0;
-        int ret = snprintf(buffer, bufsz, "zmalloc summary: block size:%u, block cache:%u \n"
-            "used block:%u, cache block:%u, in hold:%0.4lfm, in used:%0.4lfm\n"
-            "sale total count:%.03lfk, return total count:%.03lfk\n"
-            "sale cache count:%.03lfk, return cache count:%.03lfk\n"
+        int ret = snprintf(buffer, bufsz, "zmalloc summary: block size:%u, max reserve block:%u \n"
+            "used block:%u, cur reserve block:%u, in hold:%0.4lfm, in real used:%0.4lfm\n"
+            "total alloc block count:%.03lfk, total free block count:%.03lfk\n"
+            "total alloc cache count:%.03lfk, total free cache count:%.03lfk\n"
             "total req count:%.03lfk, free count:%.03lfk\n"
             "total req:%.04lfm, total alloc:%.04lfm, total free:%.04lfm \n"
             "total sale:%.04lfm, total return:%.04lfm\n"
             "sale real:%.04lfm, return real:%.04lfm\n"
             "avg inner frag:%llu%%.\n",
             DEFAULT_BLOCK_SIZE, max_reserve_block_count_,
-            used_block_count_, reserve_block_count_, (sale_real_bytes_ - return_real_bytes_) / 1024.0 / 1024.0, (alloc_total_bytes_ - free_total_bytes_) / 1024.0 / 1024.0,
-            sale_total_count_ / 1000.0, return_total_count_ / 1000.0, sale_cache_count_ / 1000.0, return_cache_count_ / 1000.0,
+            used_block_count_, reserve_block_count_, (alloc_block_bytes_ - free_block_bytes_) / 1024.0 / 1024.0, (alloc_total_bytes_ - free_total_bytes_) / 1024.0 / 1024.0,
+            alloc_block_count_ / 1000.0, free_block_count_ / 1000.0, 
+            alloc_block_cached_ / 1000.0, free_block_cached_ / 1000.0,
             req_total_count_ / 1000.0, free_total_count_ / 1000.0,
             req_total_bytes_ / 1024.0 / 1024.0, alloc_total_bytes_ / 1024.0 / 1024.0, free_total_bytes_ / 1024.0 / 1024.0,
-            (sale_cache_count_ * DEFAULT_BLOCK_SIZE + sale_real_bytes_) / 1024.0 / 1024.0, (return_cache_count_ * DEFAULT_BLOCK_SIZE + return_real_bytes_) / 1024.0 / 1024.0,
-            sale_real_bytes_ / 1024.0 / 1024.0, return_real_bytes_ / 1024.0 / 1024.0,
+            (alloc_block_cached_ * DEFAULT_BLOCK_SIZE + alloc_block_bytes_) / 1024.0 / 1024.0, (free_block_cached_ * DEFAULT_BLOCK_SIZE + free_block_bytes_) / 1024.0 / 1024.0,
+            alloc_block_bytes_ / 1024.0 / 1024.0, free_block_bytes_ / 1024.0 / 1024.0,
             req_total_bytes_ * 100 / (alloc_total_bytes_ == 0 ? 1 : alloc_total_bytes_));
         u32 c = 0;
         while (ret > 0 && c < BINMAP_SIZE)
         {
             used += ret;
-            ret = snprintf(buffer + used, bufsz - used, "[%03u]\t[%u byte]:\t alloc:%llu  \tfree:%llu\n", c, ((c) << SMALL_GRADE_SHIFT), alloc_counter_[0][c], free_counter_[0][c]);
+            ret = snprintf(buffer + used, bufsz - used, "[%03u]\t[%u byte]:\t alloc:%llu  \tfree:%llu \tused:%llu\n", 
+                c, ((c) << FINE_GRAINED_SHIFT), alloc_counter_[0][c], free_counter_[0][c], alloc_counter_[0][c]- free_counter_[0][c]);
             c++;
         }
         c = 0;
         while (ret > 0 && c < BINMAP_SIZE)
         {
             used += ret;
-            u32 first = (c + 30) / 3;
-            u32 m = first - 2;
-            u64 bytes = (1ULL << first) + ((((u64)c + 30) % 3) << m);
-            if (bytes >= BIG_MAX_REQUEST)
+            u64 bytes = zmalloc_resolve_order_size(c);
+            if (bytes > BIG_MAX_REQUEST)
             {
                 break;
             }
-            ret = snprintf(buffer + used, bufsz - used, "[%03u]\t[%llu byte]:\t alloc:%llu  \tfree:%llu\n", c + BINMAP_SIZE, bytes, alloc_counter_[CHUNK_IS_BIG][c], free_counter_[CHUNK_IS_BIG][c]);
+            ret = snprintf(buffer + used, bufsz - used, "[%03u]\t[%llu byte]:\t alloc:%llu  \tfree:%llu \tused:%llu\n", 
+                c + 64, bytes, alloc_counter_[CHUNK_IS_BIG][c], free_counter_[CHUNK_IS_BIG][c], alloc_counter_[CHUNK_IS_BIG][c] - free_counter_[CHUNK_IS_BIG][c]);
             c++;
         }
         return buffer;
     }
-    void zmalloc::Summary()
-    {
-        //LOGFMTD("%s", SummaryStatic());
-    }
+
 
 
     #define ZMALLOC_ASSERT(expr, desc) if (!(expr)) \
@@ -1050,10 +1045,10 @@ namespace zsummer
             }
             else
             {
-                ZMALLOC_ASSERT((c->this_size - zmalloc::CHUNK_PADDING_SIZE) >= (u32)(c->bin_id) << zmalloc::SMALL_GRADE_SHIFT, "chunk size too large");
-                if (c->this_size < 63 * zmalloc_order_size(zmalloc::SMALL_GRADE_SHIFT) + zmalloc::CHUNK_PADDING_SIZE)
+                ZMALLOC_ASSERT((c->this_size - zmalloc::CHUNK_PADDING_SIZE) >= (u32)(c->bin_id) << zmalloc::FINE_GRAINED_SHIFT, "chunk size too large");
+                if (c->this_size < 63 * zmalloc_order_size(zmalloc::FINE_GRAINED_SHIFT) + zmalloc::CHUNK_PADDING_SIZE)
                 {
-                    ZMALLOC_ASSERT((c->this_size - zmalloc::CHUNK_PADDING_SIZE) < (u32)(c->bin_id + 1) << zmalloc::SMALL_GRADE_SHIFT, "chunk size too small");
+                    ZMALLOC_ASSERT((c->this_size - zmalloc::CHUNK_PADDING_SIZE) < (u32)(c->bin_id + 1) << zmalloc::FINE_GRAINED_SHIFT, "chunk size too small");
                 }
             }
         }
