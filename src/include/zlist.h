@@ -277,6 +277,11 @@ namespace zsummer
 
         void clear()
         {
+            if (std::is_trivial<_Ty>::value)
+            {
+                init();
+                return;
+            }
             erase(begin(), end());
         }
 
@@ -286,6 +291,8 @@ namespace zsummer
             insert(end(), max_size(), value);
         }
 
+
+    private:
         void init()
         {
             used_count_ = 0;
@@ -296,7 +303,6 @@ namespace zsummer
             data_[END_ID].fence = FENCE_VAL;
             used_head_id_ = END_ID;
         }
-    private:
         bool push_free_node(u32 id)
         {
             node_type& node = data_[id];
