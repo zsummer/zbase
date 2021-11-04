@@ -367,7 +367,7 @@ s32 ListBaseTest(A& a, VS& v)
 }
 
 
-s32 ArrayTest()
+s32 array_test()
 {
     for (int i = 0; i < MAX_SIZE; i++)
     {
@@ -551,7 +551,7 @@ s32 zlistBoundTest(ToTy to, FromTy from)
 
 #define Now() std::chrono::duration<double>(std::chrono::system_clock().now().time_since_epoch()).count()                                
 
-s32 ZListTest()
+s32 list_test()
 {
     zlist<int, 20> numbers = { 1,9,8,7 };
     AssertTest(numbers.size(), 4ULL, "");
@@ -626,7 +626,7 @@ s32 ZListTest()
     return 0;
 }
 
-s32 ZHashMapTest()
+s32 hash_map_test()
 {
     zhash_map<int, int, 2> hash = { {1,1}, {2,2}, {3,3}, {4,4} };
     AssertTest(hash.size(), 2U, "");
@@ -706,7 +706,7 @@ s32 ZSortInsertLine(C& c, size_t s)
 }
 
 template<class C>
-s32 ZContainCopyTest(C* ptr)
+s32 copy_test(C* ptr)
 {
     (void)ptr;
     void* test_addr = new char[sizeof(C)*2];
@@ -732,7 +732,7 @@ s32 ZContainCopyTest(C* ptr)
     return 0;
 }
 
-s32 ZSortInsertTest()
+s32 by_order_test()
 {
     if (true)
     {
@@ -756,7 +756,7 @@ s32 ZSortInsertTest()
     }
     return 0;
 }
-s32 ZObjPoolTest()
+s32 object_test()
 {
     std::unique_ptr<char[]> zspace(new char[zobj_pool<int>::static_buf_size(200U)]);
     ((zobj_pool<int>*)zspace.get())->init(200U, zobj_pool<int>::static_buf_size(200U));
@@ -838,15 +838,15 @@ s32 ZObjPoolTest()
     return 0;
 }
 
-s32 ContainerTest()
+s32 contiainer_base_test()
 {
-    AssertTest(ArrayTest(), 0, " ArrayTest()");
-    AssertTest(ZListTest(), 0, " ZListTest()");
-    AssertTest(ZSortInsertTest(), 0, " ZSortInsertTest()");
-    AssertTest(ZContainCopyTest((zlist<size_t, 100>*)NULL), 0, "ZContainCopyTest((zlist<size_t, 100>*)NULL)");
-    AssertTest(ZContainCopyTest((zarray<size_t, 100>*)NULL), 0, "ZContainCopyTest((zarray<size_t, 100>*)NULL)");
-    AssertTest(ZHashMapTest(), 0, " ZHashMapTest()");
-    AssertTest(ZObjPoolTest(), 0, " ZObjPoolTest()");
+    AssertTest(array_test(), 0, " array_test()");
+    AssertTest(list_test(), 0, " list_test()");
+    AssertTest(by_order_test(), 0, " by_order_test()");
+    AssertTest(copy_test((zlist<size_t, 100>*)NULL), 0, "copy_test((zlist<size_t, 100>*)NULL)");
+    AssertTest(copy_test((zarray<size_t, 100>*)NULL), 0, "copy_test((zarray<size_t, 100>*)NULL)");
+    AssertTest(hash_map_test(), 0, " hash_map_test()");
+    AssertTest(object_test(), 0, " object_test()");
     return 0;
 }
 
