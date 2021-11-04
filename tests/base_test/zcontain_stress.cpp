@@ -505,6 +505,7 @@ s32 ContainerStress()
     MapStressWrap<std::map<int, RAIIVal<>>, RAIIVal<>, false>();
     MapStressWrap<std::unordered_map<int, RAIIVal<>>, RAIIVal<>, false>();
     MapStressWrap<zhash_map<int, RAIIVal<>, LOAD_CAPACITY>, RAIIVal<>, true>();
+    MapStressWrap<zhash_map<int, RAIIVal<>, LOAD_CAPACITY, zhash<int>>, RAIIVal<>, true>();
 
     MapDestroyWrap<std::map<int, RAIIVal<>>, RAIIVal<>, false>();
     MapDestroyWrap<std::unordered_map<int, RAIIVal<>>, RAIIVal<>, false>();

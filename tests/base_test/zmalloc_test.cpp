@@ -78,10 +78,15 @@ s32 zmalloc_stress()
     {
         u32 test_size = rand_array[i] % (zmalloc::DEFAULT_BLOCK_SIZE / 2);
         void* p = global_zmalloc(test_size);
+        buffers->push_back(p);
         global_zfree(p);
+        if (buffers->full())
+        {
+            buffers->clear();
+        }
     }
     PROF_OUTPUT_MULTI_COUNT_CPU("global_zfree(global_zmalloc(0~2M))", rand_size, cost.stop_and_save().cycles());
-
+    buffers->clear();
 
     for (size_t loop= 0; loop < 40; loop++)
     {
@@ -93,7 +98,10 @@ s32 zmalloc_stress()
             buffers->push_back(p);
         }
         PROF_OUTPUT_MULTI_COUNT_CPU("global_zmalloc(0~512k)", buffers->size(), cost.stop_and_save().cycles());
-        LogDebug() << zmalloc::instance().debug_string();
+        if (loop < 2 || loop >37)
+        {
+            LogDebug() << zmalloc::instance().debug_string();
+        }
         PROF_START_COUNTER(cost);
         for (auto p : *buffers)
         {
@@ -110,35 +118,56 @@ s32 zmalloc_stress()
         {
             u32 test_size = rand_array[i] % (zmalloc::BIG_MAX_REQUEST);
             test_size = test_size == 0 ? 1 : test_size;
-            void* p = new char[test_size];
+            void* p = malloc(test_size);
             buffers->push_back(p);
         }
         PROF_OUTPUT_MULTI_COUNT_CPU("sys malloc(0~512k)", buffers->size(), cost.stop_and_save().cycles());
+        zstate->check_health();
         PROF_START_COUNTER(cost);
         for (auto p : *buffers)
         {
-            delete p;
+            free(p);
         }
         PROF_OUTPUT_MULTI_COUNT_CPU("sys free(0~512k)", buffers->size(), cost.stop_and_save().cycles());
         buffers->clear();
-    }
-
-
-
-    for (u64 i = 0; i < zmalloc::BIG_MAX_REQUEST * 2; i++)
-    {
-        u32 rand_size = rand_array[i] % (zmalloc::DEFAULT_BLOCK_SIZE * 2);
-        void* p = global_zmalloc(rand_size);
-        memset(p, 0, rand_size);
-        global_zfree(p);
         zstate->check_health();
     }
 
+
+    LogDebug() << "check health";
+    buffers->clear();
+
+    for (size_t loop = 0; loop < 40; loop++)
+    {
+        for (u64 i = cover_size / 20 * loop; i < cover_size / 20 * (loop + 1); i++)
+        {
+            u32 test_size = rand_array[i] % (zmalloc::BIG_MAX_REQUEST);
+            void* p = global_zmalloc(test_size);
+            if (test_size < 64)
+            {
+                memset(p, 0, test_size);
+            }
+            else
+            {
+                *(u64*)p = 0;
+                *(((u64*)p) + test_size / 8 - 1) = 0;
+            }
+            buffers->push_back(p);
+        }
+        zstate->check_health();
+        for (auto p : *buffers)
+        {
+            global_zfree(p);
+        }
+        zstate->check_health();
+        buffers->clear();
+    }
     void* pz = global_zmalloc(0);
     zstate->check_health();
     global_zfree(pz);
 
     zstate->clear_cache();
+    LogDebug() << "check health finish";
     AssertTest(zstate->used_block_count_ + zstate->reserve_block_count_, 0U, "");
     delete[]rand_array;
     return 0;
