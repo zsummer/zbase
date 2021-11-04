@@ -6,7 +6,7 @@
 #define ZCONTAIN_TEST_H
 
 
-s32 ContainerTest();
+s32 contiainer_base_test();
 
 
 
