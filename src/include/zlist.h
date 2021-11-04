@@ -183,7 +183,8 @@ namespace zsummer
 
         static const u64 FENCE_VAL = 0xdeadbeafdeadbeafULL;
         static const u64 MAX_SIZE = _Size;
-
+        static const u64 LIST_SIZE = _Size + 1;
+        static const u64 END_ID = _Size;
         using iterator = zlist_iterator<zlist<_Ty, _Size>>;
         using const_iterator = const_zlist_iterator<zlist<_Ty, _Size>>;
 
@@ -204,7 +205,7 @@ namespace zsummer
 
         zlist()
         {
-            init(_Size);
+            init();
         }
         ~zlist()
         {
@@ -216,7 +217,7 @@ namespace zsummer
 
         zlist(std::initializer_list<_Ty> init_list)
         {
-            init(_Size);
+            init();
             assign(init_list.begin(), init_list.end());
         }
         zlist<_Ty, _Size>& operator = (const zlist<_Ty, _Size>& other)
@@ -232,13 +233,13 @@ namespace zsummer
 
 
         //std::array api
-        iterator begin() noexcept { return iterator(&data_[0], used_id_); }
-        const_iterator begin() const noexcept { return const_iterator(&data_[0], used_id_); }
-        const_iterator cbegin() const noexcept { return const_iterator(&data_[0], used_id_); }
+        iterator begin() noexcept { return iterator(&data_[0], used_head_id_); }
+        const_iterator begin() const noexcept { return const_iterator(&data_[0], used_head_id_); }
+        const_iterator cbegin() const noexcept { return const_iterator(&data_[0], used_head_id_); }
 
-        iterator end() noexcept { return iterator(&data_[0], end_id_); }
-        const_iterator end() const noexcept { return const_iterator(&data_[0], end_id_); }
-        const_iterator cend() const noexcept { return const_iterator(&data_[0], end_id_); }
+        iterator end() noexcept { return iterator(&data_[0], END_ID); }
+        const_iterator end() const noexcept { return const_iterator(&data_[0], END_ID); }
+        const_iterator cend() const noexcept { return const_iterator(&data_[0], END_ID); }
 
         reverse_iterator rbegin() noexcept { return reverse_iterator(end()); }
         const_reverse_iterator rbegin() const noexcept { return const_reverse_iterator(end()); }
@@ -249,16 +250,16 @@ namespace zsummer
         const_reverse_iterator crend() const noexcept { return const_reverse_iterator(begin()); }
 
 
-        reference front() { return *node_cast(data_[used_id_]); }
-        const_reference front() const { return *node_cast(data_[used_id_]); }
-        reference back() { return *node_cast(data_[data_[end_id_].front]); }
-        const_reference back() const { *node_cast(data_[data_[end_id_].front]); }
+        reference front() { return *node_cast(data_[used_head_id_]); }
+        const_reference front() const { return *node_cast(data_[used_head_id_]); }
+        reference back() { return *node_cast(data_[data_[END_ID].front]); }
+        const_reference back() const { *node_cast(data_[data_[END_ID].front]); }
 
         static constexpr u32 static_buf_size(u32 obj_count) { return sizeof(zlist<_Ty, 1>) + sizeof(node_type) *( obj_count -1); }
 
 
         const size_type size() const noexcept { return used_count_; }
-        const size_type max_size()  const noexcept { return end_id_; }
+        const size_type max_size()  const noexcept { return END_ID; }
         const bool empty() const noexcept { return !used_count_; }
         const bool full() const noexcept { return size() == max_size(); }
         size_type capacity() const { return max_size(); }
@@ -285,19 +286,18 @@ namespace zsummer
             insert(end(), max_size(), value);
         }
 
-        void init(u32 real_size)
+        void init()
         {
-            end_id_ = real_size;
             used_count_ = 0;
             free_id_ = 0;
-            for (u32 i = 0; i < real_size + 1; i++)
+            for (u32 i = 0; i < LIST_SIZE; i++)
             {
                 data_[i].next = (u32)i + 1;
                 data_[i].fence = FENCE_VAL;
-                data_[i].front = end_id_;
+                data_[i].front = END_ID;
             }
-            data_[end_id_].next = end_id_;
-            used_id_ = end_id_;
+            data_[END_ID].next = END_ID;
+            used_head_id_ = END_ID;
         }
     private:
         bool push_free_node(u32 id)
@@ -305,7 +305,7 @@ namespace zsummer
             node_type& node = data_[id];
             node.fence = FENCE_VAL;
             node.next = free_id_;
-            node.front = end_id_;
+            node.front = END_ID;
             free_id_ = id;
             return true;
         }
@@ -313,7 +313,7 @@ namespace zsummer
 
         bool pick_used_node(u32 id)
         {
-            if (id >= end_id_)
+            if (id >= END_ID)
             {
                 return false;
             }
@@ -326,7 +326,7 @@ namespace zsummer
             {
                 return false;
             }
-            if (used_id_ >= end_id_)
+            if (used_head_id_ >= END_ID)
             {
                 return false; //empty
             }
@@ -335,10 +335,10 @@ namespace zsummer
                 node_cast(node)->~_Ty();
             }
 
-            if (used_id_ == id)
+            if (used_head_id_ == id)
             {
-                used_id_ = node.next;
-                data_[used_id_].front = end_id_;
+                used_head_id_ = node.next;
+                data_[used_head_id_].front = END_ID;
             }
             else
             {
@@ -361,9 +361,9 @@ namespace zsummer
         {
             data_[new_id].next = pos_id;
             data_[new_id].front = data_[pos_id].front;
-            if (pos_id == used_id_)
+            if (pos_id == used_head_id_)
             {
-                used_id_ = new_id;
+                used_head_id_ = new_id;
             }
             else
             {
@@ -377,9 +377,9 @@ namespace zsummer
         template<class T = _Ty>
         u32 inject(u32 id, const _Ty & value, typename std::enable_if<std::is_trivial<T>::value>::type* = 0)
         {
-            if (free_id_ >= end_id_)
+            if (free_id_ >= END_ID)
             {
-                return end_id_;
+                return END_ID;
             }
             u32 new_id = free_id_;
             free_id_ = data_[new_id].next;
@@ -391,9 +391,9 @@ namespace zsummer
         template<class T = _Ty, typename std::enable_if < !std::is_trivial<T>{}, int > ::type = 0 >
         u32 inject(u32 id, const _Ty& value)
         {
-            if (free_id_ >= end_id_)
+            if (free_id_ >= END_ID)
             {
-                return end_id_;
+                return END_ID;
             }
             u32 new_id = free_id_;
             free_id_ = data_[new_id].next;
@@ -406,9 +406,9 @@ namespace zsummer
         template< class... Args >
         u32 inject_emplace(u32 id, Args&&... args)
         {
-            if (free_id_ >= end_id_)
+            if (free_id_ >= END_ID)
             {
-                return end_id_;
+                return END_ID;
             }
             u32 new_id = free_id_;
             free_id_ = data_[new_id].next;
@@ -469,10 +469,10 @@ namespace zsummer
         }
 
 
-        void push_back(const _Ty& value) { inject(end_id_, value); }
-        bool pop_back() { return release_used_node(data_[end_id_].front); }
-        void push_front(const _Ty& value) { inject(used_id_, value); }
-        bool pop_front() { return release_used_node(used_id_); }
+        void push_back(const _Ty& value) { inject(END_ID, value); }
+        bool pop_back() { return release_used_node(data_[END_ID].front); }
+        void push_front(const _Ty& value) { inject(used_head_id_, value); }
+        bool pop_front() { return release_used_node(used_head_id_); }
 
         iterator erase(iterator pos)
         {
@@ -536,9 +536,8 @@ namespace zsummer
     private:
         u32 used_count_;
         u32 free_id_;
-        u32 used_id_;
-        u32 end_id_;
-        node_type data_[_Size + 1];
+        u32 used_head_id_;
+        node_type data_[LIST_SIZE];
     };
 
     template<class _Ty, size_t _Size>
