@@ -287,6 +287,13 @@ namespace zsummer
 
         void clear()
         {
+            if (std::is_trivial<_Ty>::value)
+            {
+                space_type *ds = dync_space_ ;
+                init();
+                dync_space_ = ds;
+                return;
+            }
             erase(begin(), end());
         }
 
@@ -296,6 +303,8 @@ namespace zsummer
             insert(end(), max_size(), value);
         }
 
+
+    private:
         void init()
         {
             used_count_ = 0;
@@ -308,7 +317,6 @@ namespace zsummer
             used_head_id_ = END_ID;
             dync_space_ = NULL;
         }
-    private:
         bool push_free_node(u32 id)
         {
             node_type& node = data_[id];
