@@ -261,7 +261,7 @@ namespace zsummer
         const size_type size() const noexcept { return used_count_; }
         const size_type max_size()  const noexcept { return END_ID; }
         const bool empty() const noexcept { return !used_count_; }
-        const bool full() const noexcept { return size() == max_size(); }
+        const bool full() const noexcept { return free_id_ == END_ID && exploit_offset_ >= END_ID; }
         size_type capacity() const { return max_size(); }
         const node_type* data() const noexcept { return data_; }
         const bool is_valid_node(void* addr) const noexcept
@@ -289,14 +289,11 @@ namespace zsummer
         void init()
         {
             used_count_ = 0;
-            free_id_ = 0;
-            for (u32 i = 0; i < LIST_SIZE; i++)
-            {
-                data_[i].next = (u32)i + 1;
-                data_[i].fence = FENCE_VAL;
-                data_[i].front = END_ID;
-            }
+            free_id_ = END_ID;
+            exploit_offset_ = 0;
             data_[END_ID].next = END_ID;
+            data_[END_ID].front = END_ID;
+            data_[END_ID].fence = FENCE_VAL;
             used_head_id_ = END_ID;
         }
     private:
@@ -309,7 +306,24 @@ namespace zsummer
             free_id_ = id;
             return true;
         }
-
+        u32 pop_free_node()
+        {
+            if (free_id_ != END_ID)
+            {
+                u32 new_id = free_id_;
+                free_id_ = data_[new_id].next;
+                data_[new_id].fence = FENCE_VAL;
+                return new_id;
+            }
+            if (exploit_offset_ < END_ID)
+            {
+                u32 new_id = exploit_offset_++;
+                data_[new_id].fence = FENCE_VAL;
+                data_[new_id + 1].fence = FENCE_VAL;
+                return new_id;
+            }
+            return END_ID;
+        }
 
         bool pick_used_node(u32 id)
         {
@@ -377,12 +391,11 @@ namespace zsummer
         template<class T = _Ty>
         u32 inject(u32 id, const _Ty & value, typename std::enable_if<std::is_trivial<T>::value>::type* = 0)
         {
-            if (free_id_ >= END_ID)
+            u32 new_id = pop_free_node();
+            if (new_id == END_ID)
             {
                 return END_ID;
             }
-            u32 new_id = free_id_;
-            free_id_ = data_[new_id].next;
             inject(id, new_id);
             *node_cast(data_[new_id]) = value;
             return new_id;
@@ -391,12 +404,11 @@ namespace zsummer
         template<class T = _Ty, typename std::enable_if < !std::is_trivial<T>{}, int > ::type = 0 >
         u32 inject(u32 id, const _Ty& value)
         {
-            if (free_id_ >= END_ID)
+            u32 new_id = pop_free_node();
+            if (new_id == END_ID)
             {
                 return END_ID;
             }
-            u32 new_id = free_id_;
-            free_id_ = data_[new_id].next;
             inject(id, new_id);
             new (&data_[new_id].space) _Ty(value);
             return new_id;
@@ -406,12 +418,11 @@ namespace zsummer
         template< class... Args >
         u32 inject_emplace(u32 id, Args&&... args)
         {
-            if (free_id_ >= END_ID)
+            u32 new_id = pop_free_node();
+            if (new_id == END_ID)
             {
                 return END_ID;
             }
-            u32 new_id = free_id_;
-            free_id_ = data_[new_id].next;
             inject(id, new_id);
             new (&data_[new_id].space) _Ty(args ...);
             return new_id;
@@ -536,6 +547,7 @@ namespace zsummer
     private:
         u32 used_count_;
         u32 free_id_;
+        u32 exploit_offset_;
         u32 used_head_id_;
         node_type data_[LIST_SIZE];
     };
