@@ -450,102 +450,6 @@ s32 array_test()
 
 
 
-template<typename _Ty, typename ToTy, typename FromTy>
-s32 zlistBoundTest(ToTy to, FromTy from)
-{
-    using meta_list = zlist<_Ty, 0>;
-    constexpr u32 obj_count = 100;
-    constexpr u32 buf_size = meta_list::static_buf_size(obj_count);
-
-    //std::unique_ptr<char> zbuf11 = std::make_unique<char>(buf_size);
-    //std::unique_ptr<char> zbuf22 = std::make_unique<char>(buf_size);
-    //char* zbuf1 = zbuf11.get();
-    //char* zbuf2 = zbuf22.get();
-
-    //char zbuf1[buf_size];
-    //char zbuf2[buf_size];
-    //memset(zbuf1, 0, buf_size);
-    //memset(zbuf2, 0, buf_size);
-    char* large = new char[sizeof(u64) * 3 + buf_size * 2];
-    u64* fence[3] = { (u64*)large, (u64*)(large + sizeof(u64) + buf_size), (u64*)(large + sizeof(u64) * 2 + buf_size * 2) };
-    *fence[0] = meta_list::FENCE_VAL;
-    *fence[1] = meta_list::FENCE_VAL;
-    *fence[2] = meta_list::FENCE_VAL;
-    meta_list* p1 = (meta_list*)(large + sizeof(u64));
-    meta_list* p2 = (meta_list*)(large + sizeof(u64) * 2 + buf_size);
-    p1->init(obj_count);
-    for (u32 i = 0; i < obj_count; i++)
-    {
-        p1->push_back(to(i));
-    }
-    if (std::is_trivial<_Ty>::value)
-    {
-#if __GNUG__ && __GNUC__ >= 5
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wclass-memaccess"
-#endif
-        memcpy(p2, p1, buf_size);
-#if __GNUG__ && __GNUC__ >= 5
-#pragma GCC diagnostic pop
-#endif
-        
-    }
-    else
-    {
-        p2->init(obj_count);
-        p2->assign(p1->begin(), p1->end());
-    }
-    
-    AssertTest(p2->size(), p1->size(), "");
-    AssertTest(p2->size(), obj_count, "");
-    for (u32 i = 0; i < 100; i++)
-    {
-        if (from(p2->front()) != i)
-        {
-            AssertTest(1, 0, "");
-        }
-        p2->pop_front();
-    }
-    p2->clear();
-    if (std::is_trivial<_Ty>::value)
-    {
-#if __GNUG__ && __GNUC__ >= 5
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wclass-memaccess"
-#endif
-        memcpy(p2, p1, buf_size);
-#if __GNUG__ && __GNUC__ >= 5
-#pragma GCC diagnostic pop
-#endif
-        
-    }
-    else
-    {
-        *p2 = *p1;
-    }
-    AssertTest(p2->size(), p1->size(), "");
-    AssertTest(p2->size(), obj_count, "");
-    for (u32 i = 0; i < 100; i++)
-    {
-        if (from(p2->front()) != i)
-        {
-            AssertTest(1, 0, "");
-        }
-        p2->pop_front();
-    }
-    p2->clear();
-    p1->clear();
-    for (u32 i = 0; i < 3; i++)
-    {
-        AssertTest(*fence[i], meta_list::FENCE_VAL, "");
-    }
-    static_assert(meta_list::static_buf_size(0) == sizeof(meta_list), "");
-    static_assert(meta_list::static_buf_size(100) == sizeof(zlist<_Ty, 100>), "");
-    static_assert(zlist<std::string, 0>::static_buf_size(0) == sizeof(zlist<std::string, 0>), "");
-    static_assert(zlist<std::string, 0>::static_buf_size(1) == sizeof(zlist<std::string, 1>), "");
-    static_assert(zlist<std::string, 0>::static_buf_size(5) == sizeof(zlist<std::string, 5>), "");
-    return 0;
-}
 
 
 
@@ -594,8 +498,6 @@ s32 list_test()
     AssertTest(clear_test.size(), 0ULL, "");
 
 
-    zlistBoundTest<int>([](u32 v) {return (int)v; }, [](int v) {return (u32)v; }); 
-    zlistBoundTest<std::string>([](int v) {return std::to_string(v); }, [](std::string v)->u32 {return std::stoi(v); });
 
     
     zlist<int, 100> bound_test;

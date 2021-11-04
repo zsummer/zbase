@@ -24,7 +24,7 @@
 
 #ifndef  ZMALLOC_H
 #define ZMALLOC_H
-
+#define ZMALLOC_OPEN_FENCE 1
 
 #ifdef WIN32
 /*

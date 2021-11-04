@@ -56,7 +56,7 @@ namespace zsummer
             space_type space;
         };
 
-        u32 used_id_;
+        u32 used_head_id_;
         u32 used_count_;
         u32 free_id_;
         u32 end_id_;
@@ -89,7 +89,7 @@ namespace zsummer
 
 
             end_id_ = real_size;
-            used_id_ = end_id_;
+            used_head_id_ = end_id_;
             free_id_ = 0;
             used_count_ = 0;
             Node* data = (Node*)&space_[node_begin_];
@@ -109,12 +109,12 @@ namespace zsummer
         void clear()
         {
             Node* data = (Node*)&space_[node_begin_];
-            while (used_id_ != end_id_)
+            while (used_head_id_ != end_id_)
             {
-                _Ty*  pty = reinterpret_cast<_Ty*>(&data[used_id_].space);
+                _Ty*  pty = reinterpret_cast<_Ty*>(&data[used_head_id_].space);
                 pty->~_Ty();
-                u32 free_id = used_id_;
-                used_id_ = data[used_id_].next;
+                u32 free_id = used_head_id_;
+                used_head_id_ = data[used_head_id_].next;
                 data[free_id].next = free_id_;
                 free_id_ = free_id;
                 unset_bitmap(free_id);
@@ -134,10 +134,10 @@ namespace zsummer
             }
             u32 new_id = free_id_;
             free_id_ = data[free_id_].next;
-            data[new_id].next = used_id_;
+            data[new_id].next = used_head_id_;
             data[new_id].front = end_id_;
-            data[used_id_].front = new_id;
-            used_id_ = new_id;
+            data[used_head_id_].front = new_id;
+            used_head_id_ = new_id;
             used_count_++;
 
             new (&data[new_id].space) _Ty(args ...);
@@ -163,9 +163,9 @@ namespace zsummer
             obj->~_Ty();
             unset_bitmap(free_id);
             data[data[free_id].next].front = data[free_id].front;
-            if (free_id == used_id_)
+            if (free_id == used_head_id_)
             {
-                used_id_ = data[free_id].next;
+                used_head_id_ = data[free_id].next;
             }
             else
             {
@@ -184,7 +184,7 @@ namespace zsummer
             {
                 Node* data = (Node*)&space_[node_begin_];
                 std::unique_ptr<_Ty> temp_obj = std::make_unique<_Ty>();
-                u32 used_id = used_id_;
+                u32 used_id = used_head_id_;
                 while (used_id != end_id_)
                 {
                     *(u64*)data[used_id].space = *(u64*)temp_obj.get();
