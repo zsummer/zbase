@@ -6,7 +6,7 @@
 #define ZMALLOC_STRESS_H
 
 
-s32 ZMallocTest();
+s32 zmalloc_test();
 
 
 
