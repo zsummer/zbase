@@ -262,7 +262,7 @@ namespace zsummer
         const size_type size() const noexcept { return used_count_; }
         const size_type max_size()  const noexcept { return MAX_SIZE; }
         const bool empty() const noexcept { return !used_count_; }
-        const bool full() const noexcept { return size() == max_size(); }
+        const bool full() const noexcept { return free_id_ == END_ID && exploit_offset_ >= END_ID; }
         size_type capacity() const { return max_size(); }
         const node_type* data() const noexcept { return data_; }
         const bool is_valid_node(void* addr) const noexcept
@@ -298,14 +298,11 @@ namespace zsummer
         void init()
         {
             used_count_ = 0;
-            free_id_ = 0;
-            for (u32 i = 0; i < _Size + 1; i++)
-            {
-                data_[i].next = (u32)i + 1;
-                data_[i].front = END_ID;
-                data_[i].space = NULL;
-            }
+            free_id_ = END_ID;
+            exploit_offset_ = 0;
             data_[END_ID].next = END_ID;
+            data_[END_ID].front = END_ID;
+            data_[END_ID].space = NULL;
             used_head_id_ = END_ID;
             dync_space_ = NULL;
         }
@@ -318,7 +315,31 @@ namespace zsummer
             free_id_ = id;
             return true;
         }
-
+        u32 pop_free_node()
+        {
+            if (free_id_ != END_ID)
+            {
+                u32 new_id = free_id_;
+                free_id_ = data_[free_id_].next;
+                return new_id;
+            }
+            if (exploit_offset_ < END_ID)
+            {
+                u32 new_id = exploit_offset_++;
+                if (new_id < _FixedSize)
+                {
+                    data_[new_id].space = &fixed_space_[new_id];
+                    return new_id;
+                }
+                if (dync_space_ == NULL)
+                {
+                    dync_space_ = new space_type[_Size - _FixedSize];
+                }
+                data_[new_id].space = &dync_space_[new_id - _FixedSize];
+                return new_id;
+            }
+            return END_ID;
+        }
 
         bool pick_used_node(u32 id)
         {
@@ -349,7 +370,7 @@ namespace zsummer
             used_count_--;
             return true;
         }
-        bool release_used_node(u32 id)
+        bool pick_and_release_used_node(u32 id)
         {
             if (pick_used_node(id))
             {
@@ -376,24 +397,14 @@ namespace zsummer
         }
         u32 inject(u32 id, const _Ty& value)
         {
-            if (free_id_ >= END_ID || free_id_ >= _Size)
+            if (full())
             {
                 return END_ID;
             }
-            u32 new_id = free_id_;
-            free_id_ = data_[new_id].next;
-
-            if (new_id >= _FixedSize)
+            u32 new_id = pop_free_node();
+            if (new_id == END_ID)
             {
-                if (dync_space_ == NULL)
-                {
-                    dync_space_ = new space_type[_Size - _FixedSize];
-                }
-                data_[new_id].space = &dync_space_[new_id - _FixedSize];
-            }
-            else
-            {
-                data_[new_id].space = &fixed_space_[new_id];
+                return END_ID;
             }
             inject(id, new_id);
             new (data_[new_id].space) _Ty(value);
@@ -402,25 +413,15 @@ namespace zsummer
         template< class... Args >
         u32 inject_emplace(u32 id, Args&&... args)
         {
-            if (free_id_ >= END_ID || free_id_ >= _Size)
+            if (full())
             {
                 return END_ID;
             }
-            u32 new_id = free_id_;
-            free_id_ = data_[new_id].next;
-            if (new_id >= _FixedSize)
+            u32 new_id = pop_free_node();
+            if (new_id == END_ID)
             {
-                if (dync_space_ == NULL)
-                {
-                    dync_space_ = new space_type[_Size - _FixedSize ];
-                }
-                data_[new_id].space = &dync_space_[new_id - _FixedSize];
+                return END_ID;
             }
-            else
-            {
-                data_[new_id].space = &fixed_space_[new_id];
-            }
-
             inject(id, new_id);
             new (data_[new_id].space) _Ty(args ...);
             return new_id;
@@ -479,15 +480,15 @@ namespace zsummer
 
 
         void push_back(const _Ty& value) { inject(END_ID, value); }
-        bool pop_back() { return release_used_node(data_[END_ID].front); }
+        bool pop_back() { return pick_and_release_used_node(data_[END_ID].front); }
         void push_front(const _Ty& value) { inject(used_head_id_, value); }
-        bool pop_front() { return release_used_node(used_head_id_); }
+        bool pop_front() { return pick_and_release_used_node(used_head_id_); }
 
         iterator erase(iterator pos)
         {
             u32 pos_id = pos.id_;
             pos++;
-            if (!release_used_node(pos_id))
+            if (!pick_and_release_used_node(pos_id))
             {
                 pos = end();
             }
@@ -545,6 +546,7 @@ namespace zsummer
     private:
         u32 used_count_;
         u32 free_id_;
+        u32 exploit_offset_;
         u32 used_head_id_;
 
         node_type data_[LIST_SIZE];
