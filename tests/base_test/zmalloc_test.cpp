@@ -25,7 +25,8 @@ s32 zmalloc_stress()
     u32* rand_array = new u32[rand_size];
     static const u32 cover_size = zmalloc::BIG_MAX_REQUEST;
     using Addr = void*;
-    zarray <Addr, cover_size> *buffers = new zarray <Addr, cover_size>();
+    zarray <Addr, cover_size>* buffers = new zarray <Addr, cover_size>();
+    zarray <Addr, cover_size>* buffers2 = new zarray <Addr, cover_size>();
 
     for (u32 i = 0; i < zmalloc::DEFAULT_BLOCK_SIZE; i++)
     {
@@ -91,7 +92,7 @@ s32 zmalloc_stress()
     for (size_t loop= 0; loop < 40; loop++)
     {
         PROF_START_COUNTER(cost);
-        for (u64 i = cover_size/20 * loop; i < cover_size / 20 * (loop+1); i++)
+        for (u64 i = cover_size/ 40 * loop; i < cover_size / 40 * (loop+1); i++)
         {
             u32 test_size = rand_array[i] % (zmalloc::BIG_MAX_REQUEST);
             void* p = global_zmalloc(test_size);
@@ -111,10 +112,14 @@ s32 zmalloc_stress()
         buffers->clear();
     }
 
-    for (size_t loop = 0; loop < 40; loop++)
+    for (size_t loop = 0; loop < 40; loop++) //系统分配太慢了 只
     {
+        if (loop%2 == 0 && loop != 0)
+        {
+            continue;//系统分配太慢了  不需要覆盖性测试  删除一半数据. 
+        }
         PROF_START_COUNTER(cost);
-        for (u64 i = cover_size / 20 * loop; i < cover_size / 20 * (loop + 1); i++)
+        for (u64 i = cover_size / 40 * loop; i < cover_size / 40 * (loop + 1); i++)
         {
             u32 test_size = rand_array[i] % (zmalloc::BIG_MAX_REQUEST);
             test_size = test_size == 0 ? 1 : test_size;
@@ -132,6 +137,102 @@ s32 zmalloc_stress()
         buffers->clear();
         zstate->check_health();
     }
+    if (true)
+    {
+        buffers->clear();
+        buffers2->clear();
+        PROF_START_COUNTER(cost);
+        u64 alloc_count = 0;
+        u64 free_count = 0;
+        for (u64 i = 0; i < cover_size; i++)
+        {
+            u32 push_size1 = rand_array[i] % (2048);
+            u32 push_size2 = rand_array[cover_size - i] % (2048);
+            if ((push_size1 + push_size2) % 3 == 0 || buffers->full())
+            {
+                if (!buffers->empty())
+                {
+                    global_zfree(buffers->back());
+                    buffers->pop_back();
+                    free_count++;
+                }
+            }
+            if ((push_size1 + push_size2) % 7 == 0 || buffers2->full())
+            {
+                if (!buffers2->empty())
+                {
+                    global_zfree(buffers2->back());
+                    buffers2->pop_back();
+                    free_count++;
+                }
+            }
+
+            buffers->push_back(global_zmalloc(push_size1));
+            buffers2->push_back(global_zmalloc(push_size2));
+            alloc_count += 2;
+        }
+        PROF_OUTPUT_MULTI_COUNT_CPU("rand zmalloc/zfree(0~2k)", alloc_count + free_count, cost.stop_and_save().cycles());
+        zstate->check_health();
+        LogDebug() << zmalloc::instance().debug_string();
+        for (auto p : *buffers)
+        {
+            global_zfree(p);
+        }
+        for (auto p : *buffers2)
+        {
+            global_zfree(p);
+        }
+        buffers->clear();
+        buffers2->clear();
+    }
+    
+    if (true)
+    {
+        buffers->clear();
+        buffers2->clear();
+        PROF_START_COUNTER(cost);
+        u64 alloc_count = 0;
+        u64 free_count = 0;
+        for (u64 i = 0; i < cover_size; i++)
+        {
+            u32 push_size1 = rand_array[i] % (2048) + 1;
+            u32 push_size2 = rand_array[cover_size - i] % (2048) + 1;
+            if ((push_size1 + push_size2) % 3 == 0 || buffers->full())
+            {
+                if (!buffers->empty())
+                {
+                    free(buffers->back());
+                    buffers->pop_back();
+                    free_count++;
+                }
+            }
+            if ((push_size1 + push_size2) % 7 == 0 || buffers2->full())
+            {
+                if (!buffers2->empty())
+                {
+                    free(buffers2->back());
+                    buffers2->pop_back();
+                    free_count++;
+                }
+            }
+
+            buffers->push_back(malloc(push_size1));
+            buffers2->push_back(malloc(push_size2));
+            alloc_count += 2;
+        }
+        PROF_OUTPUT_MULTI_COUNT_CPU("rand sys malloc/free(0~2k)", alloc_count + free_count, cost.stop_and_save().cycles());
+        for (auto p : *buffers)
+        {
+            free(p);
+        }
+        for (auto p : *buffers2)
+        {
+            free(p);
+        }
+        buffers->clear();
+        buffers2->clear();
+    }
+
 
 
     LogDebug() << "check health";
