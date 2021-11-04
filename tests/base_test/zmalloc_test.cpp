@@ -67,16 +67,16 @@ s32 zmalloc_stress()
     PROF_START_COUNTER(cost);
     for (u64 i = rand_size/2; i < rand_size; i++)
     {
-        u32 test_size = rand_array[i] % (zmalloc::DEFAULT_BLOCK_SIZE/2);
+        u32 test_size = rand_array[i] % (zmalloc::BIG_MAX_REQUEST * 2);
         void* p = global_zmalloc(test_size);
         global_zfree(p);
     }
-    PROF_OUTPUT_MULTI_COUNT_CPU("global_zfree(global_zmalloc(0~2M))", rand_size, cost.stop_and_save().cycles());
+    PROF_OUTPUT_MULTI_COUNT_CPU("global_zfree(global_zmalloc(0~1M))", rand_size, cost.stop_and_save().cycles());
 
     PROF_START_COUNTER(cost);
     for (u64 i = rand_size / 2; i < rand_size; i++)
     {
-        u32 test_size = rand_array[i] % (zmalloc::DEFAULT_BLOCK_SIZE / 2);
+        u32 test_size = rand_array[i] % (zmalloc::BIG_MAX_REQUEST * 2);
         void* p = global_zmalloc(test_size);
         buffers->push_back(p);
         global_zfree(p);
@@ -85,7 +85,7 @@ s32 zmalloc_stress()
             buffers->clear();
         }
     }
-    PROF_OUTPUT_MULTI_COUNT_CPU("global_zfree(global_zmalloc(0~2M))", rand_size, cost.stop_and_save().cycles());
+    PROF_OUTPUT_MULTI_COUNT_CPU("global_zfree(global_zmalloc(0~1M))", rand_size, cost.stop_and_save().cycles());
     buffers->clear();
 
     for (size_t loop= 0; loop < 40; loop++)
@@ -198,7 +198,7 @@ s32 zmalloc_base_test()
 
 
 
-s32 ZMallocTest()
+s32 zmalloc_test()
 {
     AssertTest(zmalloc_base_test(), 0, " zmalloc_base_test()");
     AssertTest(zmalloc_stress(), 0, " zmalloc_stress()");

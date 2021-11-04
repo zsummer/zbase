@@ -6,7 +6,7 @@
 #define ZCONTAIN_STRESS_H
 
 
-s32 ContainerStress();
+s32 contiainer_stress_test();
 
 
 

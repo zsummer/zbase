@@ -188,7 +188,7 @@ s32 likely_test()
 
 
 
-s32 SortTest()
+s32 sort_test()
 {
     std::vector<Element> sys_vector;
     std::list<Element> sys_list;
