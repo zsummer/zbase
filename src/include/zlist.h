@@ -181,7 +181,7 @@ namespace zsummer
         using reference = _Ty&;
         using const_reference = const _Ty&;
 
-        static const u64 FENCE_VAL = 0xdeadbeafdeadbeafULL;
+        static const u32 FENCE_VAL = 0xdeadbeaf;
         static const u64 MAX_SIZE = _Size;
         static const u64 LIST_SIZE = _Size + 1;
         static const u64 END_ID = _Size;
@@ -195,7 +195,7 @@ namespace zsummer
     public:
         struct node_type
         {
-            u64 fence;
+            u32 fence;
             u32 front;
             u32 next;
             space_type space;
@@ -277,6 +277,11 @@ namespace zsummer
 
         void clear()
         {
+            if (std::is_trivial<_Ty>::value)
+            {
+                init();
+                return;
+            }
             erase(begin(), end());
         }
 
@@ -286,6 +291,8 @@ namespace zsummer
             insert(end(), max_size(), value);
         }
 
+
+    private:
         void init()
         {
             used_count_ = 0;
@@ -296,11 +303,9 @@ namespace zsummer
             data_[END_ID].fence = FENCE_VAL;
             used_head_id_ = END_ID;
         }
-    private:
         bool push_free_node(u32 id)
         {
             node_type& node = data_[id];
-            node.fence = FENCE_VAL;
             node.next = free_id_;
             node.front = END_ID;
             free_id_ = id;
@@ -312,7 +317,6 @@ namespace zsummer
             {
                 u32 new_id = free_id_;
                 free_id_ = data_[new_id].next;
-                data_[new_id].fence = FENCE_VAL;
                 return new_id;
             }
             if (exploit_offset_ < END_ID)
@@ -455,7 +459,7 @@ namespace zsummer
             }
             return pos;
         }
-
+        //[first, last)
         template<class other_iterator>
         iterator insert(iterator pos, other_iterator first, other_iterator last)
         {
