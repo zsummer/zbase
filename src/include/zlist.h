@@ -348,7 +348,7 @@ namespace zsummer
             used_count_--;
             return true;
         }
-        bool release_used_node(u32 id)
+        bool pick_and_release_used_node(u32 id)
         {
             if (pick_used_node(id))
             {
@@ -470,15 +470,15 @@ namespace zsummer
 
 
         void push_back(const _Ty& value) { inject(END_ID, value); }
-        bool pop_back() { return release_used_node(data_[END_ID].front); }
+        bool pop_back() { return pick_and_release_used_node(data_[END_ID].front); }
         void push_front(const _Ty& value) { inject(used_head_id_, value); }
-        bool pop_front() { return release_used_node(used_head_id_); }
+        bool pop_front() { return pick_and_release_used_node(used_head_id_); }
 
         iterator erase(iterator pos)
         {
             u32 pos_id = pos.id_;
             pos++;
-            if (!release_used_node(pos_id))
+            if (!pick_and_release_used_node(pos_id))
             {
                 pos = end();
             }
