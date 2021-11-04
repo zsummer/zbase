@@ -401,7 +401,7 @@ void TestStaticSpaceMemoryLeak()
 
 
 
-s32 ContainerStress()
+s32 contiainer_stress_test()
 {
     TestDynSpaceMemoryLeak<1, 1>();
     TestDynSpaceMemoryLeak<2, 1>();

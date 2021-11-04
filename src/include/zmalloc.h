@@ -140,7 +140,7 @@ namespace zsummer
         using block_free_func = u64(*)(void*);
         static const u32 BINMAP_SIZE = (sizeof(u64) * 8U);
         static const u32 BITMAP_LEVEL = 2;
-        static const u32 DEFAULT_BLOCK_SIZE = (4 * 1024 * 1024);
+        static const u32 DEFAULT_BLOCK_SIZE = (8 * 1024 * 1024);
     public:
         inline static zmalloc& instance();
         inline static zmalloc* instance_ptr();
