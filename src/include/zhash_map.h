@@ -120,6 +120,28 @@ namespace zsummer
         return !(n1 == n2);
     }
 
+
+    template <class _Ty>
+    struct zhash
+    {
+        u64 operator()(const _Ty& key) const
+        {
+            u64 hash_key = (u64)key;
+            static const u64 h = (0x84222325ULL << 32) | 0xcbf29ce4ULL;
+            static const u64 kPrime = (0x00000100ULL << 32) | 0x000001b3ULL;
+            hash_key ^= h;
+            hash_key *= kPrime;
+            return hash_key;
+        }
+    };
+
+
+    /*
+    * 支持obj和pod: 针对pod和非pod有静态模版分支 pod更快.
+    * 固定长度, 其中桶数量为总长2倍. 即hash因子是0.5
+    * 如果追求更快的性能 _Size数量应该是2的幂次方; 例如 32, 64, 1024 ...
+    * std自带的hash为取模, 如果key在取模后的数据可能存在大量冲突 推荐用zhash, 以hash的性能消耗换取更小的碰撞冲突来获得整体的性能提升  
+    */
     template<class Key,
         class _Ty,
         u32 _Size,
