@@ -229,6 +229,7 @@ s32 zmalloc_stress()
         {
             free(p);
         }
+
         buffers->clear();
         buffers2->clear();
     }
