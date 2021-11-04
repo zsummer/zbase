@@ -175,7 +175,7 @@ namespace zsummer
         using reference = _Ty&;
         using const_reference = const _Ty&;
 
-        static const u64 FENCE_VAL = 0xdeadbeafdeadbeafULL;
+        static const u32 FENCE_VAL = 0xdeadbeaf;
         static const u64 MAX_SIZE = _Size;
         static const u64 LIST_SIZE = _Size + 1;
         static const u64 END_ID = _Size;
@@ -193,6 +193,7 @@ namespace zsummer
     public:
         struct node_type
         {
+            u32 fence;
             u32 front;
             u32 next;
             space_type *space;
@@ -286,6 +287,13 @@ namespace zsummer
 
         void clear()
         {
+            if (std::is_trivial<_Ty>::value)
+            {
+                space_type *ds = dync_space_ ;
+                init();
+                dync_space_ = ds;
+                return;
+            }
             erase(begin(), end());
         }
 
@@ -295,6 +303,8 @@ namespace zsummer
             insert(end(), max_size(), value);
         }
 
+
+    private:
         void init()
         {
             used_count_ = 0;
@@ -302,11 +312,11 @@ namespace zsummer
             exploit_offset_ = 0;
             data_[END_ID].next = END_ID;
             data_[END_ID].front = END_ID;
+            data_[END_ID].fence = FENCE_VAL;
             data_[END_ID].space = NULL;
             used_head_id_ = END_ID;
             dync_space_ = NULL;
         }
-    private:
         bool push_free_node(u32 id)
         {
             node_type& node = data_[id];
@@ -320,12 +330,14 @@ namespace zsummer
             if (free_id_ != END_ID)
             {
                 u32 new_id = free_id_;
-                free_id_ = data_[free_id_].next;
+                free_id_ = data_[new_id].next;
                 return new_id;
             }
             if (exploit_offset_ < END_ID)
             {
                 u32 new_id = exploit_offset_++;
+                data_[new_id].fence = FENCE_VAL;
+                data_[new_id + 1].fence = FENCE_VAL;
                 if (new_id < _FixedSize)
                 {
                     data_[new_id].space = &fixed_space_[new_id];
@@ -347,7 +359,15 @@ namespace zsummer
             {
                 return false;
             }
+            if (data_[id + 1].fence != FENCE_VAL)
+            {
+                return false;
+            }
             node_type& node = data_[id];
+            if (node.fence != FENCE_VAL)
+            {
+                return false;
+            }
             if (used_head_id_ >= END_ID)
             {
                 return false; //empty
@@ -447,6 +467,7 @@ namespace zsummer
             return pos;
         }
 
+        //[first, last)
         template<class other_iterator>
         iterator insert(iterator pos, other_iterator first, other_iterator last)
         {
