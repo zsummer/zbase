@@ -397,10 +397,6 @@ namespace zsummer
         }
         u32 inject(u32 id, const _Ty& value)
         {
-            if (full())
-            {
-                return END_ID;
-            }
             u32 new_id = pop_free_node();
             if (new_id == END_ID)
             {
@@ -413,10 +409,6 @@ namespace zsummer
         template< class... Args >
         u32 inject_emplace(u32 id, Args&&... args)
         {
-            if (full())
-            {
-                return END_ID;
-            }
             u32 new_id = pop_free_node();
             if (new_id == END_ID)
             {
