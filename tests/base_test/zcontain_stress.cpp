@@ -519,13 +519,13 @@ s32 contiainer_stress_test()
         {
             z_hashmap.insert(std::make_pair(i, i));
         }
-        AssertTest(z_hashmap.size(), LOAD_CAPACITY / 3, "");
+        AssertTest(z_hashmap.size(), (u32)LOAD_CAPACITY / 3, "");
         std::unordered_map<int, int> sys_hashmap;
         for (int i = 0; i < LOAD_CAPACITY / 3; i++)
         {
             sys_hashmap.insert(std::make_pair(i, i));
         }
-        AssertTest(sys_hashmap.size(), LOAD_CAPACITY / 3, "");
+        AssertTest(sys_hashmap.size(), (u32)LOAD_CAPACITY / 3, "");
 
         int sys_count = 0;
         int z_count = 0;
