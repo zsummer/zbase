@@ -150,7 +150,10 @@ inline std::string TypeName()
 
 
 
-#define CheckRAIIVal(name)   do {if(RAIIVal<>::construct_count_  != RAIIVal<>::destroy_count_ ){LogError() << name << ": CheckRAIIVal has error.  destroy / construct:" << RAIIVal<>::destroy_count_ << "/" << RAIIVal<>::construct_count_; break;} } while(0)
+#define CheckRAIIVal(name)   do {\
+if(RAIIVal<>::construct_count_  != RAIIVal<>::destroy_count_ ){LogError() << name << ": CheckRAIIVal has error.  destroy / construct:" << RAIIVal<>::destroy_count_ << "/" << RAIIVal<>::construct_count_;} \
+else {LogDebug() << name << ": CheckRAIIVal.  destroy / construct:" << RAIIVal<>::destroy_count_ << "/" << RAIIVal<>::construct_count_; }\
+} while(0)
 //#define CheckRAIIValByType(t)   CheckRAIIVal(TypeName<decltype(t)>());
 #define CheckRAIIValByType(t)   CheckRAIIVal(TypeName<t>());
 

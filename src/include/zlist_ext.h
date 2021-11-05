@@ -20,7 +20,7 @@
 
 #ifndef  ZLIST_EXT_H
 #define ZLIST_EXT_H
-
+#include <iterator>
 
 namespace zsummer
 {
@@ -35,7 +35,11 @@ namespace zsummer
     using f32 = float;
     using f64 = double;
 
-
+#if __GNUG__
+#define MAY_ALIAS __attribute__((__may_alias__))
+#else
+#define MAY_ALIAS
+#endif
 
     template<class list_type>
     struct const_zlist_ext_iterator;
@@ -161,7 +165,10 @@ namespace zsummer
         return !(n1 == n2);
     }
 
-    //list need init all nodes.
+    //分段双向链表; 第一段为固定内存, 第二段为动态内存, 均为定长.  
+    //_Size == _FixedSize 大小相等时为全静态, 此时与zlist的区别在于, zlist的node和value绑在一起, value小时 zlist因不需要取指针性能更好,  value大时 zlist_ext因分离数据性能会更好一些.  
+    //_FixedSize == 0 时为全动态   
+    //这里使用了指针, 用在共享内存时候需要保证指针地址固定, 以及修改动态内存分配接口, 暂未开放接口.   
     template<class _Ty, size_t _Size, size_t _FixedSize>
     class zlist_ext
     {
@@ -214,6 +221,7 @@ namespace zsummer
             if (dync_space_ != NULL)
             {
                 delete[] dync_space_;
+                dync_space_ = NULL;
             }
         }
 

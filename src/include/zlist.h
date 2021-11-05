@@ -20,7 +20,7 @@
 
 #ifndef  ZLIST_H
 #define ZLIST_H
-
+#include <iterator>
 
 namespace zsummer
 {
@@ -167,7 +167,7 @@ namespace zsummer
         return !(n1 == n2);
     }
 
-    //list need init all nodes.
+    //È«¾²Ì¬Ë«ÏòÁ´±í  
     template<class _Ty, size_t _Size>
     class zlist
     {
@@ -563,9 +563,7 @@ namespace zsummer
     }
 
 
-    static_assert(zlist<std::string, 0>::static_buf_size(0) == sizeof(zlist<std::string, 0>), "");
-    static_assert(zlist<std::string, 0>::static_buf_size(1) == sizeof(zlist<std::string, 1>), "");
-    static_assert(zlist<std::string, 0>::static_buf_size(5) == sizeof(zlist<std::string, 5>), "");
+
 
 }
 
