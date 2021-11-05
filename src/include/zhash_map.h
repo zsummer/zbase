@@ -20,7 +20,7 @@
 
 #ifndef  ZHASH_MAP_H
 #define ZHASH_MAP_H
-
+#include <type_traits>
 
 namespace zsummer
 {
