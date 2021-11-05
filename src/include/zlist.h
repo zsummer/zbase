@@ -563,9 +563,7 @@ namespace zsummer
     }
 
 
-    static_assert(zlist<std::string, 0>::static_buf_size(0) == sizeof(zlist<std::string, 0>), "");
-    static_assert(zlist<std::string, 0>::static_buf_size(1) == sizeof(zlist<std::string, 1>), "");
-    static_assert(zlist<std::string, 0>::static_buf_size(5) == sizeof(zlist<std::string, 5>), "");
+
 
 }
 
