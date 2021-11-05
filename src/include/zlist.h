@@ -167,7 +167,7 @@ namespace zsummer
         return !(n1 == n2);
     }
 
-    //list need init all nodes.
+    //È«¾²Ì¬Ë«ÏòÁ´±í  
     template<class _Ty, size_t _Size>
     class zlist
     {
