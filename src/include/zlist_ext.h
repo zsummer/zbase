@@ -20,7 +20,7 @@
 
 #ifndef  ZLIST_EXT_H
 #define ZLIST_EXT_H
-
+#include <iterator>
 
 namespace zsummer
 {

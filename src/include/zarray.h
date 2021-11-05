@@ -17,12 +17,13 @@
 */
 
 
-#include <type_traits>
+
 
 
 #ifndef  ZARRAY_H
 #define ZARRAY_H
 
+#include <type_traits>
 
 namespace zsummer
 {
