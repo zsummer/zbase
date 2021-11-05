@@ -62,7 +62,8 @@ namespace zsummer
 
         using reverse_iterator = std::reverse_iterator<iterator>;
         using const_reverse_iterator = std::reverse_iterator<const_iterator>;
-        using space_type = typename std::aligned_storage<sizeof(_Ty), alignof(_Ty)>::type;
+        using inner_space_type = typename std::aligned_storage<sizeof(_Ty), alignof(_Ty)>::type;
+        using space_type = typename std::conditional<std::is_trivial<_Ty>::value, _Ty, inner_space_type>::type;
     private:
         pointer MAY_ALIAS ptr(size_type i) const noexcept { return reinterpret_cast<pointer>(const_cast<space_type*>(&data_[i])); }
         reference ref(size_type i) const noexcept { return *ptr(i); }
@@ -108,7 +109,7 @@ namespace zsummer
 
         constexpr size_type capacity() const { return _Size; }
         constexpr size_type max_size()  const noexcept { return _Size; }
-        const size_type size() const noexcept { return distance(begin(), end()); }
+        const size_type size() const noexcept { return count_; }
         const bool empty() const noexcept { return begin() == end(); }
         const bool full() const noexcept { return size() == max_size(); }
 
@@ -138,7 +139,7 @@ namespace zsummer
         }
 
         template<class T = _Ty>
-        void push_back(const _Ty& value, typename std::enable_if<std::is_trivial<T>::value>::type* = 0)
+        void push_back(const typename std::enable_if<std::is_trivial<T>::value, T>::type& value)
         {
             if (full())
             {
@@ -147,8 +148,8 @@ namespace zsummer
             *ptr(count_++) = value;
         }
 
-        template<class T = _Ty, typename std::enable_if < !std::is_trivial<T>{}, int > ::type = 0 >
-        void push_back(const _Ty& value)
+        template<class T = _Ty>
+        void push_back(const typename std::enable_if<!std::is_trivial<T>::value, T>::type & value)
         {
             if (full())
             {
@@ -158,19 +159,20 @@ namespace zsummer
         }
 
         template<class T = _Ty>
-        void pop_back(typename std::enable_if<std::is_trivial<T>::value>::type* = 0)
+        void pop_back(const typename std::enable_if<std::is_trivial<T>::value>::type*  = 0)
         {
             count_--;
         }
 
-        template<class T = _Ty, typename std::enable_if < !std::is_trivial<T>{}, int > ::type = 0 >
-        void pop_back()
+        template<class T = _Ty>
+        void pop_back(const typename std::enable_if<!std::is_trivial<T>::value>::type*  =0)
         {
             ptr(count_)->~_Ty();
             count_--;
         }
 
-        iterator inject(const_iterator in_pos, size_type count)
+        template<class T = _Ty>
+        iterator inject(const_iterator in_pos, size_type count, const typename std::enable_if<std::is_trivial<T>::value>::type* = 0)
         {
             static_assert(std::is_same<iterator, pointer>::value, "");
             if (in_pos < begin())
@@ -192,70 +194,94 @@ namespace zsummer
             {
                 return pos;
             }
-            if  (std::is_trivial<_Ty>::value)
+            memmove((space_type*)in_pos + count, (space_type*)in_pos, sizeof(space_type) * ((space_type*)old_end - (space_type*)in_pos));
+            return pos;
+        }
+        template<class T = _Ty>
+        iterator inject(const_iterator in_pos, size_type count, const typename std::enable_if<!std::is_trivial<T>::value>::type* = 0)
+        {
+            static_assert(std::is_same<iterator, pointer>::value, "");
+            if (in_pos < begin())
             {
-                memmove((space_type*)in_pos + count, (space_type*)in_pos, sizeof(space_type) * ((space_type*)old_end - (space_type*)in_pos));
+                return end();
             }
-            else
+            if (count_ + count > _Size)
             {
-                iterator new_end = end();
-                iterator src = old_end;
-                iterator target = new_end;
-                while (src != pos && target != old_end)
-                {
-                    new (--target) _Ty(*(--src));
-                }
+                return end();
+            }
+            iterator pos = (iterator)in_pos;
+            if (pos > end())
+            {
+                pos = end();
+            }
+            iterator old_end = end();
+            count_ += count;
+            if (pos == old_end)
+            {
+                return pos;
+            }
+            iterator new_end = end();
+            iterator src = old_end;
+            iterator target = new_end;
+            while (src != pos && target != old_end)
+            {
+                new (--target) _Ty(*(--src));
+            }
 
-                while (src != pos)
-                {
-                    *(--target) = *(--src);
-                }
+            while (src != pos)
+            {
+                *(--target) = *(--src);
+            }
 
-                src = pos;
-                target = pos + count;
-                while (src != target)
-                {
-                    src++->~_Ty();
-                }
+            src = pos;
+            target = pos + count;
+            while (src != target)
+            {
+                src++->~_Ty();
             }
             return pos;
         }
 
         //[first,last)
-        iterator erase(const_iterator first, const_iterator last)
+        template<class T = _Ty>
+        iterator erase(const_iterator first, const_iterator last, const typename std::enable_if<std::is_trivial<T>::value>::type* = 0)
         {
             if (first >= end() || first < begin())
             {
                 return end();
             }
 
-
-            if (last >= end() && std::is_trivial<_Ty>::value)
+            if (last >= end())
             {
                 count_ -= distance(first, end());
+                return end();
+            }
+            size_type island_count = distance(last, end());
+            memmove((space_type*)first, (space_type*)last, island_count * sizeof(space_type));
+            iterator new_end = (iterator)(first + island_count);
+            count_ -= distance(new_end, end());
+            return end();
+        }
+        template<class T = _Ty>
+        iterator erase(const_iterator first, const_iterator last, const typename std::enable_if<!std::is_trivial<T>::value>::type* = 0)
+        {
+            if (first >= end() || first < begin())
+            {
                 return end();
             }
 
             size_type island_count = distance(last, end());
             iterator cp_first = (iterator)first;
             iterator cp_last = (iterator)last;
-            if (std::is_trivial<_Ty>::value)
+            for (size_type i = 0; i < island_count; i++)
             {
-                memmove((space_type*)first, (space_type*)last, island_count * sizeof(space_type));
-                cp_first = (iterator)(first + island_count);
+                *cp_first++ = *cp_last++;
             }
-            else
+            iterator erase_first = cp_first;
+            while (erase_first != end())
             {
-                for (size_type i = 0; i < island_count; i++)
-                {
-                    *cp_first++ = *cp_last++;
-                }
-                iterator erase_first = cp_first;
-                while (erase_first != end())
-                {
-                    erase_first->~_Ty();
-                    ++erase_first;
-                }
+                erase_first->~_Ty();
+                ++erase_first;
             }
             count_ -= distance(cp_first, end());
             return end();
@@ -266,26 +292,32 @@ namespace zsummer
             return erase(pos, pos + 1);
         }
 
-        iterator insert(iterator pos, size_type count, const _Ty& value)
+        template<class T = _Ty>
+        iterator insert(iterator pos, size_type count, const typename std::enable_if <std::is_trivial<T>::value, _Ty>::type& value)
         {
             iterator new_iter = inject(pos, count);
             if (new_iter == end())
             {
                 return  end();
             }
-            if (!std::is_trivial< _Ty>::value)
+            for (size_t i = 0; i < count; i++)
             {
-                for (size_t i = 0; i < count; i++)
-                {
-                    new (pos++) _Ty(value);
-                }
+                *pos++ = value;
             }
-            else
+            return new_iter;
+        }
+
+        template<class T = _Ty>
+        iterator insert(iterator pos, size_type count, const typename std::enable_if <!std::is_trivial<T>::value, _Ty>::type& value)
+        {
+            iterator new_iter = inject(pos, count);
+            if (new_iter == end())
             {
-                for (size_t i = 0; i < count; i++)
-                {
-                    *pos++ = value;
-                }
+                return  end();
+            }
+            for (size_t i = 0; i < count; i++)
+            {
+                new (pos++) _Ty(value);
             }
             return new_iter;
         }
