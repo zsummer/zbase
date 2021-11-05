@@ -348,7 +348,7 @@ namespace zsummer
         }
         mapped_type& operator[](const key_type& key)
         {
-            std::pair<iterator, bool> ret = insert_v(std::make_pair(key, mapped_type()), true);
+            std::pair<iterator, bool> ret = insert_v(std::make_pair(key, mapped_type()), false);
             if (ret.first != end())
             {
                 return ret.first->second;
