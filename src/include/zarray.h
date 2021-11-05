@@ -17,12 +17,13 @@
 */
 
 
-#include <type_traits>
+
 
 
 #ifndef  ZARRAY_H
 #define ZARRAY_H
 
+#include <type_traits>
 
 namespace zsummer
 {
@@ -37,7 +38,11 @@ namespace zsummer
     using f32 = float;
     using f64 = double;
 
-
+#if __GNUG__
+#define MAY_ALIAS __attribute__((__may_alias__))
+#else
+#define MAY_ALIAS
+#endif
 
     template<class _Ty, u32 _Size>
     class zarray
@@ -59,7 +64,7 @@ namespace zsummer
         using const_reverse_iterator = std::reverse_iterator<const_iterator>;
         using space_type = typename std::aligned_storage<sizeof(_Ty), alignof(_Ty)>::type;
     private:
-        pointer ptr(size_type i) const noexcept { return reinterpret_cast<pointer>(const_cast<space_type*>(&data_[i])); }
+        pointer MAY_ALIAS ptr(size_type i) const noexcept { return reinterpret_cast<pointer>(const_cast<space_type*>(&data_[i])); }
         reference ref(size_type i) const noexcept { return *ptr(i); }
         size_type distance(const_pointer l, const_pointer r) const noexcept { return (size_type)(r - l); }
     public:
@@ -363,8 +368,8 @@ namespace zsummer
         }
 
     private:
-        size_type count_;
         space_type data_[_Size];
+        size_type count_;
     };
 
 
