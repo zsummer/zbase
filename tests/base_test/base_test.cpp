@@ -49,8 +49,8 @@ int main(int argc, char *argv[])
 
     LogDebug() << " main begin test. ";
     volatile double cycles = 0.0f;
-    //zmalloc_test();
-    //sort_test();
+    zmalloc_test();
+    sort_test();
     contiainer_base_test();
     contiainer_stress_test();
     
