@@ -19,5 +19,5 @@ from zbase
 Author: YaweiZhang  
 Mail: yawei.zhang@foxmail.com  
 QQGROUP: 524700770  
-GitHub: https://github.com/zsummer/fn-log  
+GitHub: https://github.com/zsummer/zbase  
 
