@@ -11,7 +11,7 @@
 using namespace zsummer;
 
 
-static const int MAX_SIZE = 1000;
+static const u32 MAX_SIZE = 1000;
 int rand_array[MAX_SIZE];
 int sort_array[MAX_SIZE];
 
@@ -22,7 +22,7 @@ RAIIVal<> sort_obj_array[MAX_SIZE];
 template<class T, class V>
 s32 CheckPushArray(T& a, const V & rand_a)
 {
-    for (int i = 0; i < MAX_SIZE; i++)
+    for (u32 i = 0; i < MAX_SIZE; i++)
     {
         a.push_back(rand_a[i]);
         if (a.back() != rand_a[i])
@@ -41,7 +41,7 @@ s32 CheckPushArray(T& a, const V & rand_a)
 template<class T, class V>
 s32 CheckEmplacePushArray(T& a, const V& rand_a)
 {
-    for (int i = 0; i < MAX_SIZE; i++)
+    for (u32 i = 0; i < MAX_SIZE; i++)
     {
         a.emplace_back(rand_a[i]);
         if (a.back() != rand_a[i])
@@ -61,7 +61,7 @@ s32 CheckEmplacePushArray(T& a, const V& rand_a)
 template<class T, class V>
 s32 CheckInsertBeginArray(T& a, const V& rand_a)
 {
-    for (int i = 0; i < MAX_SIZE; i++)
+    for (u32 i = 0; i < MAX_SIZE; i++)
     {
         a.insert(a.begin(), rand_a[i]);
         if (a.front() != rand_a[i])
@@ -81,7 +81,7 @@ s32 CheckInsertBeginArray(T& a, const V& rand_a)
 template<class T, class V>
 s32 CheckInsertEndArray(T& a, const V& rand_a)
 {
-    for (int i = 0; i < MAX_SIZE; i++)
+    for (u32 i = 0; i < MAX_SIZE; i++)
     {
         a.insert(a.end(), rand_a[i]);
         if (a.back() != rand_a[i])
@@ -102,7 +102,7 @@ s32 CheckInsertEndArray(T& a, const V& rand_a)
 template<class T, class V>
 s32 CheckEmplaceInsertBeginArray(T& a, const V& rand_a)
 {
-    for (int i = 0; i < MAX_SIZE; i++)
+    for (u32 i = 0; i < MAX_SIZE; i++)
     {
         a.emplace(a.begin(), rand_a[i]);
         if (a.front() != rand_a[i])
@@ -143,7 +143,7 @@ s32 CheckRevertRandArray(T& a)
 {
     if (true)
     {
-        int i = MAX_SIZE - 1;
+        u32 i = MAX_SIZE - 1;
         for (auto& v : a)
         {
             if ((int)v != rand_array[i])
@@ -162,7 +162,7 @@ s32 CheckRandArrayAt(T& a)
 {
     if (true)
     {
-        int i = 0;
+        u32 i = 0;
         for (auto& v : a)
         {
             if ((int)v != rand_array[i])
@@ -191,7 +191,7 @@ s32 CheckRevertRandArrayAt(T& a)
 {
     if (true)
     {
-        int i = MAX_SIZE - 1;
+        u32 i = MAX_SIZE - 1;
         for (auto& v : a)
         {
             if ((int)v != rand_array[i])
@@ -221,7 +221,7 @@ s32 CheckSortArray(T& a)
 {
     if (true)
     {
-        int i = 0;
+        u32 i = 0;
         for (auto& v : a)
         {
             if ((int)v != sort_array[i])
@@ -313,7 +313,7 @@ s32 ListBaseTest(A& a, VS& v)
     a = { 1, 2,3 };
     if (true)
     {
-        int i = 0;
+        u32 i = 0;
         char vvv[] = { 1,2,3 };
         for (auto& v:a)
         {
@@ -369,14 +369,14 @@ s32 ListBaseTest(A& a, VS& v)
 
 s32 array_test()
 {
-    for (int i = 0; i < MAX_SIZE; i++)
+    for (u32 i = 0; i < MAX_SIZE; i++)
     {
         rand_array[i] = rand() % MAX_SIZE;
         rand_obj_array[i] = rand_array[i];
     }
     memcpy(sort_array, rand_array, sizeof(int) * MAX_SIZE);
     std::sort(&sort_array[0], &sort_array[0] + MAX_SIZE);
-    for (int i = 0; i < MAX_SIZE; i++)
+    for (u32 i = 0; i < MAX_SIZE; i++)
     {
         sort_obj_array[i] = sort_array[i];
     }
@@ -584,6 +584,7 @@ s32 ZListValidTest(C& c, size_t s)
         if (!c.is_valid_node(&e))
         {
             volatile int a = 0;
+            (void)a;
         }
         AssertTest(!c.is_valid_node(&e), false, "");
     }
@@ -660,11 +661,11 @@ s32 by_order_test()
 }
 s32 object_test()
 {
-    std::unique_ptr<char[]> zspace(new char[zobj_pool<int>::static_buf_size(200U)]);
-    ((zobj_pool<int>*)zspace.get())->init(200U, zobj_pool<int>::static_buf_size(200U));
-    zobj_pool<int>& zp = *((zobj_pool<int>*)zspace.get());
-    zlist<int*, 200> zl;
-    for (int i = 0; i < 200; i++)
+    std::unique_ptr<char[]> zspace(new char[zobj_pool<u32>::static_buf_size(200U)]);
+    ((zobj_pool<u32>*)zspace.get())->init(200U, zobj_pool<u32>::static_buf_size(200U));
+    zobj_pool<u32>& zp = *((zobj_pool<u32>*)zspace.get());
+    zlist<u32*, 200> zl;
+    for (u32 i = 0; i < 200; i++)
     {
         zl.push_back(zp.create());
         if (zl.back() == NULL)
@@ -679,7 +680,7 @@ s32 object_test()
             return -2;
         }
     }
-    for (int i = 0; i < 200; i++)
+    for (u32 i = 0; i < 200; i++)
     {
         if (*zl.front() != i)
         {

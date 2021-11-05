@@ -35,7 +35,11 @@ namespace zsummer
     using f32 = float;
     using f64 = double;
 
-
+#if __GNUG__
+#define MAY_ALIAS __attribute__((__may_alias__))
+#else
+#define MAY_ALIAS
+#endif
 
     template<class list_type>
     struct const_zlist_ext_iterator;
@@ -214,6 +218,7 @@ namespace zsummer
             if (dync_space_ != NULL)
             {
                 delete[] dync_space_;
+                dync_space_ = NULL;
             }
         }
 
