@@ -233,7 +233,7 @@ s32 LinerStress(List& l, const std::string& desc,  bool is_static, bool out_prof
         }
         if (out_prof)
         {
-            PROF_OUTPUT_MULTI_COUNT_CPU((ss.str() + "push back & pop back(capacity loop 1000)").c_str(), LOAD_CAPACITY * 2, cost.stop_and_save().cycles());
+            PROF_OUTPUT_MULTI_COUNT_CPU((ss.str() + "push back & pop back(capacity loop 1000)").c_str(), LOAD_CAPACITY * 2 * 1000, cost.stop_and_save().cycles());
         }
         AssertCheck((int)l.size(), 0, desc + ": error");
 
