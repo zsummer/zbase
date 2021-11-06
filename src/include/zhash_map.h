@@ -38,10 +38,9 @@ namespace zsummer
 
 
 
-    template<class node_type, class Key, class _Ty, u32 INVALID_NODE_ID, u32 HASH_COUNT>
+    template<class node_type, class value_type, u32 INVALID_NODE_ID, u32 HASH_COUNT>
     struct zhash_map_iterator
     {
-        using value_type = std::pair<const Key, _Ty>;
         node_type* node_pool_;
         u32 cur_node_id_;
         u32 max_node_id_; //迭代器使用过程中不更新 即迭代器一旦创建 不保证能迭代到新增元素;   
@@ -109,22 +108,22 @@ namespace zsummer
         }
     };
 
-    template<class node_type, class Key, class _Ty, u32 INVALID_NODE_ID, u32 HASH_COUNT>
-    bool operator == (const zhash_map_iterator<node_type, Key, _Ty, INVALID_NODE_ID, HASH_COUNT>& n1, const zhash_map_iterator<node_type, Key, _Ty, INVALID_NODE_ID, HASH_COUNT>& n2)
+    template<class node_type, class value_type, u32 INVALID_NODE_ID, u32 HASH_COUNT>
+    bool operator == (const zhash_map_iterator<node_type, value_type, INVALID_NODE_ID, HASH_COUNT>& n1, const zhash_map_iterator<node_type, value_type, INVALID_NODE_ID, HASH_COUNT>& n2)
     {
         return n1.node_pool_ == n2.node_pool_ && n1.cur_node_id_ == n2.cur_node_id_;
     }
-    template<class node_type, class Key, class _Ty, u32 INVALID_NODE_ID, u32 HASH_COUNT>
-    bool operator != (const zhash_map_iterator<node_type, Key, _Ty, INVALID_NODE_ID, HASH_COUNT>& n1, const zhash_map_iterator<node_type, Key, _Ty, INVALID_NODE_ID, HASH_COUNT>& n2)
+    template<class node_type, class value_type, u32 INVALID_NODE_ID, u32 HASH_COUNT>
+    bool operator != (const zhash_map_iterator<node_type, value_type, INVALID_NODE_ID, HASH_COUNT>& n1, const zhash_map_iterator<node_type, value_type, INVALID_NODE_ID, HASH_COUNT>& n2)
     {
         return !(n1 == n2);
     }
 
 
-    template <class _Ty>
+    template <class Key>
     struct zhash
     {
-        u64 operator()(const _Ty& key) const
+        u64 operator()(const Key& key) const
         {
             u64 hash_key = (u64)key;
             static const u64 h = (0x84222325ULL << 32) | 0xcbf29ce4ULL;
@@ -170,7 +169,7 @@ namespace zsummer
             u32 hash_id;
             space_type val_space;
         };
-        using iterator = zhash_map_iterator<node_type, key_type, mapped_type, INVALID_NODE_ID, HASH_COUNT>;
+        using iterator = zhash_map_iterator<node_type, value_type, INVALID_NODE_ID, HASH_COUNT>;
         using const_iterator = const iterator;
         Hash hasher;
         KeyEqual key_equal;
@@ -270,14 +269,13 @@ namespace zsummer
             node_type& node = node_pool_[new_node_id];
             node.next = 0;
             node.hash_id = (u32)hash_id;
-            if (!std::is_trivial<_Ty>::value)
+            if (!std::is_trivial<value_type>::value)
             {
                 new (&node.val_space) value_type(val);
             }
             else
             {
                 memcpy(&node.val_space, &val, sizeof(val));
-                //rf(node) = val;
             }
 
             if (buckets_[hash_id] != 0)
@@ -312,21 +310,21 @@ namespace zsummer
         }
         ~zhash_map()
         {
-            if (!std::is_trivial<_Ty>::value)
+            if (!std::is_trivial<value_type>::value)
             {
                 for (reference kv : *this)
                 {
-                    kv.second.~_Ty();
+                    kv.~value_type();
                 }
             }
         }
         void clear()
         {
-            if (!std::is_trivial<_Ty>::value)
+            if (!std::is_trivial<value_type>::value)
             {
                 for (reference kv : *this)
                 {
-                    kv.second.~_Ty();
+                    kv.~value_type();
                 }
             }
             reset();
@@ -361,11 +359,11 @@ namespace zsummer
             u32 ukey = (u32)hasher(key);
             u32 hash_id = ukey % HASH_COUNT;
             u32 node_id = buckets_[hash_id];
-            while (node_id != 0 && rf(node_pool_ [node_id]).first != key)
+            while (node_id != FREE_POOL_SIZE && rf(node_pool_ [node_id]).first != key)
             {
                 node_id = node_pool_[node_id].next;
             }
-            if (node_id != 0)
+            if (node_id != FREE_POOL_SIZE)
             {
                 return mi(node_id);
             }
@@ -375,13 +373,13 @@ namespace zsummer
         iterator erase(iterator iter)
         {
             u32 node_id = iter.cur_node_id_;
-            if (node_id == 0 || node_id > exploit_offset_)
+            if (node_id == FREE_POOL_SIZE || node_id > exploit_offset_)
             {
                 return end();
             }
             node_type& node = node_pool_[node_id];
 
-            //return erase(rf(node).first);
+
             u32 hash_id = node.hash_id;
             
             if (hash_id >= HASH_COUNT)
@@ -401,7 +399,7 @@ namespace zsummer
             else
             {
                 u32 cur_node_id = pre_node_id;
-                while (node_pool_[cur_node_id].next != 0 && node_pool_[cur_node_id].next != node_id)
+                while (node_pool_[cur_node_id].next != FREE_POOL_SIZE && node_pool_[cur_node_id].next != node_id)
                 {
                     cur_node_id = node_pool_[cur_node_id].next;
                 }
@@ -412,9 +410,9 @@ namespace zsummer
                 node_pool_[cur_node_id].next = node_pool_[node_id].next;
             }
 
-            if (!std::is_trivial<_Ty>::value)
+            if (!std::is_trivial<value_type>::value)
             {
-                rf(node).second.~_Ty();
+                rf(node).~value_type();
             }
             push_free(node_id);
             return begin();
@@ -425,12 +423,12 @@ namespace zsummer
             u32 ukey = (u32)hasher(key);
             u32 hash_id = ukey % HASH_COUNT;
             u32 pre_node_id = buckets_[hash_id];
-            if (pre_node_id == 0)
+            if (pre_node_id == FREE_POOL_SIZE)
             {
                 return end();
             }
 
-            u32 node_id = 0;
+            u32 node_id = FREE_POOL_SIZE;
             if (rf(node_pool_[pre_node_id]).first == key)
             {
                 node_id = pre_node_id;
@@ -439,21 +437,26 @@ namespace zsummer
             else
             {
                 u32 cur_node_id = pre_node_id;
-                while (node_pool_[cur_node_id].next != 0 && rf(node_pool_[node_pool_[cur_node_id].next]).first != key)
+                while (node_pool_[cur_node_id].next != FREE_POOL_SIZE)
                 {
-                    cur_node_id = node_pool_[cur_node_id].next;
+                    if (rf(node_pool_[node_pool_[cur_node_id].next]).first != key)
+                    {
+                        cur_node_id = node_pool_[cur_node_id].next;
+                        continue;
+                    }
+                    node_id = node_pool_[cur_node_id].next;
+                    node_pool_[cur_node_id].next = node_pool_[node_pool_[cur_node_id].next].next;
+                    break;
                 }
-                if (rf(node_pool_[node_pool_[cur_node_id].next]).first != key)
+                if (node_id == FREE_POOL_SIZE)
                 {
                     return end();
                 }
-                node_id = node_pool_[cur_node_id].next;
-                node_pool_[cur_node_id].next = node_pool_[node_pool_[cur_node_id].next].next;
             }
 
-            if (!std::is_trivial<_Ty>::value)
+            if (!std::is_trivial<value_type>::value)
             {
-                rf(node_pool_[node_id]).second.~_Ty();
+                rf(node_pool_[node_id]).~value_type();
             }
             push_free(node_id);
             return begin();
