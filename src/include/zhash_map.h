@@ -194,13 +194,13 @@ namespace zsummer
 
         u32 pop_free()
         {
-            if (node_pool_[FREE_POOL_SIZE].next != 0)
+            if (node_pool_[FREE_POOL_SIZE].next != FREE_POOL_SIZE)
             {
                 u32 ret = node_pool_[FREE_POOL_SIZE].next;
                 node_pool_[ret].hash_id = HASH_COUNT;
                 node_pool_[FREE_POOL_SIZE].next = node_pool_[ret].next;
                 count_++;
-                if (first_valid_node_id_ == 0 || ret < first_valid_node_id_)
+                if (first_valid_node_id_ == FREE_POOL_SIZE || ret < first_valid_node_id_)
                 {
                     first_valid_node_id_ = ret;
                 }
@@ -211,13 +211,13 @@ namespace zsummer
                 u32 ret = ++exploit_offset_;
                 node_pool_[ret].hash_id = HASH_COUNT;
                 count_++;
-                if (first_valid_node_id_ == 0 || ret < first_valid_node_id_)
+                if (first_valid_node_id_ == FREE_POOL_SIZE || ret < first_valid_node_id_)
                 {
                     first_valid_node_id_ = ret;
                 }
                 return ret;
             }
-            return 0;
+            return FREE_POOL_SIZE;
         }
 
         void push_free(u32 node_id)
@@ -262,12 +262,12 @@ namespace zsummer
             u32 hash_id = ukey % HASH_COUNT;
 
             u32 new_node_id = pop_free();
-            if (new_node_id == 0)
+            if (new_node_id == FREE_POOL_SIZE)
             {
                 return { end(), false };
             }
             node_type& node = node_pool_[new_node_id];
-            node.next = 0;
+            node.next = FREE_POOL_SIZE;
             node.hash_id = (u32)hash_id;
             if (!std::is_trivial<value_type>::value)
             {
@@ -278,7 +278,7 @@ namespace zsummer
                 memcpy(&node.val_space, &val, sizeof(val));
             }
 
-            if (buckets_[hash_id] != 0)
+            if (buckets_[hash_id] != FREE_POOL_SIZE)
             {
                 node.next = buckets_[hash_id];
             }
@@ -386,7 +386,7 @@ namespace zsummer
             {
                 return end();
             }
-            if (buckets_[hash_id] == 0)
+            if (buckets_[hash_id] == FREE_POOL_SIZE)
             {
                 return end();
             }
