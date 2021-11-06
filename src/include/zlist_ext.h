@@ -35,6 +35,8 @@ namespace zsummer
     using f32 = float;
     using f64 = double;
 
+//#define ZLIST_EXT_USED_FENCE
+
 #if __GNUG__
 #define MAY_ALIAS __attribute__((__may_alias__))
 #else
@@ -200,7 +202,9 @@ namespace zsummer
     public:
         struct node_type
         {
+#ifdef ZLIST_EXT_USED_FENCE
             u32 fence;
+#endif
             u32 front;
             u32 next;
             space_type *space;
@@ -320,7 +324,9 @@ namespace zsummer
             exploit_offset_ = 0;
             data_[END_ID].next = END_ID;
             data_[END_ID].front = END_ID;
+#ifdef ZLIST_EXT_USED_FENCE
             data_[END_ID].fence = FENCE_VAL;
+#endif
             data_[END_ID].space = NULL;
             used_head_id_ = END_ID;
             dync_space_ = NULL;
@@ -344,8 +350,10 @@ namespace zsummer
             if (exploit_offset_ < END_ID)
             {
                 u32 new_id = exploit_offset_++;
+#ifdef ZLIST_EXT_USED_FENCE
                 data_[new_id].fence = FENCE_VAL;
                 data_[new_id + 1].fence = FENCE_VAL;
+#endif
                 if (new_id < _FixedSize)
                 {
                     data_[new_id].space = &fixed_space_[new_id];
@@ -367,15 +375,19 @@ namespace zsummer
             {
                 return false;
             }
+#ifdef ZLIST_EXT_USED_FENCE
             if (data_[id + 1].fence != FENCE_VAL)
             {
                 return false;
             }
+#endif
             node_type& node = data_[id];
+#ifdef ZLIST_EXT_USED_FENCE
             if (node.fence != FENCE_VAL)
             {
                 return false;
             }
+#endif
             if (used_head_id_ >= END_ID)
             {
                 return false; //empty

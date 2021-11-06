@@ -20,11 +20,12 @@ struct Element
 {
     int v;
     //char buf[8];
-    char buf[1280];
+    char buf[50];
 };
 static const int list_size = 100;
 static const int rand_size = 1000;
 static int rand_array[rand_size] = { 0 };
+static Element rand_ele_array[rand_size] = { 0 };
 
 inline bool comp(const Element& f, const Element& s)
 {
@@ -34,15 +35,13 @@ inline bool comp(const Element& f, const Element& s)
 template<class V>
 s32 SortArrayTest(V& v, bool is_test, const char* desc)
 {
-    Element e;
     double now = Now();
     for (size_t i = 0; i < 10000; i++)
     {
         v.clear();
         for (u32 i = 0; i < list_size; i++)
         {
-            e.v = rand_array[i];
-            v.insert(std::lower_bound(v.begin(), v.end(), e, comp), e);
+            v.insert(std::lower_bound(v.begin(), v.end(), rand_ele_array[i], comp), rand_ele_array[i]);
         }
         if (is_test)
         {
@@ -72,8 +71,7 @@ s32 SortArrayTest(V& v, bool is_test, const char* desc)
         v.clear();
         for (u32 i = 0; i < list_size; i++)
         {
-            e.v = rand_array[i];
-            v.push_back(e);
+            v.push_back(rand_ele_array[i]);
         }
         std::sort(v.begin(), v.end(), comp);
         if (is_test)
@@ -106,15 +104,13 @@ s32 SortArrayTest(V& v, bool is_test, const char* desc)
 template<class V>
 s32 SortListTest(V& v, bool is_test, const char* desc)
 {
-    Element e;
     double now = Now();
     for (size_t i = 0; i < 10000; i++)
     {
         v.clear();
         for (u32 i = 0; i < list_size; i++)
         {
-            e.v = rand_array[i];
-            v.insert(v.lower_bound(v.begin(), v.end(), e, comp), e);
+            v.insert(v.lower_bound(v.begin(), v.end(), rand_ele_array[i], comp), rand_ele_array[i]);
         }
         if (is_test)
         {
@@ -201,9 +197,11 @@ s32 sort_test()
     std::unique_ptr< zlist_ext<Element, list_size, list_size/2>> zlist_ext_ptr(new  zlist_ext<Element, list_size, list_size / 2>());
     zlist_ext<Element, list_size, list_size / 2 >& zlist_ext_bound = *zlist_ext_ptr;
 
-    for (size_t i = 0; i < rand_size; i++)
+    for (int i = 0; i < rand_size; i++)
     {
         rand_array[i] = rand();
+        rand_ele_array[i].v = rand_array[i];
+        sprintf(rand_ele_array[i].buf, "%d", i);
     }
 
     SortArrayTest(sys_vector, true, "sys_vector");
