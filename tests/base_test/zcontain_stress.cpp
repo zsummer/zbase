@@ -354,6 +354,15 @@ s32 MapStress(Map& m, const std::string& desc, bool is_static = false, V* p = NU
             }
         }
         PROF_OUTPUT_MULTI_COUNT_CPU((ss.str() + "find(capacity)").c_str(), 1000 * 10000, cost.stop_and_save().cycles());
+        PROF_START_COUNTER(cost);
+        for (int i = 0; i < 1000 * 10000; i++)
+        {
+            if (m[i % LOAD_CAPACITY] != i % LOAD_CAPACITY)
+            {
+                LogError() << " stress test error";
+            }
+        }
+        PROF_OUTPUT_MULTI_COUNT_CPU((ss.str() + "[](capacity)").c_str(), 1000 * 10000, cost.stop_and_save().cycles());
     }
 
 
