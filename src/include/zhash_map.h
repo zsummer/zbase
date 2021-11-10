@@ -133,7 +133,23 @@ namespace zsummer
             return hash_key;
         }
     };
+    template <class Key, class Val>
+    struct zhash_get_pair_key
+    {
+        const Key& operator()(std::pair<const Key&, const Val&> v) const
+        {
+            return v.first;
+        }
+    };
 
+    template <class Key>
+    struct zhash_get_key
+    {
+        const Key& operator()(const Key& key) const
+        {
+            return key;
+        }
+    };
 
     /*
     * 支持obj和pod: 针对pod和非pod有静态模版分支 pod更快.
@@ -142,11 +158,12 @@ namespace zsummer
     * std自带的hash为取模, 如果key在取模后的数据可能存在大量冲突 推荐用zhash, 以hash的性能消耗换取更小的碰撞冲突来获得整体的性能提升  
     */
     template<class Key,
-        class _Ty,
+        class Value,
         u32 _Size,
-        class Hash = std::hash<Key>,
-        class KeyEqual = std::equal_to<Key>>
-        class zhash_map
+        class GetKey,
+        class Hash,
+        class KeyEqual>
+        class zhash_map_impl
     {
     public:
 
@@ -158,8 +175,7 @@ namespace zsummer
         constexpr size_type max_size() const { return NODE_COUNT; }
         //constexpr size_type max_bucket_count() const { return HASH_COUNT; }
         using key_type = Key;
-        using mapped_type = _Ty;
-        using value_type = std::pair<const key_type, mapped_type>;
+        using value_type = Value;
         using reference = value_type&;
         using const_reference = const value_type&;
         using space_type = typename std::aligned_storage<sizeof(value_type), alignof(value_type)>::type;
@@ -172,8 +188,9 @@ namespace zsummer
         using iterator = zhash_map_iterator<node_type, value_type, INVALID_NODE_ID, HASH_COUNT>;
         using const_iterator = const iterator;
         Hash hasher;
+        GetKey get_key;
         KeyEqual key_equal;
-    private:
+    protected:
         u32 buckets_[HASH_COUNT];
         node_type node_pool_[INVALID_NODE_ID];
         u32 first_valid_node_id_;
@@ -248,17 +265,17 @@ namespace zsummer
 
         std::pair<iterator, bool> insert_v(const value_type& val, bool assign)
         {
-            iterator finder = find(val.first);
+            iterator finder = find(get_key(val));
             if (finder != end())
             {
                 if (assign)
                 {
-                    finder->second = val.second;
+                    *finder = val;
                 }
                 return { finder, false };
             }
 
-            u32 ukey = (u32)hasher(val.first);
+            u32 ukey = (u32)hasher(get_key(val));
             u32 hash_id = ukey % HASH_COUNT;
 
             u32 new_node_id = pop_free();
@@ -296,11 +313,11 @@ namespace zsummer
         const_iterator cend() const noexcept { return mi(INVALID_NODE_ID); }
 
     public:
-        zhash_map()
+        zhash_map_impl()
         {
             reset();
         }
-        zhash_map(std::initializer_list<value_type> init)
+        zhash_map_impl(std::initializer_list<value_type> init)
         {
             reset();
             for (const auto& v : init)
@@ -308,7 +325,7 @@ namespace zsummer
                 insert(v);
             }
         }
-        ~zhash_map()
+        ~zhash_map_impl()
         {
             if (!std::is_trivial<value_type>::value)
             {
@@ -329,6 +346,7 @@ namespace zsummer
             }
             reset();
         }
+
         const size_type size() const noexcept { return count_; }
         const bool empty() const noexcept { return !size(); }
         const bool full() const noexcept { return size() == NODE_COUNT; }
@@ -344,22 +362,13 @@ namespace zsummer
         {
             return insert_v(val, false);
         }
-        mapped_type& operator[](const key_type& key)
-        {
-            std::pair<iterator, bool> ret = insert_v(std::make_pair(key, mapped_type()), false);
-            if (ret.first != end())
-            {
-                return ret.first->second;
-            }
-            throw std::overflow_error("mapped_type& operator[](const key_type& key)");
-        }
 
         iterator find(const key_type& key)
         {
             u32 ukey = (u32)hasher(key);
             u32 hash_id = ukey % HASH_COUNT;
             u32 node_id = buckets_[hash_id];
-            while (node_id != FREE_POOL_SIZE && rf(node_pool_ [node_id]).first != key)
+            while (node_id != FREE_POOL_SIZE && get_key(rf(node_pool_[node_id])) != key)
             {
                 node_id = node_pool_[node_id].next;
             }
@@ -418,6 +427,7 @@ namespace zsummer
             return begin();
         }
 
+
         iterator erase(const key_type& key)
         {
             u32 ukey = (u32)hasher(key);
@@ -429,7 +439,7 @@ namespace zsummer
             }
 
             u32 node_id = FREE_POOL_SIZE;
-            if (rf(node_pool_[pre_node_id]).first == key)
+            if (get_key(rf(node_pool_[pre_node_id])) == key)
             {
                 node_id = pre_node_id;
                 buckets_[hash_id] = node_pool_[pre_node_id].next;
@@ -439,7 +449,7 @@ namespace zsummer
                 u32 cur_node_id = pre_node_id;
                 while (node_pool_[cur_node_id].next != FREE_POOL_SIZE)
                 {
-                    if (rf(node_pool_[node_pool_[cur_node_id].next]).first != key)
+                    if (get_key(rf(node_pool_[node_pool_[cur_node_id].next])) != key)
                     {
                         cur_node_id = node_pool_[cur_node_id].next;
                         continue;
@@ -462,9 +472,61 @@ namespace zsummer
             return begin();
         }
 
-
     };
 
+
+
+    template<class Key,
+        class _Ty,
+        u32 _Size,
+        class Hash = std::hash<Key>,
+        class KeyEqual = std::equal_to<Key>>
+        class zhash_map: public zhash_map_impl<Key, std::pair<Key, _Ty>,  _Size, zhash_get_pair_key<Key, _Ty>, Hash, KeyEqual>
+    {
+    public:
+        using supper_map = zhash_map_impl<Key, std::pair<Key, _Ty>, _Size, zhash_get_pair_key<Key, _Ty>, Hash, KeyEqual>;
+        using value_type = typename supper_map::value_type;
+        using key_type = typename supper_map::key_type;
+        using iterator = typename supper_map::iterator;
+        using const_reference = typename supper_map::const_reference;
+        using mapped_type = _Ty;
+        zhash_map()
+        {
+        }
+        zhash_map(std::initializer_list<value_type> init):supper_map(init)
+        {
+        }
+
+        mapped_type& operator[](const key_type& key)
+        {
+            std::pair<iterator, bool> ret = supper_map::insert_v(std::make_pair(key, mapped_type()), false);
+            if (ret.first != supper_map::end())
+            {
+                return ret.first->second;
+            }
+            throw std::overflow_error("mapped_type& operator[](const key_type& key)");
+        }
+    };
+
+    template<class Key,
+        u32 _Size,
+        class Hash = std::hash<Key>,
+        class KeyEqual = std::equal_to<Key>>
+        class zhash_set : public zhash_map_impl<Key, Key, _Size, zhash_get_key<Key>, Hash, KeyEqual>
+    {
+    public:
+        using supper_map = zhash_map_impl<Key, Key, _Size, zhash_get_key<Key>, Hash, KeyEqual>;
+        using value_type = typename supper_map::value_type;
+        using key_type = typename supper_map::key_type;
+        using iterator = typename supper_map::iterator;
+        using const_reference = typename supper_map::const_reference;
+        zhash_set()
+        {
+        }
+        zhash_set(std::initializer_list<value_type> init) :supper_map(init)
+        {
+        }
+    };
 }
 
 
