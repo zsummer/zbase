@@ -130,9 +130,10 @@ namespace zsummer
         {
             if (!std::is_trivial<_Ty>::value)
             {
+                _Ty* pbegin = ptr(0);
                 for (size_type i = 0; i < count_; i++)
                 {
-                    ptr(i)->~_Ty();
+                    pbegin[i].~_Ty();
                 }
             }
             count_ = 0;

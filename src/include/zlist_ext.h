@@ -234,6 +234,15 @@ namespace zsummer
             init();
             assign(init_list.begin(), init_list.end());
         }
+        zlist_ext(const zlist_ext<_Ty, _Size, _FixedSize>& other)
+        {
+            if (data() == other.data())
+            {
+                return;
+            }
+            init();
+            assign(other.begin(), other.end());
+        }
         zlist_ext<_Ty, _Size, _FixedSize>& operator = (const zlist_ext<_Ty, _Size, _FixedSize>& other)
         {
             if (data() == other.data())
