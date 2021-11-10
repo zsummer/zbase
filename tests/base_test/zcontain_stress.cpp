@@ -12,7 +12,7 @@
 #include "zlist_stress.h"
 #include <unordered_map>
 #include "zprof.h"
-
+#include "static_vector.h"
 
 using namespace zsummer;
 
@@ -631,9 +631,14 @@ s32 contiainer_stress_test()
 
     using int_zarray = zarray<int, LOAD_CAPACITY>;
     using raii_zarray = zarray<RAIIVal<>, LOAD_CAPACITY>;
+    using raii_svector = StaticVector<RAIIVal<>, LOAD_CAPACITY>;
+    using int_svector = StaticVector<int, LOAD_CAPACITY>;
 
     LinerStressWrap(std::vector<int>, int, false, true);
     LinerStressWrap(int_zarray, int, true, true);
+    LinerStressWrap(int_svector, int, false, true);
+
+
     LinerStressWrap(std::vector<int>, RAIIVal<>, false, false);
     LinerStressWrap(int_zarray, RAIIVal<>, true, false);
 
@@ -642,6 +647,9 @@ s32 contiainer_stress_test()
 
     LinerStressWrap(std::vector<RAIIVal<>>, RAIIVal<>, false, true);
     LinerStressWrap(raii_zarray, RAIIVal<>, true, true);
+    LinerStressWrap(raii_svector, int, false, true);
+
+
     LinerStressWrap(std::vector<RAIIVal<>>, int, false, false);
     LinerStressWrap(raii_zarray, int, true, false);
 
