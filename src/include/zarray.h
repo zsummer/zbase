@@ -24,7 +24,7 @@
 #define ZARRAY_H
 
 #include <type_traits>
-
+#include <iterator>
 namespace zsummer
 {
     using s8 = char;
@@ -76,7 +76,11 @@ namespace zsummer
             count_ = 0;
             assign(init_list.begin(), init_list.end());
         }
-
+        zarray(const zarray< _Ty, _Size>& other)
+        {
+            count_ = 0;
+            assign(other.begin(), other.end());
+        }
         //std::array api
         iterator begin() noexcept { return ptr(0); }
         const_iterator begin() const noexcept { return ptr(0); }
@@ -176,19 +180,11 @@ namespace zsummer
         iterator inject(const_iterator in_pos, size_type count, const typename std::enable_if<std::is_trivial<T>::value>::type* = 0)
         {
             static_assert(std::is_same<iterator, pointer>::value, "");
-            if (in_pos < begin())
-            {
-                return end();
-            }
-            if (count_ + count > _Size)
+            if (in_pos < begin() || in_pos > end() || count_ + count > max_size() || count == 0)
             {
                 return end();
             }
             iterator pos = (iterator)in_pos;
-            if (pos > end())
-            {
-                pos = end();
-            }
             iterator old_end = end();
             count_ += count;
             if (pos == old_end)
@@ -202,19 +198,11 @@ namespace zsummer
         iterator inject(const_iterator in_pos, size_type count, const typename std::enable_if<!std::is_trivial<T>::value>::type* = 0)
         {
             static_assert(std::is_same<iterator, pointer>::value, "");
-            if (in_pos < begin())
-            {
-                return end();
-            }
-            if (count_ + count > _Size)
+            if (in_pos < begin() || in_pos > end() || count_ + count > max_size() || count == 0)
             {
                 return end();
             }
             iterator pos = (iterator)in_pos;
-            if (pos > end())
-            {
-                pos = end();
-            }
             iterator old_end = end();
             count_ += count;
             if (pos == old_end)
@@ -328,48 +316,35 @@ namespace zsummer
             return insert(pos, 1, value);
         }
 
-        //[first,last)
-        iterator insert(iterator pos, const_iterator first, const_iterator last)
+
+        template<class Iter>
+        iterator assign(Iter first, Iter last)
         {
-            if (first >= begin() && first < begin() + _Size)
-            {
-                return end();
-            }
-            iterator new_iter = inject(pos, distance(first, last));
-            if (new_iter == end())
-            {
-                return  end();
-            }
-            iterator cp_first = (iterator)first;
+            clear();
+            iterator pos = begin();
             if (!std::is_trivial< _Ty>::value)
             {
-                while (cp_first != last)
+                while (first != last && count_ < max_size())
                 {
-                    new (pos++) _Ty(*cp_first++);
+                    new (pos++) _Ty(*first++);
+                    count_++;
                 }
             }
             else
             {
-                while (cp_first != last)
+                while (first != last && count_ < max_size())
                 {
-                    *pos++ =  *cp_first++;
+                    *pos++ = *first++;
+                    count_++;
                 }
             }
-
-
-            return new_iter;
-        }
-
-        iterator assign(const_iterator first, const_iterator last)
-        {
-            clear();
-            return insert(end(), first, last);
+            return begin();
         }
 
         iterator assign(size_type count, const _Ty& value)
         {
             clear();
-            return insert(0, value);
+            return insert(end(), count, value);
         }
 
         template< class... Args >
