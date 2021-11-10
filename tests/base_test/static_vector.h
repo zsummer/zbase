@@ -163,7 +163,7 @@ public:
     }
 
 protected:
-    void set_size(size_t n)
+    void set_size(s32 n)
     {
         len_ = n;
     }
@@ -473,7 +473,7 @@ public:
     {
         iterator it = std::move(s + 1, this->end(), s);
         this->destroy_range(it, this->end());
-        this->set_size(it - this->begin());
+        this->set_size(s32(it - this->begin()));
         return s;
     }
 
