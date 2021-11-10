@@ -161,8 +161,7 @@ namespace zsummer
         class Value,
         u32 _Size,
         class GetKey,
-        class Hash,
-        class KeyEqual>
+        class Hash>
         class zhash_map_impl
     {
     public:
@@ -189,7 +188,6 @@ namespace zsummer
         using const_iterator = const iterator;
         Hash hasher;
         GetKey get_key;
-        KeyEqual key_equal;
     protected:
         u32 buckets_[HASH_COUNT];
         node_type node_pool_[INVALID_NODE_ID];
@@ -479,12 +477,11 @@ namespace zsummer
     template<class Key,
         class _Ty,
         u32 _Size,
-        class Hash = std::hash<Key>,
-        class KeyEqual = std::equal_to<Key>>
-        class zhash_map: public zhash_map_impl<Key, std::pair<Key, _Ty>,  _Size, zhash_get_pair_key<Key, _Ty>, Hash, KeyEqual>
+        class Hash = std::hash<Key>>
+        class zhash_map: public zhash_map_impl<Key, std::pair<Key, _Ty>,  _Size, zhash_get_pair_key<Key, _Ty>, Hash>
     {
     public:
-        using supper_map = zhash_map_impl<Key, std::pair<Key, _Ty>, _Size, zhash_get_pair_key<Key, _Ty>, Hash, KeyEqual>;
+        using supper_map = zhash_map_impl<Key, std::pair<Key, _Ty>, _Size, zhash_get_pair_key<Key, _Ty>, Hash>;
         using value_type = typename supper_map::value_type;
         using key_type = typename supper_map::key_type;
         using iterator = typename supper_map::iterator;
@@ -496,7 +493,6 @@ namespace zsummer
         zhash_map(std::initializer_list<value_type> init):supper_map(init)
         {
         }
-
         mapped_type& operator[](const key_type& key)
         {
             std::pair<iterator, bool> ret = supper_map::insert_v(std::make_pair(key, mapped_type()), false);
@@ -510,17 +506,16 @@ namespace zsummer
 
     template<class Key,
         u32 _Size,
-        class Hash = std::hash<Key>,
-        class KeyEqual = std::equal_to<Key>>
-        class zhash_set : public zhash_map_impl<Key, Key, _Size, zhash_get_key<Key>, Hash, KeyEqual>
+        class Hash = std::hash<Key>>
+        class zhash_set : public zhash_map_impl<Key, Key, _Size, zhash_get_key<Key>, Hash>
     {
     public:
-        using supper_map = zhash_map_impl<Key, Key, _Size, zhash_get_key<Key>, Hash, KeyEqual>;
+        using supper_map = zhash_map_impl<Key, Key, _Size, zhash_get_key<Key>, Hash>;
         using value_type = typename supper_map::value_type;
         using key_type = typename supper_map::key_type;
         using iterator = typename supper_map::iterator;
         using const_reference = typename supper_map::const_reference;
-        zhash_set()
+        zhash_set() 
         {
         }
         zhash_set(std::initializer_list<value_type> init) :supper_map(init)
