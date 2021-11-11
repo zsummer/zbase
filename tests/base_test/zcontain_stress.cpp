@@ -878,21 +878,34 @@ s32 contiainer_stress_test()
 
     if (true)
     {
+        std::unordered_map<int, int> sys_map;
         zhash_map<int, int, LOAD_CAPACITY> z_hashmap;
-        for (int i = 0; i < LOAD_CAPACITY/3; i++)
-        {
-            z_hashmap.insert(std::make_pair(i, i));
-        }
-        AssertTest(z_hashmap.size(), (u32)LOAD_CAPACITY / 3, "");
         std::unordered_map<int, int> sys_hashmap;
         for (int i = 0; i < LOAD_CAPACITY / 3; i++)
         {
             sys_hashmap.insert(std::make_pair(i, i));
+            sys_map.insert(std::make_pair(i, i));
+            z_hashmap.insert(std::make_pair(i, i));
         }
+        AssertTest(sys_map.size(), (u32)LOAD_CAPACITY / 3, "");
         AssertTest(sys_hashmap.size(), (u32)LOAD_CAPACITY / 3, "");
+        AssertTest(z_hashmap.size(), (u32)LOAD_CAPACITY / 3, "");
 
         int sys_count = 0;
         int z_count = 0;
+        int sys_map_count = 0;
+        if (true)
+        {
+
+            PROF_DEFINE_AUTO_SINGLE_RECORD(cost, LOOP_CAPACITY, PROF_LEVEL_NORMAL, "sys map foreach");
+            for (int i = 0; i < LOOP_CAPACITY; i++)
+            {
+                for (auto& kv : sys_map)
+                {
+                    sys_map_count += kv.second;
+                }
+            }
+        }
         if (true)
         {
             
@@ -918,6 +931,7 @@ s32 contiainer_stress_test()
             }
         }
         AssertTest(sys_count, z_count, "");
+        AssertTest(sys_map_count, z_count, "");
     }
 
     return 0;
