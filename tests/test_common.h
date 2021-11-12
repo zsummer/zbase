@@ -128,7 +128,13 @@ public:
         val_ = v;
         return *this;
     }
+
 };
+template<int CLASS>
+bool operator <(const RAIIVal<CLASS>& v1, const RAIIVal<CLASS>& v2)
+{
+    return v1.val_ < v2.val_;
+}
 template<int CLASS>
 u32 RAIIVal<CLASS>::construct_count_ = 0;
 template<int CLASS>
