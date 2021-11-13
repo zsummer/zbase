@@ -180,10 +180,6 @@ namespace zsummer
         iterator inject(const_iterator in_pos, size_type count, const typename std::enable_if<std::is_trivial<T>::value>::type* = 0)
         {
             static_assert(std::is_same<iterator, pointer>::value, "");
-            if (in_pos < begin() || in_pos > end() || count_ + count > max_size() || count == 0)
-            {
-                return end();
-            }
             iterator pos = (iterator)in_pos;
             iterator old_end = end();
             count_ += count;
@@ -198,10 +194,6 @@ namespace zsummer
         iterator inject(const_iterator in_pos, size_type count, const typename std::enable_if<!std::is_trivial<T>::value>::type* = 0)
         {
             static_assert(std::is_same<iterator, pointer>::value, "");
-            if (in_pos < begin() || in_pos > end() || count_ + count > max_size() || count == 0)
-            {
-                return end();
-            }
             iterator pos = (iterator)in_pos;
             iterator old_end = end();
             count_ += count;
@@ -284,11 +276,11 @@ namespace zsummer
         template<class T = _Ty>
         iterator insert(iterator pos, size_type count, const typename std::enable_if <std::is_trivial<T>::value, _Ty>::type& value)
         {
-            iterator new_iter = inject(pos, count);
-            if (new_iter == end())
+            if (pos < begin() || pos > end() || count_ + count > max_size() || count == 0)
             {
-                return  end();
+                return end();
             }
+            iterator new_iter = inject(pos, count);
             for (size_t i = 0; i < count; i++)
             {
                 *pos++ = value;
@@ -299,11 +291,11 @@ namespace zsummer
         template<class T = _Ty>
         iterator insert(iterator pos, size_type count, const typename std::enable_if <!std::is_trivial<T>::value, _Ty>::type& value)
         {
-            iterator new_iter = inject(pos, count);
-            if (new_iter == end())
+            if (pos < begin() || pos > end() || count_ + count > max_size() || count == 0)
             {
-                return  end();
+                return end();
             }
+            iterator new_iter = inject(pos, count);
             for (size_t i = 0; i < count; i++)
             {
                 new (pos++) _Ty(value);
@@ -311,11 +303,29 @@ namespace zsummer
             return new_iter;
         }
 
-        iterator insert(iterator pos, const _Ty& value)
+        template<class T = _Ty>
+        iterator insert(iterator pos, const typename std::enable_if <std::is_trivial<T>::value, _Ty>::type& value)
         {
-            return insert(pos, 1, value);
+            if (pos < begin() || pos > end() || full())
+            {
+                return end();
+            }
+            iterator new_iter = inject(pos, 1);
+            *pos++ = value;
+            return new_iter;
         }
 
+        template<class T = _Ty>
+        iterator insert(iterator pos, const typename std::enable_if <!std::is_trivial<T>::value, _Ty>::type& value)
+        {
+            if (pos < begin() || pos > end() || full())
+            {
+                return end();
+            }
+            iterator new_iter = inject(pos, 1);
+            new (pos++) _Ty(value);
+            return new_iter;
+        }
 
         template<class Iter>
         iterator assign(Iter first, Iter last)
@@ -350,11 +360,11 @@ namespace zsummer
         template< class... Args >
         iterator emplace(const_iterator pos, Args&&... args)
         {
-            iterator iter = inject(pos, 1);
-            if (iter == end())
+            if (pos < begin() || pos > end() || count_ + 1 > max_size() || 1 == 0)
             {
                 return end();
             }
+            iterator iter = inject(pos, 1);
             new (iter) _Ty(args...);
             return iter;
         }
