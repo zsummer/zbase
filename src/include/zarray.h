@@ -150,7 +150,7 @@ namespace zsummer
             {
                 return;
             }
-            *ptr(count_++) = value;
+            ref(count_++) = value;
         }
 
         template<class T = _Ty>
