@@ -96,6 +96,7 @@ s32 zmalloc_stress()
         {
             u32 test_size = rand_array[i] % (zmalloc::BIG_MAX_REQUEST);
             void* p = global_zmalloc(test_size);
+            *(u32*)p = (u32)i;
             buffers->push_back(p);
         }
         PROF_OUTPUT_MULTI_COUNT_CPU("global_zmalloc(0~512k)", buffers->size(), cost.stop_and_save().cycles());
@@ -112,7 +113,7 @@ s32 zmalloc_stress()
         buffers->clear();
     }
 
-    for (size_t loop = 0; loop < 40; loop++) //系统分配太慢了 只
+    for (size_t loop = 0; loop < 40; loop++) 
     {
         if (loop%2 == 0 && loop != 0)
         {
@@ -122,8 +123,9 @@ s32 zmalloc_stress()
         for (u64 i = cover_size / 40 * loop; i < cover_size / 40 * (loop + 1); i++)
         {
             u32 test_size = rand_array[i] % (zmalloc::BIG_MAX_REQUEST);
-            test_size = test_size == 0 ? 1 : test_size;
+            test_size = test_size <8  ? 8 : test_size;
             void* p = malloc(test_size);
+            *(u32*)p = (u32)i;
             buffers->push_back(p);
         }
         PROF_OUTPUT_MULTI_COUNT_CPU("sys malloc(0~512k)", buffers->size(), cost.stop_and_save().cycles());

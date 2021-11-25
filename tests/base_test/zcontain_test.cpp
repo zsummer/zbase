@@ -382,28 +382,34 @@ s32 array_test()
     }
     RAIIVal<>::reset();
 
+    if (true)
+    {
+        std::vector<int> a;
+        ArrayBaseTest(a, rand_array);
+    }
 
     if (true)
     {
         zarray<int, MAX_SIZE> a;
         ArrayBaseTest(a, rand_array);
     }
+
     if (true)
     {
-        zarray<RAIIVal<>, MAX_SIZE> a;
+        RAIIVal<>::reset();
+        std::vector<RAIIVal<>> a;
         ArrayBaseTest(a, rand_array);
     }
 
     if (true)
     {
-        std::vector<int> a;
+        RAIIVal<>::reset();
+        zarray<RAIIVal<>, MAX_SIZE> a;
         ArrayBaseTest(a, rand_array);
     }
-    if (true)
-    {
-        std::vector<RAIIVal<>> a;
-        ArrayBaseTest(a, rand_array);
-    }
+
+
+
 
     if (true)
     {
