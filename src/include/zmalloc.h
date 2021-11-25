@@ -316,7 +316,7 @@ namespace zsummer
 #define zmalloc_chunk_level(p) (zmalloc_free_chunk_cast(p)->flags & zmalloc::CHUNK_LEVEL_MASK)
 
 #define zmalloc_get_block(firstp) ((zmalloc::block_type*)(zmalloc_u64_cast(firstp) - zmalloc::BLOCK_TYPE_SIZE - sizeof(zmalloc::free_chunk_type)))
-#define zmalloc_get_chunk(block) zmalloc_chunk_cast( zmalloc_u64_cast(block)+zmalloc::BLOCK_TYPE_SIZE + sizeof(zmalloc::free_chunk_type))
+#define zmalloc_get_first_chunk(block) zmalloc_chunk_cast( zmalloc_u64_cast(block)+zmalloc::BLOCK_TYPE_SIZE + sizeof(zmalloc::free_chunk_type))
 #define zmalloc_get_block_head(block) zmalloc_chunk_cast( zmalloc_u64_cast(block)+zmalloc::BLOCK_TYPE_SIZE)
 
 
@@ -455,7 +455,7 @@ namespace zsummer
         head_chunk->next_node = NULL;
         head_chunk->prev_node = NULL;
 
-        free_chunk_type* chunk = zmalloc_free_chunk_cast(zmalloc_get_chunk(block));
+        free_chunk_type* chunk = zmalloc_free_chunk_cast(zmalloc_get_first_chunk(block));
         chunk->flags = flag;
         chunk->prev_size = sizeof(free_chunk_type);
         chunk->this_size = bytes - sizeof(block_type) - sizeof(free_chunk_type) * 2;
@@ -503,7 +503,7 @@ namespace zsummer
         used_block_count_--;
         free_block_count_++;
 
-        if (!zmalloc_has_chunk(zmalloc_get_chunk(block), CHUNK_IS_DIRECT) && reserve_block_count_ < max_reserve_block_count_)
+        if (!zmalloc_has_chunk(zmalloc_get_first_chunk(block), CHUNK_IS_DIRECT) && reserve_block_count_ < max_reserve_block_count_)
         {
             reserve_block_count_++;
             if (reserve_block_list_ == NULL)
@@ -1074,7 +1074,7 @@ namespace zsummer
             ZMALLOC_ASSERT(zmalloc_is_power_of_2(block->block_size), "align");
 
 
-            if (zmalloc_has_chunk(zmalloc_get_chunk(block), zmalloc::CHUNK_IS_DIRECT))
+            if (zmalloc_has_chunk(zmalloc_get_first_chunk(block), zmalloc::CHUNK_IS_DIRECT))
             {
 
             }
@@ -1116,7 +1116,7 @@ namespace zsummer
             u32 block_bytes = 0;
             u32 block_c_count = 0;
             u32 block_fc_count = 0;
-            zmalloc::chunk_type* c = zmalloc_get_chunk(block);
+            zmalloc::chunk_type* c = zmalloc_get_first_chunk(block);
             while (c)
             {
                 c_count++;
