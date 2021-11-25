@@ -187,7 +187,7 @@ namespace zsummer
             CHUNK_IS_IN_USED = 0x2,
             CHUNK_IS_DIRECT = 0x4,
         };
-        static const u32 CHUNK_LEVEL_MASK = 0x01;
+        static const u32 CHUNK_LEVEL_MASK = CHUNK_IS_BIG;
         static const u32 CHUNK_FENCE = 0xdeadbeaf;
         static const u32 CHUNK_PADDING_SIZE = sizeof(chunk_type);
         static const u32 CHUNK_FREE_SIZE = sizeof(free_chunk_type);
@@ -810,7 +810,8 @@ namespace zsummer
         u32 level = zmalloc_chunk_level(chunk);
         u64 bytes = chunk->this_size - CHUNK_PADDING_SIZE;
         (void)level;
-        if (chunk->flags & CHUNK_IS_DIRECT)
+
+        if (zmalloc_chunk_is_dirct(chunk))
         {
             zmalloc_unset_chunk(chunk, CHUNK_IS_IN_USED);
             block_type* block = zmalloc_get_block(chunk);
@@ -818,7 +819,7 @@ namespace zsummer
             return bytes;
         }
 
-        free_counter_[chunk->flags & CHUNK_IS_BIG][chunk->bin_id]++;
+        free_counter_[zmalloc_chunk_level(chunk)][chunk->bin_id]++;
         if (!zmalloc_chunk_in_use(zmalloc_front_chunk(chunk)))
         {
             free_chunk_type* prev_node = zmalloc_front_chunk(chunk);
