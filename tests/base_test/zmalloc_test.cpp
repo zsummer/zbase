@@ -235,6 +235,58 @@ s32 zmalloc_stress()
     }
 
 
+    //固定小字节申请  
+    static int fixed_size = 100; 
+    for (size_t loop = 0; loop < 40; loop++) //系统分配太慢了 只
+    {
+        if (loop % 2 == 0 && loop != 0)
+        {
+            continue;//系统分配太慢了  不需要覆盖性测试  删除一半数据. 
+        }
+        PROF_START_COUNTER(cost);
+        for (u64 i = cover_size / 40 * loop; i < cover_size / 40 * (loop + 1); i++)
+        {
+            u32 test_size = fixed_size;
+            void* p = malloc(test_size);
+            buffers->push_back(p);
+        }
+        PROF_OUTPUT_MULTI_COUNT_CPU("sys malloc(100) bat", buffers->size(), cost.stop_and_save().cycles());
+        zstate->check_health();
+        PROF_START_COUNTER(cost);
+        for (auto p : *buffers)
+        {
+            free(p);
+        }
+        PROF_OUTPUT_MULTI_COUNT_CPU("sys free(100) bat", buffers->size(), cost.stop_and_save().cycles());
+        buffers->clear();
+        zstate->check_health();
+    }
+    for (size_t loop = 0; loop < 40; loop++) //系统分配太慢了 只
+    {
+        if (loop % 2 == 0 && loop != 0)
+        {
+            continue;//系统分配太慢了  不需要覆盖性测试  删除一半数据. 
+        }
+        PROF_START_COUNTER(cost);
+        for (u64 i = cover_size / 40 * loop; i < cover_size / 40 * (loop + 1); i++)
+        {
+            u32 test_size = fixed_size;
+            void* p = global_zmalloc(test_size);
+            buffers->push_back(p);
+        }
+        PROF_OUTPUT_MULTI_COUNT_CPU("zmalloc(100) bat", buffers->size(), cost.stop_and_save().cycles());
+        zstate->check_health();
+        PROF_START_COUNTER(cost);
+        for (auto p : *buffers)
+        {
+            global_zfree(p);
+        }
+        PROF_OUTPUT_MULTI_COUNT_CPU("zfree(100) bat", buffers->size(), cost.stop_and_save().cycles());
+        buffers->clear();
+        zstate->check_health();
+    }
+
+
 
     LogDebug() << "check health";
     buffers->clear();
@@ -267,6 +319,7 @@ s32 zmalloc_stress()
     void* pz = global_zmalloc(0);
     zstate->check_health();
     global_zfree(pz);
+
 
     zstate->clear_cache();
     LogDebug() << "check health finish";
