@@ -120,6 +120,10 @@ static_assert(zmalloc_third_sequence(9, 2048) == 36, "");
 #define zmalloc_third_sequence_compress(sequence) (sequence - 32)
 #define zmalloc_resolve_order_size(index )  ((((index + 32) & 0x3) | 0x4) << (((index +32) >> 2) ))
 
+
+#define ZMALLOC_OPEN_COUNTER
+
+
 namespace zsummer
 {
     using s8 = char;
@@ -148,6 +152,7 @@ namespace zsummer
         inline static u64 default_block_free(void*);
         inline static void set_global(zmalloc* state);
         inline void set_block_callback(block_alloc_func block_alloc, block_free_func block_free);
+        template<u16 COLOR = 0>
         inline void* alloc_memory(u64 bytes);
         inline u64  free_memory(void* addr);
 
@@ -184,8 +189,11 @@ namespace zsummer
         enum chunk_flags : u32
         {
             CHUNK_IS_BIG = 0x1,
-            CHUNK_IS_IN_USED = 0x2,
-            CHUNK_IS_DIRECT = 0x4,
+            CHUNK_COLOR_MASK = 0x7f - 1,
+            CHUNK_COLOR_MASK_WITH_LEVEL = CHUNK_COLOR_MASK | CHUNK_IS_BIG,
+            CHUNK_IS_IN_USED = 0x100,
+            CHUNK_COLOR_MASK_WITH_USED = CHUNK_COLOR_MASK | CHUNK_IS_IN_USED,
+            CHUNK_IS_DIRECT = 0x200,
         };
         static const u32 CHUNK_LEVEL_MASK = CHUNK_IS_BIG;
         static const u32 CHUNK_FENCE = 0xdeadbeaf;
@@ -252,8 +260,10 @@ namespace zsummer
         free_chunk_type* dv_[BITMAP_LEVEL];
         free_chunk_type bin_[BITMAP_LEVEL][BINMAP_SIZE];
         free_chunk_type bin_end_[BITMAP_LEVEL][BINMAP_SIZE];
+#ifdef ZMALLOC_OPEN_COUNTER
         u64 alloc_counter_[BITMAP_LEVEL][BINMAP_SIZE];
         u64 free_counter_[BITMAP_LEVEL][BINMAP_SIZE];
+#endif // ZMALLOC_OPEN_COUNTER
     };
 
 #define global_zmalloc(bytes) zmalloc::instance().alloc_memory(bytes)
@@ -595,9 +605,13 @@ namespace zsummer
         return new_chunk;
     }
 
- 
+    template<u16 COLOR>
     void* zmalloc::alloc_memory(u64 req_bytes)
     {
+        static_assert(COLOR % 2 == 0 && COLOR < CHUNK_COLOR_MASK, "confilct color enum & inner flags");
+        static_assert(CHUNK_IS_BIG == 1, "");
+        static_assert(CHUNK_IS_IN_USED > CHUNK_COLOR_MASK, "");
+        static_assert(CHUNK_IS_DIRECT > CHUNK_COLOR_MASK, "");
         if (!inited_)
         {
             auto cache_max_reserve_block_count = max_reserve_block_count_;
@@ -679,12 +693,13 @@ namespace zsummer
             chunk = exploit_new_chunk(chunk, padding);
 
         SMALL_RETURN:
-            zmalloc_set_chunk(chunk, CHUNK_IS_IN_USED);
+            zmalloc_set_chunk(chunk, CHUNK_IS_IN_USED | COLOR);
             chunk->fence = CHUNK_FENCE;
             chunk->bin_id = small_id;
+           
+#ifdef ZMALLOC_OPEN_COUNTER
             alloc_counter_[!CHUNK_IS_BIG][chunk->bin_id] ++;
-            //RECORD_ALLOC(ALLOC_ZMALLOC, req_bytes);
-            //RECORD_REQ_ALLOC_BYTES(ALLOC_ZMALLOC, req_bytes, chunk->this_size);
+#endif
             alloc_total_bytes_ += chunk->this_size;
             return (void*)(zmalloc_u64_cast(chunk) + CHUNK_PADDING_SIZE);
         }
@@ -756,12 +771,12 @@ namespace zsummer
 
 
         BIG_RETURN:
-            zmalloc_set_chunk(chunk, CHUNK_IS_IN_USED);
+            zmalloc_set_chunk(chunk, CHUNK_IS_IN_USED | COLOR);
             chunk->fence = CHUNK_FENCE;
             chunk->bin_id = compress_id;
+#ifdef ZMALLOC_OPEN_COUNTER
             alloc_counter_[CHUNK_IS_BIG][chunk->bin_id] ++;
-            //RECORD_ALLOC(ALLOC_ZMALLOC, req_bytes);
-            //RECORD_REQ_ALLOC_BYTES(ALLOC_ZMALLOC, req_bytes, chunk->this_size);
+#endif
             alloc_total_bytes_ += chunk->this_size;
             return (void*)(zmalloc_u64_cast(chunk) + CHUNK_PADDING_SIZE);
         }
@@ -773,7 +788,7 @@ namespace zsummer
             return NULL;
         }
 
-        zmalloc_set_chunk(chunk, CHUNK_IS_IN_USED);
+        zmalloc_set_chunk(chunk, CHUNK_IS_IN_USED | COLOR);
         //RECORD_ALLOC(ALLOC_ZMALLOC, req_bytes);
         //RECORD_REQ_ALLOC_BYTES(ALLOC_ZMALLOC, req_bytes, chunk->this_size);
         alloc_total_bytes_ += chunk->this_size;
@@ -795,7 +810,7 @@ namespace zsummer
             return 0;
         }
         CHECK_C(chunk);
-        zmalloc_unset_chunk(chunk, CHUNK_IS_IN_USED);
+        zmalloc_unset_chunk(chunk, CHUNK_COLOR_MASK_WITH_USED);
 #if ZMALLOC_OPEN_FENCE
         if (!zmalloc_check_fence(chunk) || !zmalloc_check_fence(zmalloc_next_chunk(chunk)))
         {
@@ -818,8 +833,9 @@ namespace zsummer
             free_block(block);
             return bytes;
         }
-
+#ifdef ZMALLOC_OPEN_COUNTER
         free_counter_[zmalloc_chunk_level(chunk)][chunk->bin_id]++;
+#endif
         if (!zmalloc_chunk_in_use(zmalloc_front_chunk(chunk)))
         {
             free_chunk_type* prev_node = zmalloc_front_chunk(chunk);
@@ -925,7 +941,7 @@ namespace zsummer
     {
         static const size_t bufsz = 10 * 1024;
         static char buffer[bufsz] = { 0 };
-        int used = 0;
+        
         int ret = snprintf(buffer, bufsz, "zmalloc summary: block size:%u, max reserve block:%u \n"
             "used block:%u, cur reserve block:%u, in hold:%0.4lfm, in real used:%0.4lfm\n"
             "total alloc block count:%.03lfk, total free block count:%.03lfk\n"
@@ -944,6 +960,9 @@ namespace zsummer
             (alloc_block_cached_ * DEFAULT_BLOCK_SIZE + alloc_block_bytes_) / 1024.0 / 1024.0, (free_block_cached_ * DEFAULT_BLOCK_SIZE + free_block_bytes_) / 1024.0 / 1024.0,
             alloc_block_bytes_ / 1024.0 / 1024.0, free_block_bytes_ / 1024.0 / 1024.0,
             req_total_bytes_ * 100 / (alloc_total_bytes_ == 0 ? 1 : alloc_total_bytes_));
+        (void)ret;
+#ifdef ZMALLOC_OPEN_COUNTER
+        int used = 0;
         u32 c = 0;
         while (ret > 0 && c < BINMAP_SIZE)
         {
@@ -965,6 +984,7 @@ namespace zsummer
                 c + 64, bytes, alloc_counter_[CHUNK_IS_BIG][c], free_counter_[CHUNK_IS_BIG][c], alloc_counter_[CHUNK_IS_BIG][c] - free_counter_[CHUNK_IS_BIG][c]);
             c++;
         }
+#endif
         return buffer;
     }
 
