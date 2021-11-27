@@ -21,7 +21,7 @@
 #ifndef  ZLIST_EXT_H
 #define ZLIST_EXT_H
 #include <iterator>
-
+#include <memory>
 namespace zsummer
 {
     using s8 = char;
@@ -171,7 +171,7 @@ namespace zsummer
     //_Size == _FixedSize 大小相等时为全静态, 此时与zlist的区别在于, zlist的node和value绑在一起, value小时 zlist因不需要取指针性能更好,  value大时 zlist_ext因分离数据性能会更好一些.  
     //_FixedSize == 0 时为全动态   
     //这里使用了指针, 用在共享内存时候需要保证指针地址固定, 以及修改动态内存分配接口, 暂未开放接口.   
-    template<class _Ty, size_t _Size, size_t _FixedSize>
+    template<class _Ty, size_t _Size, size_t _FixedSize, class _Alloc = std::allocator<typename std::aligned_storage<sizeof(_Ty), alignof(_Ty)>::type>>
     class zlist_ext
     {
     public:
@@ -183,6 +183,7 @@ namespace zsummer
         using const_pointer = const _Ty*;
         using reference = _Ty&;
         using const_reference = const _Ty&;
+        using allocator_type = _Alloc;
 
         static const u32 FENCE_VAL = 0xdeadbeaf;
         static const u64 MAX_SIZE = _Size;
@@ -224,7 +225,7 @@ namespace zsummer
             }
             if (dync_space_ != NULL)
             {
-                delete[] dync_space_;
+                alloc_.deallocate(dync_space_, _Size - _FixedSize);
                 dync_space_ = NULL;
             }
         }
@@ -370,7 +371,8 @@ namespace zsummer
                 }
                 if (dync_space_ == NULL)
                 {
-                    dync_space_ = new space_type[_Size - _FixedSize];
+                    dync_space_ = alloc_.allocate(_Size - _FixedSize);
+                    //dync_space_ = new space_type[_Size - _FixedSize];
                 }
                 data_[new_id].space = &dync_space_[new_id - _FixedSize];
                 return new_id;
@@ -590,7 +592,7 @@ namespace zsummer
         u32 free_id_;
         u32 exploit_offset_;
         u32 used_head_id_;
-
+        allocator_type alloc_;
         node_type data_[LIST_SIZE];
         space_type fixed_space_[_FixedSize];
         space_type* dync_space_;// space_type dync_space_[Size - _FixedSize];_

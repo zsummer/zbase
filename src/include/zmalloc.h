@@ -25,6 +25,16 @@
 #ifndef  ZMALLOC_H
 #define ZMALLOC_H
 #define ZMALLOC_OPEN_FENCE 1
+using s8 = char;
+using u8 = unsigned char;
+using s16 = short int;
+using u16 = unsigned short int;
+using s32 = int;
+using u32 = unsigned int;
+using s64 = long long;
+using u64 = unsigned long long;
+using f32 = float;
+using f64 = double;
 
 #ifdef WIN32
 /*
@@ -337,16 +347,21 @@ namespace zsummer
 #define zmalloc_get_block_head(block) zmalloc_chunk_cast( zmalloc_u64_cast(block)+zmalloc::BLOCK_TYPE_SIZE)
 
 
-    zmalloc* g_zmalloc_state = NULL;
+    static inline zmalloc*& zmalloc_global_instance()
+    {
+        static zmalloc* g_zmalloc_state = NULL;
+        return g_zmalloc_state;
+    }
+
 
 
     zmalloc& zmalloc::instance()
     {
-        return *g_zmalloc_state;
+        return *zmalloc_global_instance();
     }
     zmalloc* zmalloc::instance_ptr()
     {
-        return g_zmalloc_state;
+        return zmalloc_global_instance();
     }
 
     void* zmalloc::default_block_alloc(u64 req_size)
@@ -380,7 +395,7 @@ namespace zsummer
 
     void zmalloc::set_global(zmalloc* state)
     {
-        g_zmalloc_state = state;
+        zmalloc_global_instance() = state;
     }
 
     void zmalloc::set_block_callback(block_alloc_func block_alloc, block_free_func block_free)
