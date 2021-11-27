@@ -13,7 +13,8 @@
 #include <unordered_map>
 #include "zprof.h"
 #include "static_vector.h"
-
+#include "zmalloc.h"
+#include "zallocator.h"
 using namespace zsummer;
 
 
@@ -709,6 +710,11 @@ void TestStaticSpaceMemoryLeak()
 
 s32 contiainer_stress_test()
 {
+    std::unique_ptr<zmalloc> zstate(new zmalloc());
+    memset(zstate.get(), 0, sizeof(zmalloc));
+    zstate->max_reserve_block_count_ = 100;
+    zstate->set_global(zstate.get());
+
     TestDynSpaceMemoryLeak<1, 1>();
     TestDynSpaceMemoryLeak<2, 1>();
     TestDynSpaceMemoryLeak<2, 2>();
@@ -832,6 +838,7 @@ s32 contiainer_stress_test()
     }
 
     using std_int_int_map = std::map<int, int>;
+    using std_int_int_map_zallocator = std::map<int, int, std::less<int>, zallocator<std::pair<const int, int>>>;
     using std_int_int_unordered_map = std::unordered_map<int, int>;
     using z_int_int_hash_map = zhash_map<int, int, LOAD_CAPACITY>;
     using z_int_int_hash_map_zhash = zhash_map<int, int, LOAD_CAPACITY, zhash<int>>;
@@ -842,6 +849,7 @@ s32 contiainer_stress_test()
     using z_int_raii_hash_map_zhash = zhash_map<int, RAIIVal<>, LOAD_CAPACITY, zhash<int>>;
 
     MapStressWrap(std_int_int_map, int, false);
+    MapStressWrap(std_int_int_map_zallocator, int, false);
     MapStressWrap(std_int_int_unordered_map, int, false);
     MapStressWrap(z_int_int_hash_map, int, true);
     MapStressWrap(z_int_int_hash_map_zhash, int, true);
