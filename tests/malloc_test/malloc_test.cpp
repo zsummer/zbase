@@ -26,14 +26,11 @@ typedef unsigned long long u64;
 typedef unsigned long pointer;
 typedef float f32;
 
-#include <unordered_map>
-#include <unordered_set>
+
 #include "fn_log.h"
 #include "zprof.h"
-#include "zcontain_stress.h"
-#include "zlist_stress.h"
-#include "zcontain_test.h"
-
+#include "test_common.h"
+#include "zmalloc_test.h"
 
 
 int main(int argc, char *argv[])
@@ -50,10 +47,7 @@ int main(int argc, char *argv[])
     LogDebug() << " main begin test. ";
     volatile double cycles = 0.0f;
 
-    sort_test();
-    contiainer_base_test();
-    contiainer_stress_test();
-    
+    zmalloc_test();
 
     PROF_UPDATE_MERGE();
     PROF_SERIALIZE_FN_LOG();

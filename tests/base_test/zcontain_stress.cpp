@@ -838,7 +838,7 @@ s32 contiainer_stress_test()
     }
 
     using std_int_int_map = std::map<int, int>;
-    using std_int_int_map_zallocator = std::map<int, int, std::less<int>, zallocator<std::pair<const int, int>>>;
+    using std_int_int_map_zallocator = std::map<int, int, std::less<int>, zallocator<std::pair<int, int>>>;
     using std_int_int_unordered_map = std::unordered_map<int, int>;
     using z_int_int_hash_map = zhash_map<int, int, LOAD_CAPACITY>;
     using z_int_int_hash_map_zhash = zhash_map<int, int, LOAD_CAPACITY, zhash<int>>;
