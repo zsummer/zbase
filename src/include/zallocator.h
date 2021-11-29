@@ -77,7 +77,7 @@ namespace zsummer
             (void)c;
             //assert free_size > c * sizeof(Ty); 
         }
-        /*
+
         template<class T=_Ty>
         inline void construct(pointer p, const typename std::enable_if<std::is_trivial<T>::value>::type& v) { *reinterpret_cast<pointer>(p) = v; }
         template<class T = _Ty>
@@ -86,14 +86,14 @@ namespace zsummer
         inline void destroy(pointer p, const typename std::enable_if<std::is_trivial<T>::value>::type* = 0) {}
         template<class T = _Ty>
         inline void destroy(pointer p, const typename std::enable_if<!std::is_trivial<T>::value>::type* = 0) { p->~T(); }
-        */
-
-        inline void construct(pointer p, const _Ty& v) { new (p) _Ty(v); }
-        inline void destroy(pointer p) { p->~_Ty(); }
 
 
         inline bool operator==(const zallocator &) { return true; }
         inline bool operator !=(const zallocator & a) { return !operator==(a); }
     };
+
+
+
+
 }
 #endif
