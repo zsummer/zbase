@@ -239,7 +239,7 @@ void st_free(void* ptr)
 		}
 		if ((span->start<<kPageShift) != (u64)ptr)
 		{
-			error_tlog("ptr <%p> not equal start addr<%llu>.", ptr, span->start);
+			error_tlog("ptr <%p> not equal start addr<%llu>.", ptr, (void*)(span->start << kPageShift));
 			return;
 		}
 		g_st_malloc->page_heap().Delete(span);

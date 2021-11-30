@@ -201,7 +201,7 @@ s32 CentralFreeList::FetchFromOneSpan(s32 num, void** start, void** end)
 
 	if (SpanDoubleListIsEmpty(&noempty_))
 	{
-		debug_tlog("noempty list  is empty.");
+		//debug_tlog("noempty list  is empty.");
 		return 0;
 	}
 
