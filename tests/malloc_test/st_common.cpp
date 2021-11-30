@@ -32,11 +32,41 @@ s32 STSetPageOpPtrs(AllocPagesPtr alloc_ptr, FreePagesPtr free_ptr)
 
 void* STAllocPages(s32 order)
 {
-	return new char[1ull << order];
+	if (true)
+	{
+		s32 align_size = 1u << (order + 1);
+		align_size += 16;
+		char* p = new char[align_size];
+		u64 addr = (u64)(p);
+		addr &= ~((1ull << order) - 1);
+		addr += (1ull << order);
+		*(u64*)(addr - 16) = (u64)p;
+		*(u64*)(addr - 8) = 1ull << (order);
+		return (void*)addr;
+	}
+
+
+	if (true)
+	{
+		s32 align_size = 1u << (order);
+		align_size += 1u << kPageShift;
+		align_size += 16;
+		char* p = new char[align_size];
+		u64 addr = (u64)(p);
+		addr &= ~((1ull << kPageShift) - 1);
+		addr += (1ull << kPageShift);
+		*(u64*)(addr - 16) = (u64)p;
+		*(u64*)(addr - 8) = 1ull << (order);
+		return (void*)addr;
+	}
+	return NULL;
 }
 
 s32 STFreePages(void* ptr, size_t size)
 {
-	delete ptr;
+	u64* addr = (u64*)ptr;
+	void* old_addr = (void*)*(addr - 2);
+	delete old_addr;
+	//delete ptr;
 	return 0;
 }
