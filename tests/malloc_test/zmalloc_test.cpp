@@ -8,6 +8,7 @@
 #include "zarray.h"
 #include "test_common.h"
 #include "zmalloc.h"
+#include "stmalloc.h"
 #define Now() std::chrono::duration<double>(std::chrono::system_clock().now().time_since_epoch()).count()
 
 
@@ -20,6 +21,10 @@ s32 zmalloc_stress()
     memset(zstate.get(), 0, sizeof(zmalloc));
     zstate->max_reserve_block_count_ = 100;
     zstate->set_global(zstate.get());
+    
+    STMalloc st_malloc_inst;
+    st_malloc_inst.Init(NULL, NULL);
+    g_st_malloc = &st_malloc_inst;
 
     static const u32 rand_size = 1000 * 10000;
     static_assert(rand_size > zmalloc::DEFAULT_BLOCK_SIZE, "");
@@ -28,6 +33,9 @@ s32 zmalloc_stress()
     using Addr = void*;
     zarray <Addr, cover_size>* buffers = new zarray <Addr, cover_size>();
     zarray <Addr, cover_size>* buffers2 = new zarray <Addr, cover_size>();
+
+    //固定小字节申请  
+    static int fixed_size = 100;
 
     for (u32 i = 0; i < zmalloc::DEFAULT_BLOCK_SIZE; i++)
     {
@@ -41,6 +49,42 @@ s32 zmalloc_stress()
 
 
     PROF_DEFINE_COUNTER(cost);
+
+
+    for (size_t loop = 0; loop < 40; loop++)
+    {
+        PROF_START_COUNTER(cost);
+        for (u64 i = cover_size / 40 * loop; i < cover_size / 40 * (loop + 1); i++)
+        {
+            u32 test_size = fixed_size;
+            void* p = st_malloc(test_size);
+            buffers->push_back(p);
+        }
+        PROF_OUTPUT_MULTI_COUNT_CPU("st_malloc(100) bat", buffers->size(), cost.stop_and_save().cycles());
+
+        PROF_START_COUNTER(cost);
+        for (auto p : *buffers)
+        {
+            st_free(p);
+        }
+        PROF_OUTPUT_MULTI_COUNT_CPU("st_free(100) bat", buffers->size(), cost.stop_and_save().cycles());
+        buffers->clear();
+
+    }
+
+    PROF_START_COUNTER(cost);
+    for (u64 i = 0; i < rand_size; i++)
+    {
+        u32 test_size = rand_array[i] % (1024) + 1;
+        void* p = st_malloc(test_size);
+        st_free(p);
+    }
+    PROF_OUTPUT_MULTI_COUNT_CPU("st_free(st_malloc(0~1024))", rand_size, cost.stop_and_save().cycles());
+
+
+
+
+
     PROF_START_COUNTER(cost);
     for (u64 i = 0; i < rand_size; i++)
     {
@@ -238,8 +282,7 @@ s32 zmalloc_stress()
     }
 
 
-    //固定小字节申请  
-    static int fixed_size = 100; 
+
     for (size_t loop = 0; loop < 40; loop++) //系统分配太慢了 只
     {
         if (loop % 2 == 0 && loop != 0)
@@ -264,12 +307,8 @@ s32 zmalloc_stress()
         buffers->clear();
         zstate->check_health();
     }
-    for (size_t loop = 0; loop < 40; loop++) //系统分配太慢了 只
+    for (size_t loop = 0; loop < 40; loop++) 
     {
-        if (loop % 2 == 0 && loop != 0)
-        {
-            continue;//系统分配太慢了  不需要覆盖性测试  删除一半数据. 
-        }
         PROF_START_COUNTER(cost);
         for (u64 i = cover_size / 40 * loop; i < cover_size / 40 * (loop + 1); i++)
         {
