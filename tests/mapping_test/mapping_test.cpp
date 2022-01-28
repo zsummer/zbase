@@ -49,22 +49,50 @@ int main(int argc, char *argv[])
     LogDebug() << " main begin test. ";
     volatile double cycles = 0.0f;
 
-    
-    zmapping res;
-    res.mapping_res("./make.sh");
-    if (!res.is_mapped())
+    if (true)
     {
-        LogError() << "not mapped!";
-        return 1;
-    }
+        zmapping res;
+        res.mapping_res("./make.sh");
+        if (!res.is_mapped())
+        {
+            LogError() << "not mapped!";
+            return 1;
+        }
 
-    int a = 0;
-    for (size_t i = 0; i < res.data_len(); i++)
+        int a = 0;
+        for (size_t i = 0; i < res.data_len(); i++)
+        {
+            a += (unsigned char)res.data()[i];
+        }
+        LogInfo() << " auto test ./make.sh success";
+    }
+    if (argc > 1)
     {
-        a += (unsigned char)res.data()[i];
+
+        zmapping res;
+        s32 ret = res.mapping_res(argv[1]);
+        if (ret != 0)
+        {
+            LogError() << "mapping [" << argv[1] << "] has error";
+            return 2;
+        }
+        int a = 0;
+        u64 read_bytes = 0;
+        for (size_t i = 0; i < res.data_len(); i++)
+        {
+            a += (unsigned char)res.data()[i];
+            read_bytes++;
+            if (read_bytes % (500*1024*1024) == 0)
+            {
+                LogInfo() << "now read bytes:" << read_bytes / 1024.0 / 1024.0 << "M. please putchar to continue...";
+                getchar();
+            }
+        }
+        LogInfo() << "now read bytes:" << read_bytes / 1024.0 / 1024.0 << "M. please putchar to continue...";
+        getchar();
     }
-
-
+    LogInfo() << "please putchar to continue...";
+    getchar();
     LogInfo() << "all test finish .salt:" << cycles;
     return 0;
 }
