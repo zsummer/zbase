@@ -76,7 +76,7 @@ int main(int argc, char *argv[])
             LogError() << "mapping [" << argv[1] << "] has error";
             return 2;
         }
-        int a = 0;
+        volatile int a = 0;
         u64 read_bytes = 0;
         for (size_t i = 0; i < res.data_len(); i++)
         {
