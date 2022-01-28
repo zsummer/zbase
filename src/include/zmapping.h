@@ -103,6 +103,28 @@ namespace zsummer
 	using f32 = float;
 	using f64 = double;
 
+
+	//comment: grep -i commit /proc/meminfo   #查看overcommit value和当前commit   
+	//comment: sar -r											#查看kbcommit   %   
+	//comment: cat /proc/981/oom_score		#查看OOM分数  
+
+
+	//内存水位线
+	//watermark[min] = min_free_kbytes/4*zone.pages/zone.allpages    # cat /proc/sys/vm/min_free_kbytes    #32M    total/1000 左右,   通常在128k~65M之间  
+	//watermark[low] = watermark[min] * 5 / 4      
+	//watermark[high] = watermark[min] * 3 / 2
+
+	//当前水位线  cat /proc/zoneinfo | grep -E "Node|min|low|high "       #注意是页;  一般4k   每个zone都有自己的水位线   剩余内存超过HIGH代表内存剩余较多.  
+
+	//other   
+	//overcommit :   page table
+	//filesystem: page cache & buffer cache   
+	//kswapd: 水位线  
+	//内存不足会触发内存回收.   
+
+
+
+
 	class zmapping
 	{
 	private:
