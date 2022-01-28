@@ -167,6 +167,7 @@ namespace zsummer
 				return 11;
 			}
 			file_data_ = (char*)mmap(NULL, sb.st_size, PROT_READ, MAP_SHARED, mapping_fd_, 0);
+			file_size_ = sb.st_size;
 #endif 
 			return 0;
 		}

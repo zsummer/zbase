@@ -84,7 +84,7 @@ int main(int argc, char *argv[])
             read_bytes++;
             if (read_bytes % (500*1024*1024) == 0)
             {
-                LogInfo() << "now read bytes:" << read_bytes / 1024.0 / 1024.0 << "M. please putchar to continue...";
+                LogInfo() << "now read bytes:" << read_bytes / 1024.0 / 1024.0 << "M. all:" << res.data_len()/1024.0/1024.0 <<"M please putchar to continue...";
                 getchar();
             }
         }
