@@ -227,7 +227,13 @@ s32 zmalloc_stress()
         }
         PROF_OUTPUT_MULTI_COUNT_CPU("rand zmalloc/zfree(0~2k)", alloc_count + free_count, cost.stop_and_save().cycles());
         zstate->check_health();
-        LogDebug() << zmalloc::instance().debug_string();
+        if (true)
+        {
+            cost.start();
+            LogDebug() << zmalloc::instance().debug_string();
+            PROF_OUTPUT_SINGLE_CPU("zamlloc debug_string cost", cost.stop_and_save().cycles());
+        }
+        
         for (auto p : *buffers)
         {
             global_zfree(p);
