@@ -150,11 +150,13 @@ namespace zsummer
 			file_data_ = NULL;
 			file_size_ = 0;
 		}
-
 		~zmapping()
 		{
 			unmap_res();
 		}
+		const char* data() { return file_data_; }
+		u64 data_len() { return file_size_; }
+		u64 file_size() { return file_size_; }
 
 		s32 mapping_res(const char* file_path, bool remapping = false)
 		{
@@ -277,16 +279,6 @@ namespace zsummer
 			mapping_fd_ = NULL;
 #endif // 0
 			return 0;
-		}
-
-
-		const char* data()
-		{
-			return file_data_;
-		}
-		u64 data_len()
-		{
-			return file_size_;
 		}
 	};
 

@@ -58,17 +58,28 @@ int main(int argc, char *argv[])
             LogError() << "not mapped!";
             return 1;
         }
-
+        if (!res.is_mapped())
+        {
+            LogError() << "mapping [" << argv[1] << "] has error";
+            return 3;
+        }
+        if (res.file_size() == 0 || res.data() == NULL)
+        {
+            LogError() << "mapping [" << argv[1] << "] has error";
+            return 4;
+        }
         int a = 0;
         for (size_t i = 0; i < res.data_len(); i++)
         {
             a += (unsigned char)res.data()[i];
         }
+        LogInfo() << " auto test ./make.sh.  mapping file size:" << res.file_size() << ", char sum:" << a;
         LogInfo() << " auto test ./make.sh success";
     }
+
+
     if (argc > 1)
     {
-
         zmapping res;
         s32 ret = res.mapping_res(argv[1]);
         if (ret != 0)
@@ -76,6 +87,18 @@ int main(int argc, char *argv[])
             LogError() << "mapping [" << argv[1] << "] has error";
             return 2;
         }
+        if (!res.is_mapped())
+        {
+            LogError() << "mapping [" << argv[1] << "] has error";
+            return 3;
+        }
+        if (res.file_size() == 0 || res.data() == NULL)
+        {
+            LogError() << "mapping [" << argv[1] << "] has error";
+            return 4;
+        }
+        LogInfo() << "test:" << argv[1] << "  mapping file size : " << res.file_size();
+
         volatile int a = 0;
         u64 read_bytes = 0;
         for (size_t i = 0; i < res.data_len(); i++)
@@ -85,14 +108,14 @@ int main(int argc, char *argv[])
             if (read_bytes % (500*1024*1024) == 0)
             {
                 LogInfo() << "now read bytes:" << read_bytes / 1024.0 / 1024.0 << "M. all:" << res.data_len()/1024.0/1024.0 <<"M please putchar to continue...";
-                getchar();
+                //getchar();
             }
         }
         LogInfo() << "now read bytes:" << read_bytes / 1024.0 / 1024.0 << "M. please putchar to continue...";
-        getchar();
+        //getchar();
     }
     LogInfo() << "please putchar to continue...";
-    getchar();
+    //getchar();
     LogInfo() << "all test finish .salt:" << cycles;
     return 0;
 }

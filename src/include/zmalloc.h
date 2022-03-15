@@ -283,24 +283,24 @@ namespace zsummer
 #define global_zfree(addr) zmalloc::instance().free_memory(addr)
 
 
-
-
-
 #define ZMALLOC_OPEN_CHECK 0
-    inline void zmalloc_debug_chunk(zmalloc::chunk_type* c);
-    inline void zmalloc_debug_free_chunk(zmalloc::free_chunk_type* c);
-    inline void zmalloc_debug_free_chunk_list(zmalloc& zstate, zmalloc::free_chunk_type* c);
-    inline void zmalloc_debug_block_list(zmalloc::block_type* block_list, u32 block_list_size, u32 max_list_size);
-    inline void zmalloc_debug_block(zmalloc& zstate);
-    inline void zmalloc_debug_bitmap(zmalloc& zstate);
+    inline void zmalloc_check_chunk(zmalloc::chunk_type* c);
+    inline void zmalloc_check_free_chunk(zmalloc::free_chunk_type* c);
+    inline void zmalloc_check_free_chunk_list(zmalloc& zstate, zmalloc::free_chunk_type* c);
+    inline void zmalloc_check_block_list(zmalloc::block_type* block_list, u32 block_list_size, u32 max_list_size);
+    inline void zmalloc_check_block(zmalloc& zstate);
+    inline void zmalloc_check_bitmap(zmalloc& zstate);
+
+
 #if ZMALLOC_OPEN_CHECK
-#define CHECK_STATE(state) zmalloc_debug_block(state)
-#define CHECK_C(c) zmalloc_debug_chunk(c)
-#define CHECK_FC(c) zmalloc_debug_free_chunk(c)
-#define CHECK_FCL(state, c) zmalloc_debug_free_chunk_list(state, c)
+#define CHECK_STATE(state) zmalloc_check_block(state)
+#define CHECK_C(c) zmalloc_check_chunk(c)
+#define CHECK_FC(c) zmalloc_check_free_chunk(c)
+#define CHECK_FCL(state, c) zmalloc_check_free_chunk_list(state, c)
 #define CHECK_COLOR_COUNTER(chunk)   if (free_counter_[zmalloc_chunk_color_level(chunk)][chunk->bin_id] > alloc_counter_[zmalloc_chunk_color_level(chunk)][chunk->bin_id] ) {volatile int *p = NULL;  *p= 1987;}
 
 #else
+
 #define CHECK_STATE(state)  (void)(state)
 #define CHECK_C(c) (void)(c)
 #define CHECK_FC(c) (void)(c)
@@ -930,8 +930,8 @@ namespace zsummer
 
     void zmalloc::check_health()
     {
-        zmalloc_debug_block(instance());
-        zmalloc_debug_bitmap(instance());
+        zmalloc_check_block(instance());
+        zmalloc_check_bitmap(instance());
     }
 
     void zmalloc::clear_cache()
@@ -1047,7 +1047,7 @@ namespace zsummer
                  *(volatile u64*)NULL; \
             }
 
-    void zmalloc_debug_chunk(zmalloc::chunk_type* c)
+    void zmalloc_check_chunk(zmalloc::chunk_type* c)
     {
         ZMALLOC_ASSERT(c, "chunk is NULL");
         ZMALLOC_ASSERT(zmalloc_check_fence(c), "good fence");
@@ -1072,18 +1072,18 @@ namespace zsummer
         }
     }
 
-    void zmalloc_debug_free_chunk(zmalloc::free_chunk_type* c)
+    void zmalloc_check_free_chunk(zmalloc::free_chunk_type* c)
     {
-        zmalloc_debug_chunk(c);
+        zmalloc_check_chunk(c);
         ZMALLOC_ASSERT(!zmalloc_chunk_in_use(c), "free chunk");
         ZMALLOC_ASSERT(c->bin_id < 64, "bin id");
         ZMALLOC_ASSERT(!(!zmalloc_chunk_in_use(c) && !zmalloc_chunk_in_use(zmalloc_next_chunk(c))), "good in use");
         ZMALLOC_ASSERT(!(!zmalloc_chunk_in_use(c) && !zmalloc_chunk_in_use(zmalloc_front_chunk(c))), "good in use");
     }
 
-    void zmalloc_debug_free_chunk_list(zmalloc& zstate, zmalloc::free_chunk_type* c)
+    void zmalloc_check_free_chunk_list(zmalloc& zstate, zmalloc::free_chunk_type* c)
     {
-        zmalloc_debug_chunk(c);
+        zmalloc_check_chunk(c);
         if (c != zstate.dv_[zmalloc_chunk_level(c)])
         {
             ZMALLOC_ASSERT((u64)c->next_node < ((~0ULL) >> 0x4), "free pointer");
@@ -1124,7 +1124,7 @@ namespace zsummer
             }
         }
     }
-    void zmalloc_debug_block_list(zmalloc::block_type* block_list, u32 block_list_size, u32 max_list_size)
+    void zmalloc_check_block_list(zmalloc::block_type* block_list, u32 block_list_size, u32 max_list_size)
     {
         if (block_list == NULL)
         {
@@ -1172,10 +1172,10 @@ namespace zsummer
         ZMALLOC_ASSERT(block == block_list, "reserve size");
     }
 
-    void zmalloc_debug_block(zmalloc& zstate)
+    void zmalloc_check_block(zmalloc& zstate)
     {
-        zmalloc_debug_block_list(zstate.reserve_block_list_, zstate.reserve_block_count_, zstate.max_reserve_block_count_);
-        zmalloc_debug_block_list(zstate.used_block_list_, zstate.used_block_count_, ~0U);
+        zmalloc_check_block_list(zstate.reserve_block_list_, zstate.reserve_block_count_, zstate.max_reserve_block_count_);
+        zmalloc_check_block_list(zstate.used_block_list_, zstate.used_block_count_, ~0U);
 
         zmalloc::block_type* block = zstate.used_block_list_;
         zmalloc::block_type* last_block = block;
@@ -1235,7 +1235,7 @@ namespace zsummer
         //LogInfo() << "check all block success. block count:" << block_count << ", total chunk:" << c_count <<", free chunk:" << fc_count;
     }
 
-    void zmalloc_debug_bitmap(zmalloc& zstate)
+    void zmalloc_check_bitmap(zmalloc& zstate)
     {
         for (u32 small_type = 0; small_type < 2; small_type++)
         {
