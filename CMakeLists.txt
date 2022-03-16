@@ -111,6 +111,14 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/bin)
 
 
 #自定义部分 
+option(OPEN_CHECK "check zmalloc logic " OFF) 
+if (OPEN_CHECK)
+    message("-- OPEN_CHECK is ON")
+    add_definitions(-DZMALLOC_OPEN_CHECK=1)
+else()
+    message("-- OPEN_CHECK is OFF")
+endif(OPEN_CHECK)
+
 
 include_directories(${CMAKE_SOURCE_DIR}/tests)
 macro(SUB_DIR_LIST result curdir)
