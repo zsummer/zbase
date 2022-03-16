@@ -19,6 +19,8 @@
 #include <vector>
 #include <iostream>
 #include <sstream>
+#include <thread>
+#include <chrono>
 
 
 
@@ -242,6 +244,15 @@ namespace zsummer
         inline bool pick_chunk(free_chunk_type* chunk);
         inline free_chunk_type* exploit_new_chunk(free_chunk_type* devide_chunk, u32 new_chunk_size);
     public:
+        inline static void check_color_counter(zmalloc& zstate, chunk_type* c);
+        inline static void check_chunk(chunk_type* c);
+        inline static void check_free_chunk(free_chunk_type* c);
+        inline static void check_free_chunk_list(zmalloc& zstate, free_chunk_type* c);
+        inline static void check_block_list(block_type* block_list, u32 block_list_size, u32 max_list_size);
+        inline static void check_block(zmalloc& zstate);
+        inline static void check_bitmap(zmalloc& zstate);
+        inline static void panic(bool expr, const char * str);
+    public:
         u32 inited_;
         u32 block_power_is_2_;
         block_alloc_func block_alloc_;
@@ -283,29 +294,22 @@ namespace zsummer
 #define global_zfree(addr) zmalloc::instance().free_memory(addr)
 
 
-#define ZMALLOC_OPEN_CHECK 0
-    inline void zmalloc_check_chunk(zmalloc::chunk_type* c);
-    inline void zmalloc_check_free_chunk(zmalloc::free_chunk_type* c);
-    inline void zmalloc_check_free_chunk_list(zmalloc& zstate, zmalloc::free_chunk_type* c);
-    inline void zmalloc_check_block_list(zmalloc::block_type* block_list, u32 block_list_size, u32 max_list_size);
-    inline void zmalloc_check_block(zmalloc& zstate);
-    inline void zmalloc_check_bitmap(zmalloc& zstate);
-
+#define ZMALLOC_OPEN_CHECK 1
 
 #if ZMALLOC_OPEN_CHECK
-#define CHECK_STATE(state) zmalloc_check_block(state)
-#define CHECK_C(c) zmalloc_check_chunk(c)
-#define CHECK_FC(c) zmalloc_check_free_chunk(c)
-#define CHECK_FCL(state, c) zmalloc_check_free_chunk_list(state, c)
-#define CHECK_COLOR_COUNTER(chunk)   if (free_counter_[zmalloc_chunk_color_level(chunk)][chunk->bin_id] > alloc_counter_[zmalloc_chunk_color_level(chunk)][chunk->bin_id] ) {volatile int *p = NULL;  *p= 1987;}
+#define zmalloc_check_block(state) zmalloc::check_block(state)
+#define zmalloc_check_chunk(c) zmalloc::check_chunk(c)
+#define zmalloc_check_free_chunk(c) zmalloc::check_free_chunk(c)
+#define zmalloc_check_free_chunk_list(state, c) zmalloc::check_free_chunk_list(state, c)
+#define zmalloc_check_color_counter(state, c)   check_color_counter(state, c)
 
 #else
 
-#define CHECK_STATE(state)  (void)(state)
-#define CHECK_C(c) (void)(c)
-#define CHECK_FC(c) (void)(c)
-#define CHECK_FCL(state, c) (void)(c); (void)(state);
-#define CHECK_COLOR_COUNTER(chunk) ;
+#define zmalloc_check_block(state)  (void)(state)
+#define zmalloc_check_chunk(c) (void)(c)
+#define zmalloc_check_free_chunk(c) (void)(c)
+#define zmalloc_check_free_chunk_list(state, c) (void)(c); (void)(state);
+#define zmalloc_check_color_counter(state, c) ;
 #endif
 
 
@@ -339,8 +343,8 @@ namespace zsummer
 
 #define zmalloc_front_chunk(p)  zmalloc_free_chunk_cast(zmalloc_u64_cast(p)-zmalloc_chunk_cast(p)->prev_size)
 #define zmalloc_next_chunk(p)  zmalloc_free_chunk_cast(zmalloc_u64_cast(p)+zmalloc_chunk_cast(p)->this_size)
-#define zmalloc_chunk_level(p) (zmalloc_free_chunk_cast(p)->flags & zmalloc::CHUNK_LEVEL_MASK)
-#define zmalloc_chunk_color_level(p) (zmalloc_free_chunk_cast(p)->flags & zmalloc::CHUNK_COLOR_MASK_WITH_LEVEL)
+#define zmalloc_chunk_level(p) (zmalloc_chunk_cast(p)->flags & zmalloc::CHUNK_LEVEL_MASK)
+#define zmalloc_chunk_color_level(p) (zmalloc_chunk_cast(p)->flags & zmalloc::CHUNK_COLOR_MASK_WITH_LEVEL)
 
 #define zmalloc_get_block(firstp) ((zmalloc::block_type*)(zmalloc_u64_cast(firstp) - zmalloc::BLOCK_TYPE_SIZE - sizeof(zmalloc::free_chunk_type)))
 #define zmalloc_get_first_chunk(block) zmalloc_chunk_cast( zmalloc_u64_cast(block)+zmalloc::BLOCK_TYPE_SIZE + sizeof(zmalloc::free_chunk_type))
@@ -449,7 +453,7 @@ namespace zsummer
                 reserve_block_list_ = NULL;
             }
             alloc_block_cached_++;
-            CHECK_STATE(*this);
+            zmalloc_check_block(*this);
         }
         else
         {
@@ -506,7 +510,7 @@ namespace zsummer
         tail_chunk->next_node = NULL;
         tail_chunk->prev_node = NULL;
 
-        CHECK_C(chunk);
+        zmalloc_check_chunk(chunk);
         return chunk;
     }
 
@@ -551,11 +555,11 @@ namespace zsummer
                 block->front = NULL;
                 reserve_block_list_ = block;
             }
-            CHECK_STATE(*this);
+            zmalloc_check_block(*this);
             free_block_cached_++;
             return block->block_size;
         }
-        CHECK_STATE(*this);
+        zmalloc_check_block(*this);
         free_block_bytes_ += block->block_size;
         if (block_free_)
         {
@@ -574,7 +578,7 @@ namespace zsummer
         chunk->prev_node = &bin_[level][bin_id];
         chunk->bin_id = bin_id;
         zmalloc_unset_chunk(chunk, CHUNK_IS_IN_USED);
-        CHECK_FCL(*this, chunk);
+        zmalloc_check_free_chunk_list(*this, chunk);
     }
 
     void zmalloc::push_small_chunk(free_chunk_type* chunk)
@@ -600,7 +604,7 @@ namespace zsummer
 
     bool zmalloc::pick_chunk(free_chunk_type* chunk)
     {
-        CHECK_FCL(*this, chunk);
+        zmalloc_check_free_chunk_list(*this, chunk);
         u32 bin_id = chunk->bin_id;
         u32 level = zmalloc_chunk_level(chunk);
         chunk->prev_node->next_node = chunk->next_node;
@@ -609,7 +613,7 @@ namespace zsummer
         {
             zmalloc_unset_bitmap(bitmap_[level], bin_id);
         }
-        CHECK_C(chunk);
+        zmalloc_check_chunk(chunk);
         return true;
     }
 
@@ -838,7 +842,7 @@ namespace zsummer
             //LogError() << "free error";
             return 0;
         }
-        CHECK_C(chunk);
+        zmalloc_check_chunk(chunk);
         
 #if ZMALLOC_OPEN_FENCE
         if (!zmalloc_check_fence(chunk) || !zmalloc_check_fence(zmalloc_next_chunk(chunk)))
@@ -866,8 +870,9 @@ namespace zsummer
             return bytes;
         }
 #ifdef ZMALLOC_OPEN_COUNTER
-        CHECK_COLOR_COUNTER(chunk);
+        zmalloc_check_color_counter(*this, chunk);
         free_counter_[zmalloc_chunk_color_level(chunk)][chunk->bin_id]++;
+        zmalloc_check_color_counter(*this, chunk);
 #endif
         zmalloc_unset_chunk(chunk, CHUNK_COLOR_MASK_WITH_USED);
         if (!zmalloc_chunk_in_use(zmalloc_front_chunk(chunk)))
@@ -881,7 +886,7 @@ namespace zsummer
             prev_node->flags |= chunk->flags;
             chunk = prev_node;
             zmalloc_next_chunk(chunk)->prev_size = chunk->this_size;
-            CHECK_C(chunk);
+            zmalloc_check_chunk(chunk);
         }
 
         if (!zmalloc_chunk_in_use(zmalloc_next_chunk(chunk)))
@@ -898,7 +903,7 @@ namespace zsummer
             chunk->this_size += next_node->this_size;
             chunk->flags |= next_node->flags;
             zmalloc_next_chunk(chunk)->prev_size = chunk->this_size;
-            CHECK_C(chunk);
+            zmalloc_check_chunk(chunk);
         }
 
         if (chunk == dv_[level])
@@ -930,8 +935,8 @@ namespace zsummer
 
     void zmalloc::check_health()
     {
-        zmalloc_check_block(instance());
-        zmalloc_check_bitmap(instance());
+        check_block(instance());
+        check_bitmap(instance());
     }
 
     void zmalloc::clear_cache()
@@ -1039,59 +1044,72 @@ namespace zsummer
     }
 
 
-
-    #define ZMALLOC_ASSERT(expr, desc) if (!(expr)) \
-            if (true) \
-            {\
-                std::this_thread::sleep_for(std::chrono::milliseconds(1000)); \
-                 *(volatile u64*)NULL; \
-            }
-
-    void zmalloc_check_chunk(zmalloc::chunk_type* c)
+    void zmalloc::panic(bool expr, const char* str)
     {
-        ZMALLOC_ASSERT(c, "chunk is NULL");
-        ZMALLOC_ASSERT(zmalloc_check_fence(c), "good fence");
-        ZMALLOC_ASSERT(zmalloc_check_fence(zmalloc_next_chunk(c)), "good next fence");
-        ZMALLOC_ASSERT(zmalloc_check_fence(zmalloc_front_chunk(c)), "good front fence");
-        ZMALLOC_ASSERT(zmalloc_next_chunk(c)->prev_size == c->this_size, "good prev_size");
-        ZMALLOC_ASSERT(c->prev_size == zmalloc_front_chunk(c)->this_size, "good prev_size");
-
-        ZMALLOC_ASSERT(zmalloc_chunk_level(c) == zmalloc_chunk_level(zmalloc_next_chunk(c)), "good level");
-        ZMALLOC_ASSERT(zmalloc_chunk_level(c) == zmalloc_chunk_level(zmalloc_front_chunk(c)), "good level");
-        ZMALLOC_ASSERT(c->this_size >= zmalloc::SMALL_LEAST_SIZE, "good this size");
-        if (!zmalloc_has_chunk(c, zmalloc::CHUNK_IS_DIRECT))
+        if (!expr)
         {
-            ZMALLOC_ASSERT(c->this_size <= zmalloc::DEFAULT_BLOCK_SIZE - sizeof(zmalloc::block_type) - sizeof(zmalloc::free_chunk_type) * 2, "good this size");
-            ZMALLOC_ASSERT(c->this_size + zmalloc_next_chunk(c)->this_size + zmalloc_front_chunk(c)->this_size <= zmalloc::DEFAULT_BLOCK_SIZE - (u32)sizeof(zmalloc::block_type), "good this size");
+            std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+            volatile const char* panic_str = str;
+            *(volatile u64*)NULL = 1987;
+        }
+    }
+
+    void zmalloc::check_color_counter(zmalloc& zstate, chunk_type* c)
+    {
+#ifdef ZMALLOC_OPEN_COUNTER
+        u32 color_level_id = zmalloc_chunk_color_level(c);
+        u32 bin_id = c->bin_id;
+        u64 free_count = zstate.free_counter_[color_level_id][bin_id];
+        u64 alloc_count = zstate.alloc_counter_[color_level_id][bin_id];
+        panic(free_count <= alloc_count, "count has error");
+#endif 
+    }
+
+    void zmalloc::check_chunk(chunk_type* c)
+    {
+        panic(c, "chunk is NULL");
+        panic(zmalloc_check_fence(c), "good fence");
+        panic(zmalloc_check_fence(zmalloc_next_chunk(c)), "good next fence");
+        panic(zmalloc_check_fence(zmalloc_front_chunk(c)), "good front fence");
+        panic(zmalloc_next_chunk(c)->prev_size == c->this_size, "good prev_size");
+        panic(c->prev_size == zmalloc_front_chunk(c)->this_size, "good prev_size");
+
+        panic(zmalloc_chunk_level(c) == zmalloc_chunk_level(zmalloc_next_chunk(c)), "good level");
+        panic(zmalloc_chunk_level(c) == zmalloc_chunk_level(zmalloc_front_chunk(c)), "good level");
+        panic(c->this_size >= SMALL_LEAST_SIZE, "good this size");
+        if (!zmalloc_has_chunk(c, CHUNK_IS_DIRECT))
+        {
+            panic(c->this_size <= DEFAULT_BLOCK_SIZE - sizeof(block_type) - sizeof(free_chunk_type) * 2, "good this size");
+            panic(c->this_size + zmalloc_next_chunk(c)->this_size + zmalloc_front_chunk(c)->this_size <= DEFAULT_BLOCK_SIZE - (u32)sizeof(block_type), "good this size");
         }
 
         if (zmalloc_chunk_level(c) > 0)
         {
-            ZMALLOC_ASSERT(c->this_size >= zmalloc::SMALL_MAX_REQUEST + zmalloc::CHUNK_PADDING_SIZE, "good big size");
-            ZMALLOC_ASSERT(c->this_size >= 1024 + zmalloc::CHUNK_PADDING_SIZE, "good big size");
+            panic(c->this_size >= SMALL_MAX_REQUEST + CHUNK_PADDING_SIZE, "good big size");
+            panic(c->this_size >= 1024 + CHUNK_PADDING_SIZE, "good big size");
         }
     }
 
-    void zmalloc_check_free_chunk(zmalloc::free_chunk_type* c)
+    void zmalloc::check_free_chunk(free_chunk_type* c)
     {
-        zmalloc_check_chunk(c);
-        ZMALLOC_ASSERT(!zmalloc_chunk_in_use(c), "free chunk");
-        ZMALLOC_ASSERT(c->bin_id < 64, "bin id");
-        ZMALLOC_ASSERT(!(!zmalloc_chunk_in_use(c) && !zmalloc_chunk_in_use(zmalloc_next_chunk(c))), "good in use");
-        ZMALLOC_ASSERT(!(!zmalloc_chunk_in_use(c) && !zmalloc_chunk_in_use(zmalloc_front_chunk(c))), "good in use");
+        check_chunk(c);
+        panic(!zmalloc_chunk_in_use(c), "free chunk");
+        panic(c->bin_id < 64, "bin id");
+        panic(!(!zmalloc_chunk_in_use(c) && !zmalloc_chunk_in_use(zmalloc_next_chunk(c))), "good in use");
+        panic(!(!zmalloc_chunk_in_use(c) && !zmalloc_chunk_in_use(zmalloc_front_chunk(c))), "good in use");
     }
 
-    void zmalloc_check_free_chunk_list(zmalloc& zstate, zmalloc::free_chunk_type* c)
+    void zmalloc::check_free_chunk_list(zmalloc& zstate, free_chunk_type* c)
     {
-        zmalloc_check_chunk(c);
+        check_chunk(c);
         if (c != zstate.dv_[zmalloc_chunk_level(c)])
         {
-            ZMALLOC_ASSERT((u64)c->next_node < ((~0ULL) >> 0x4), "free pointer");
-            ZMALLOC_ASSERT((u64)c->prev_node < ((~0ULL) >> 0x4), "free pointer");
-            ZMALLOC_ASSERT(zstate.bitmap_[zmalloc_chunk_level(c)] & 1ULL << c->bin_id, "has bitmap flag");
-            ZMALLOC_ASSERT(zstate.bin_[zmalloc_chunk_level(c)][c->bin_id].next_node, "has bin pointer");
+            panic((u64)c->next_node < ((~0ULL) >> 0x4), "free pointer");
+            panic((u64)c->prev_node < ((~0ULL) >> 0x4), "free pointer");
+            panic(zstate.bitmap_[zmalloc_chunk_level(c)] & 1ULL << c->bin_id, "has bitmap flag");
+            panic(zstate.bin_[zmalloc_chunk_level(c)][c->bin_id].next_node, "has bin pointer");
             bool found_this = false;
-            zmalloc::free_chunk_type* head = zstate.bin_[zmalloc_chunk_level(c)][c->bin_id].next_node;
+            free_chunk_type* head = zstate.bin_[zmalloc_chunk_level(c)][c->bin_id].next_node;
             while (head)
             {
                 if (c == head)
@@ -1105,61 +1123,61 @@ namespace zsummer
                 }
                 head = head->next_node;
             }
-            ZMALLOC_ASSERT(found_this, "found in bin");
-            ZMALLOC_ASSERT(c->this_size > zmalloc::CHUNK_PADDING_SIZE, "chunk size too small");
+            panic(found_this, "found in bin");
+            panic(c->this_size > CHUNK_PADDING_SIZE, "chunk size too small");
             if (zmalloc_chunk_level(c))
             {
                 u32 index_size = zmalloc_resolve_order_size(c->bin_id);
                 (void)index_size;
-                ZMALLOC_ASSERT(c->this_size >= zmalloc_resolve_order_size(c->bin_id) + zmalloc::CHUNK_PADDING_SIZE, "chunk size too small");
-                ZMALLOC_ASSERT(c->this_size < zmalloc_resolve_order_size(c->bin_id + 1) + zmalloc::CHUNK_PADDING_SIZE, "chunk size too large");
+                panic(c->this_size >= zmalloc_resolve_order_size(c->bin_id) + CHUNK_PADDING_SIZE, "chunk size too small");
+                panic(c->this_size < zmalloc_resolve_order_size(c->bin_id + 1) + CHUNK_PADDING_SIZE, "chunk size too large");
             }
             else
             {
-                ZMALLOC_ASSERT((c->this_size - zmalloc::CHUNK_PADDING_SIZE) >= (u32)(c->bin_id) << zmalloc::FINE_GRAINED_SHIFT, "chunk size too large");
-                if (c->this_size < 63 * zmalloc_order_size(zmalloc::FINE_GRAINED_SHIFT) + zmalloc::CHUNK_PADDING_SIZE)
+                panic((c->this_size - CHUNK_PADDING_SIZE) >= (u32)(c->bin_id) << FINE_GRAINED_SHIFT, "chunk size too large");
+                if (c->this_size < 63 * zmalloc_order_size(FINE_GRAINED_SHIFT) + CHUNK_PADDING_SIZE)
                 {
-                    ZMALLOC_ASSERT((c->this_size - zmalloc::CHUNK_PADDING_SIZE) < (u32)(c->bin_id + 1) << zmalloc::FINE_GRAINED_SHIFT, "chunk size too small");
+                    panic((c->this_size - CHUNK_PADDING_SIZE) < (u32)(c->bin_id + 1) << FINE_GRAINED_SHIFT, "chunk size too small");
                 }
             }
         }
     }
-    void zmalloc_check_block_list(zmalloc::block_type* block_list, u32 block_list_size, u32 max_list_size)
+    void zmalloc::check_block_list(block_type* block_list, u32 block_list_size, u32 max_list_size)
     {
         if (block_list == NULL)
         {
-            ZMALLOC_ASSERT(block_list_size == 0, "reserve size");
+            panic(block_list_size == 0, "reserve size");
         }
         else
         {
-            ZMALLOC_ASSERT(block_list_size > 0, "reserve size");
+            panic(block_list_size > 0, "reserve size");
         }
-        ZMALLOC_ASSERT(block_list_size <= max_list_size, "reserve size");
+        panic(block_list_size <= max_list_size, "reserve size");
 
 
         u32 detect_size = 0;
-        zmalloc::block_type* block = block_list;
-        zmalloc::block_type* front_block = block;
+        block_type* block = block_list;
+        block_type* front_block = block;
         while (block)
         {
-            ZMALLOC_ASSERT(zmalloc_is_power_of_2(block->block_size), "align");
+            panic(zmalloc_is_power_of_2(block->block_size), "align");
 
 
-            if (zmalloc_has_chunk(zmalloc_get_first_chunk(block), zmalloc::CHUNK_IS_DIRECT))
+            if (zmalloc_has_chunk(zmalloc_get_first_chunk(block), CHUNK_IS_DIRECT))
             {
 
             }
             else
             {
-                ZMALLOC_ASSERT(block->block_size >= zmalloc::DEFAULT_BLOCK_SIZE, "align");
-                ZMALLOC_ASSERT(block->block_size >= zmalloc::BIG_MAX_REQUEST, "align");
+                panic(block->block_size >= DEFAULT_BLOCK_SIZE, "align");
+                panic(block->block_size >= BIG_MAX_REQUEST, "align");
             }
 
             detect_size++;
             front_block = block;
             block = block->next;
         }
-        ZMALLOC_ASSERT(detect_size == block_list_size, "reserve size");
+        panic(detect_size == block_list_size, "reserve size");
 
         block = front_block;
         while (front_block)
@@ -1168,17 +1186,17 @@ namespace zsummer
             block = front_block;
             front_block = front_block->front;
         }
-        ZMALLOC_ASSERT(detect_size == 0, "reserve size");
-        ZMALLOC_ASSERT(block == block_list, "reserve size");
+        panic(detect_size == 0, "reserve size");
+        panic(block == block_list, "reserve size");
     }
 
-    void zmalloc_check_block(zmalloc& zstate)
+    void zmalloc::check_block(zmalloc& zstate)
     {
-        zmalloc_check_block_list(zstate.reserve_block_list_, zstate.reserve_block_count_, zstate.max_reserve_block_count_);
-        zmalloc_check_block_list(zstate.used_block_list_, zstate.used_block_count_, ~0U);
+        check_block_list(zstate.reserve_block_list_, zstate.reserve_block_count_, zstate.max_reserve_block_count_);
+        check_block_list(zstate.used_block_list_, zstate.used_block_count_, ~0U);
 
-        zmalloc::block_type* block = zstate.used_block_list_;
-        zmalloc::block_type* last_block = block;
+        block_type* block = zstate.used_block_list_;
+        block_type* last_block = block;
         u32 c_count = 0;
         u32 fc_count = 0;
         block = last_block;
@@ -1187,7 +1205,7 @@ namespace zsummer
             u32 block_bytes = 0;
             u32 block_c_count = 0;
             u32 block_fc_count = 0;
-            zmalloc::chunk_type* c = zmalloc_get_first_chunk(block);
+            chunk_type* c = zmalloc_get_first_chunk(block);
             while (c)
             {
                 c_count++;
@@ -1197,36 +1215,36 @@ namespace zsummer
                 block_bytes += c->this_size;
                 if (zmalloc_chunk_is_dirct(c))
                 {
-                    ZMALLOC_ASSERT(zmalloc_chunk_in_use(zmalloc_front_chunk(c)) && zmalloc_chunk_in_use(zmalloc_next_chunk(c)), "bound chunk");
-                    ZMALLOC_ASSERT(zmalloc_front_chunk(c)->this_size == zmalloc_next_chunk(c)->this_size, "bound size");
+                    panic(zmalloc_chunk_in_use(zmalloc_front_chunk(c)) && zmalloc_chunk_in_use(zmalloc_next_chunk(c)), "bound chunk");
+                    panic(zmalloc_front_chunk(c)->this_size == zmalloc_next_chunk(c)->this_size, "bound size");
                 }
                 else if (!zmalloc_chunk_in_use(c) && c != zstate.dv_[zmalloc_chunk_level(c)])
                 {
-                    ZMALLOC_ASSERT((1ULL << c->bin_id) & zstate.bitmap_[zmalloc_chunk_level(c)], "bitmap");
-                    ZMALLOC_ASSERT(zstate.bin_[zmalloc_chunk_level(c)][c->bin_id].next_node, "bin");
-                    zmalloc::free_chunk_type* fcb = zstate.bin_[zmalloc_chunk_level(c)][c->bin_id].next_node;
+                    panic((1ULL << c->bin_id) & zstate.bitmap_[zmalloc_chunk_level(c)], "bitmap");
+                    panic(zstate.bin_[zmalloc_chunk_level(c)][c->bin_id].next_node, "bin");
+                    free_chunk_type* fcb = zstate.bin_[zmalloc_chunk_level(c)][c->bin_id].next_node;
                     bool found = false;
                     while (fcb != &zstate.bin_end_[zmalloc_chunk_level(c)][c->bin_id])
                     {
-                        CHECK_FCL(zstate, fcb);
+                        zmalloc_check_free_chunk_list(zstate, fcb);
                         if (fcb == c)
                         {
                             found = true;
                         }
                         fcb = fcb->next_node;
                     }
-                    ZMALLOC_ASSERT(found, "found in bin");
+                    panic(found, "found in bin");
                 }
 
-                if (block_bytes + zmalloc::BLOCK_TYPE_SIZE + (u32)sizeof(zmalloc::free_chunk_type) * 2U == block->block_size)
+                if (block_bytes + BLOCK_TYPE_SIZE + (u32)sizeof(free_chunk_type) * 2U == block->block_size)
                 {
-                    if (zmalloc_free_chunk_cast(zmalloc_next_chunk(c))->this_size == sizeof(zmalloc::free_chunk_type)
+                    if (zmalloc_free_chunk_cast(zmalloc_next_chunk(c))->this_size == sizeof(free_chunk_type)
                         && zmalloc_chunk_in_use(zmalloc_free_chunk_cast(zmalloc_next_chunk(c))))
                     {
                         break;
                     }
                 }
-                ZMALLOC_ASSERT(block_bytes + zmalloc::BLOCK_TYPE_SIZE + (u32)sizeof(zmalloc::free_chunk_type) * 2U <= block->block_size, "max block");
+                panic(block_bytes + BLOCK_TYPE_SIZE + (u32)sizeof(free_chunk_type) * 2U <= block->block_size, "max block");
                 c = zmalloc_next_chunk(c);
             };
             last_block = block;
@@ -1235,25 +1253,25 @@ namespace zsummer
         //LogInfo() << "check all block success. block count:" << block_count << ", total chunk:" << c_count <<", free chunk:" << fc_count;
     }
 
-    void zmalloc_check_bitmap(zmalloc& zstate)
+    void zmalloc::check_bitmap(zmalloc& zstate)
     {
         for (u32 small_type = 0; small_type < 2; small_type++)
         {
-            for (u32 bin_id = 0; bin_id < zmalloc::BINMAP_SIZE; bin_id++)
+            for (u32 bin_id = 0; bin_id < BINMAP_SIZE; bin_id++)
             {
-                zmalloc::free_chunk_type* zmalloc_free_chunk_cast = zstate.bin_[small_type][bin_id].next_node;
+                free_chunk_type* zmalloc_free_chunk_cast = zstate.bin_[small_type][bin_id].next_node;
                 if (zmalloc_free_chunk_cast != &zstate.bin_end_[small_type][bin_id])
                 {
-                    ZMALLOC_ASSERT(zmalloc_has_bitmap(zstate.bitmap_[small_type], bin_id), "has bitmap");
+                    panic(zmalloc_has_bitmap(zstate.bitmap_[small_type], bin_id), "has bitmap");
                 }
                 else
                 {
-                    ZMALLOC_ASSERT(!zmalloc_has_bitmap(zstate.bitmap_[small_type], bin_id), "has bitmap");
+                    panic(!zmalloc_has_bitmap(zstate.bitmap_[small_type], bin_id), "has bitmap");
                 }
                 while (zmalloc_free_chunk_cast != &zstate.bin_end_[small_type][bin_id])
                 {
-                    ZMALLOC_ASSERT(zmalloc_free_chunk_cast->bin_id == bin_id, "bin id");
-                    ZMALLOC_ASSERT(!zmalloc_chunk_in_use(zmalloc_free_chunk_cast), "free");
+                    panic(zmalloc_free_chunk_cast->bin_id == bin_id, "bin id");
+                    panic(!zmalloc_chunk_in_use(zmalloc_free_chunk_cast), "free");
                     zmalloc_free_chunk_cast = zmalloc_free_chunk_cast->next_node;
                 }
             }
