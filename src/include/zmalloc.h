@@ -22,6 +22,12 @@
 #include <thread>
 #include <chrono>
 
+#ifdef WIN32
+#define WIN32_LEAN_AND_MEAN
+#include <WinSock2.h>
+#include <Windows.h>
+#endif
+
 
 
 #ifndef  ZMALLOC_H
@@ -159,7 +165,7 @@ namespace zsummer
     {
     public:
         using block_alloc_func = void* (*)(u64);
-        using block_free_func = u64(*)(void*);
+        using block_free_func = u64(*)(void*, u64);
         static const u32 BINMAP_SIZE = (sizeof(u64) * 8U);
         static const u32 BITMAP_LEVEL = 2;
         static const u32 DEFAULT_BLOCK_SIZE = (8 * 1024 * 1024);
@@ -575,7 +581,7 @@ namespace zsummer
         free_block_bytes_ += block->block_size;
         if (block_free_)
         {
-            return block_free_(block);
+            return block_free_(block, block->block_size);
         }
          return default_block_free(block);
     }
@@ -975,7 +981,7 @@ namespace zsummer
             free_block_bytes_ += release_block->block_size;
             if (block_free_)
             {
-                block_free_(release_block);
+                block_free_(release_block, release_block->block_size);
             }
             else
             {

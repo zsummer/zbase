@@ -309,14 +309,18 @@ namespace zsummer
 
         void clear()
         {
-            if (std::is_trivial<_Ty>::value)
+            u32 node_id = used_head_id_;
+            if (!std::is_trivial<_Ty>::value)
             {
-                space_type *ds = dync_space_ ;
-                init();
-                dync_space_ = ds;
-                return;
+                while (node_id != END_ID)
+                {
+                    node_cast(data_[node_id])->~_Ty();
+                    node_id = data_[node_id].next;
+                }
             }
-            erase(begin(), end());
+            space_type *ds = dync_space_ ;
+            init();
+            dync_space_ = ds;
         }
 
         void fill(const _Ty& value)
