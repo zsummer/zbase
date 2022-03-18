@@ -190,9 +190,9 @@ namespace zsummer
         GetKey get_key;
     protected:
         u32 buckets_[HASH_COUNT];
-        node_type node_pool_[INVALID_NODE_ID];
+        node_type node_pool_[INVALID_NODE_ID+1]; // dereference end() will panic;  it's user error.  
         u32 first_valid_node_id_;
-        u32 exploit_offset_;
+        u32 exploit_offset_; //is the last valid node index(unexploit it the next index) & the value is the buckets used nodes num. 
         u32 count_;
         iterator mi(u32 node_id) { return iterator(node_pool_, node_id, exploit_offset_ + 1); }
         static reference rf(node_type& b) { return *reinterpret_cast<value_type*>(&b.val_space); }
@@ -249,7 +249,8 @@ namespace zsummer
 
         iterator next_b(u32 node_id)
         {
-            for (u32 i = node_id; i <= exploit_offset_; i++)
+            u32 exploit_offset = exploit_offset_ > NODE_COUNT ? NODE_COUNT : exploit_offset_; //clear gcc warning. it's safe. 
+            for (u32 i = node_id; i <= exploit_offset; i++)
             {
                 if (node_pool_[i].hash_id != HASH_COUNT)
                 {

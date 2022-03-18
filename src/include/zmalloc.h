@@ -1064,6 +1064,7 @@ namespace zsummer
         {
             std::this_thread::sleep_for(std::chrono::milliseconds(1000));
             volatile const char* panic_str = str;
+            (void)panic_str;
             *(volatile u64*)NULL = 1987;
         }
     }
