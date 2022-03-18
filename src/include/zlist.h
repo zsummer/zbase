@@ -280,12 +280,16 @@ namespace zsummer
 
         void clear()
         {
-            if (std::is_trivial<_Ty>::value)
+            u32 node_id = used_head_id_;
+            if (!std::is_trivial<_Ty>::value)
             {
-                init();
-                return;
+                while (node_id != END_ID)
+                {
+                    node_cast(data_[node_id])->~_Ty();
+                    node_id = data_[node_id].next;
+                }
             }
-            erase(begin(), end());
+            init();
         }
 
         void fill(const _Ty& value)
