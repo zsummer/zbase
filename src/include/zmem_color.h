@@ -26,15 +26,16 @@ namespace zsummer
     enum zmem_color_enum
     {
         MEM_COLOR_NULL = 0,
-        MEM_COLOR_STRING,
-        MEM_COLOR_VECTOR,
-        MEM_COLOR_MAP,
-        MEM_COLOR_SET,
-        MEM_COLOR_LIST,
-        MEM_COLOR_SEG_LIST,
-        MEM_COLOR_MAX = zmalloc::CHUNK_COLOR_MASK / 2,
+        MEM_COLOR_STRING = 1,
+        MEM_COLOR_VECTOR = 2,
+        MEM_COLOR_MAP = 3,
+        MEM_COLOR_SET = 4,
+        MEM_COLOR_LIST = 5,
+        MEM_COLOR_SEG_LIST = 6,
+        MEM_COLOR_MAX,
     };
 
+    static_assert(MEM_COLOR_MAX < zmalloc::CHUNK_COLOR_MASK / 2, "color max");
     using shm_string = std::basic_string<char, std::char_traits<char>, zallocator<char, MEM_COLOR_STRING> >;
 
     template<class _Ty>
