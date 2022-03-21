@@ -183,8 +183,12 @@ namespace zsummer
 
         inline void check_health();
         inline void clear_cache();
-        inline const char* debug_string();
-
+        inline const char* debug_state_string();
+        inline const char* debug_color_string();
+        template<class StreamLog>
+        inline void debug_state_log(StreamLog& logwrap);
+        template<class StreamLog>
+        inline void debug_color_log(StreamLog& logwrap, u32 end_color);
     public:
         struct chunk_type
         {
@@ -1004,11 +1008,50 @@ namespace zsummer
             
         }
     }
-    const char* zmalloc::debug_string()
+
+    template<class StreamLog>
+    inline void zmalloc::debug_state_log(StreamLog& logwrap)
     {
-        static const size_t bufsz = 100 * 1024;
+        logwrap() << "[meta]: block_power_is_2_:" << block_power_is_2_ << ", max_reserve_block_count_:" << max_reserve_block_count_ << ", runtime_errors_:" << runtime_errors_;
+        logwrap() << "[req]: req_total_count_:" << req_total_count_ << ", req_total_bytes_:" << req_total_bytes_ << ", alloc_total_bytes_:" << req_total_count_ << ", alloc_total_bytes_:" << alloc_total_bytes_;
+        logwrap() << "[req]: alloc_block_count_:" << alloc_block_count_ << ", alloc_block_bytes_:" << alloc_block_bytes_ << ", alloc_block_cached_:" << alloc_block_cached_;
+        logwrap() << "[free]: free_total_count_:" << free_total_count_ << ", free_total_bytes_:" << free_total_bytes_;
+        logwrap() << "[free]: free_block_count_:" << free_block_count_ << ", free_block_bytes_:" << free_block_bytes_ << ", free_block_cached_:" << free_block_cached_;
+        logwrap() << "[state]: used memory:" << alloc_total_bytes_ - free_total_bytes_ << ", used_block_count_" << used_block_count_ << ", reserve_block_count_" << reserve_block_count_;
+        logwrap() << "[analysis]: req avg:" << req_total_bytes_ * 1.0 / (req_total_count_ ? req_total_count_ : 1);
+        logwrap() << "[analysis]:  mem usage rate(inner frag):" << req_total_bytes_ * 1.0 / (alloc_total_bytes_ ? alloc_total_bytes_ : 1);
+        logwrap() << "[analysis]: block cached rate:" << (alloc_block_bytes_ - alloc_block_cached_) * 1.0 / (alloc_block_bytes_ ? alloc_block_bytes_ : 1);
+    }
+
+
+    template<class StreamLog>
+    inline void zmalloc::debug_color_log(StreamLog& logwrap, u32 end_color)
+    {
+        end_color = end_color > (zmalloc::CHUNK_COLOR_MASK_WITH_LEVEL + 1) / 2 ? (zmalloc::CHUNK_COLOR_MASK_WITH_LEVEL + 1) / 2 : end_color;
+#if ZMALLOC_OPEN_COUNTER
+        for (u32 user_color = 0; user_color < end_color; user_color++)
+        {
+            u32 base_level = user_color << 1;
+            for (u32 bin_id = 0; bin_id < BINMAP_SIZE * 2; bin_id++)
+            {
+                u32 big_level = bin_id / BINMAP_SIZE;
+                u32 color = base_level + big_level;
+                u32 index = bin_id % BINMAP_SIZE;
+                if ((alloc_counter_[color][index] | free_counter_[color][index]) == 0)
+                {
+                    continue;
+                }
+                logwrap() << "[color:" << user_color << "][bin:" << bin_id << "]\t[size:" << bin_size_[big_level][index] << "]\t[alloc:" << alloc_counter_[color][index] << "]\t[free:" << free_counter_[color][index]
+                    << "]\t[usedc:" << alloc_counter_[color][index] - free_counter_[color][index] << "]\t[used:" << (alloc_counter_[color][index] - free_counter_[color][index]) * bin_size_[big_level][index] * 1.0 / (1024 * 1024) << "m].";
+            }
+        }
+#endif
+    }
+
+    const char* zmalloc::debug_state_string()
+    {
+        static const size_t bufsz = 10 * 1024;
         static char buffer[bufsz] = { 0 };
-        
         int ret = snprintf(buffer, bufsz, "zmalloc summary: block size:%u, max reserve block:%u \n"
             "used block:%u, cur reserve block:%u, in hold:%0.4lfm, in real used:%0.4lfm\n"
             "total alloc block count:%.03lfk, total free block count:%.03lfk\n"
@@ -1020,14 +1063,22 @@ namespace zsummer
             "avg inner frag:%llu%%, runtime_errors_:%d..\n",
             DEFAULT_BLOCK_SIZE, max_reserve_block_count_,
             used_block_count_, reserve_block_count_, (alloc_block_bytes_ - free_block_bytes_) / 1024.0 / 1024.0, (alloc_total_bytes_ - free_total_bytes_) / 1024.0 / 1024.0,
-            alloc_block_count_ / 1000.0, free_block_count_ / 1000.0, 
+            alloc_block_count_ / 1000.0, free_block_count_ / 1000.0,
             alloc_block_cached_ / 1000.0, free_block_cached_ / 1000.0,
             req_total_count_ / 1000.0, free_total_count_ / 1000.0,
             req_total_bytes_ / 1024.0 / 1024.0, alloc_total_bytes_ / 1024.0 / 1024.0, free_total_bytes_ / 1024.0 / 1024.0,
             (alloc_block_cached_ * DEFAULT_BLOCK_SIZE + alloc_block_bytes_) / 1024.0 / 1024.0, (free_block_cached_ * DEFAULT_BLOCK_SIZE + free_block_bytes_) / 1024.0 / 1024.0,
             alloc_block_bytes_ / 1024.0 / 1024.0, free_block_bytes_ / 1024.0 / 1024.0,
             req_total_bytes_ * 100 / (alloc_total_bytes_ == 0 ? 1 : alloc_total_bytes_), runtime_errors_);
-        (void)ret;
+        return buffer;
+    }
+
+
+    const char* zmalloc::debug_color_string()
+    {
+        static const size_t bufsz = 100 * 1024;
+        static char buffer[bufsz] = { 0 };
+        int ret = 0;
 #if ZMALLOC_OPEN_COUNTER
         int used = ret;
         for (u32 i = 0; i < (zmalloc::CHUNK_COLOR_MASK_WITH_LEVEL + 1) / 2; i++)
