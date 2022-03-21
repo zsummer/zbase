@@ -9,6 +9,7 @@
 #include "test_common.h"
 #include "zmalloc.h"
 #include "stmalloc.h"
+#include "zmem_color.h"
 #define Now() std::chrono::duration<double>(std::chrono::system_clock().now().time_since_epoch()).count()
 
 
@@ -422,6 +423,117 @@ s32 zmalloc_base_test()
     }
     PROF_OUTPUT_MULTI_COUNT_CPU("zmalloc third used", 1000 * 10000 - 1024, cost.stop_and_save().cycles());
 
+
+    if (true)
+    {
+        std::unique_ptr<zmalloc> zstate(new zmalloc());
+        memset(zstate.get(), 0, sizeof(zmalloc));
+        zstate->set_global(zstate.get());
+        void* p = global_zmalloc(0);
+        AssertBoolTest(p != NULL, "");
+        AssertBoolTest(zstate->alloc_counter_[0][1] == 1, "");
+        AssertBoolTest(zstate->req_total_count_ == 1, "");
+        AssertBoolTest(zstate->req_total_bytes_ == 0, "");
+        AssertBoolTest(zstate->alloc_total_bytes_ >= zstate->req_total_bytes_, "");
+        AssertBoolTest(zstate->alloc_block_count_ == 1, "");
+        AssertBoolTest(zstate->used_block_count_ == 1, "");
+        global_zfree(p);
+        AssertBoolTest(zstate->free_counter_[0][1] == 1, "");
+        AssertBoolTest(zstate->free_total_count_ == 1, "");
+        AssertBoolTest(zstate->free_total_bytes_ >= zstate->req_total_bytes_, "");
+        zstate->clear_cache();
+        AssertBoolTest(zstate->alloc_counter_[0][1] == 1, "");
+        AssertBoolTest(zstate->req_total_count_ == 1, "");
+        AssertBoolTest(zstate->req_total_bytes_ == 0, "");
+        AssertBoolTest(zstate->alloc_total_bytes_ >= zstate->req_total_bytes_, "");
+        AssertBoolTest(zstate->free_counter_[0][1] == 1, "");
+        AssertBoolTest(zstate->free_total_count_ == 1, "");
+        AssertBoolTest(zstate->free_total_bytes_ >= zstate->req_total_bytes_, "");
+        AssertBoolTest(zstate->free_block_count_ == 1, "");
+        AssertBoolTest(zstate->used_block_count_ == 0, "");
+    }
+    if (true)
+    {
+        std::unique_ptr<zmalloc> zstate(new zmalloc());
+        memset(zstate.get(), 0, sizeof(zmalloc));
+        zstate->set_global(zstate.get());
+        void* p = global_zmalloc(1020);
+        AssertBoolTest(p != NULL, "");
+        AssertBoolTest(zstate->alloc_counter_[1][0] == 1, "");
+        AssertBoolTest(zstate->req_total_count_ == 1, "");
+        AssertBoolTest(zstate->req_total_bytes_ > 0, "");
+        AssertBoolTest(zstate->alloc_total_bytes_ >= zstate->req_total_bytes_, "");
+        AssertBoolTest(zstate->alloc_block_count_ == 1, "");
+        AssertBoolTest(zstate->used_block_count_ == 1, "");
+        global_zfree(p);
+        AssertBoolTest(zstate->free_counter_[1][0] == 1, "");
+        AssertBoolTest(zstate->free_total_count_ == 1, "");
+        AssertBoolTest(zstate->free_total_bytes_ >= zstate->req_total_bytes_, "");
+        zstate->clear_cache();
+        AssertBoolTest(zstate->alloc_counter_[1][0] == 1, "");
+        AssertBoolTest(zstate->req_total_count_ == 1, "");
+        AssertBoolTest(zstate->req_total_bytes_ > 0, "");
+        AssertBoolTest(zstate->alloc_total_bytes_ >= zstate->req_total_bytes_, "");
+        AssertBoolTest(zstate->free_counter_[1][0] == 1, "");
+        AssertBoolTest(zstate->free_total_count_ == 1, "");
+        AssertBoolTest(zstate->free_total_bytes_ >= zstate->req_total_bytes_, "");
+        AssertBoolTest(zstate->free_block_count_ == 1, "");
+        AssertBoolTest(zstate->used_block_count_ == 0, "");
+    }
+
+    if (true)
+    {
+        std::unique_ptr<zmalloc> zstate(new zmalloc());
+        memset(zstate.get(), 0, sizeof(zmalloc));
+        zstate->set_global(zstate.get());
+        void* p = global_zmalloc(1024);
+        AssertBoolTest(p != NULL, "");
+        AssertBoolTest(zstate->alloc_counter_[1][0] == 1, "");
+        AssertBoolTest(zstate->req_total_count_ == 1, "");
+        AssertBoolTest(zstate->req_total_bytes_ > 0, "");
+        AssertBoolTest(zstate->alloc_total_bytes_ >= zstate->req_total_bytes_, "");
+        AssertBoolTest(zstate->alloc_block_count_ == 1, "");
+        AssertBoolTest(zstate->used_block_count_ == 1, "");
+        global_zfree(p);
+        AssertBoolTest(zstate->free_counter_[1][0] == 1, "");
+        AssertBoolTest(zstate->free_total_count_ == 1, "");
+        AssertBoolTest(zstate->free_total_bytes_ >= zstate->req_total_bytes_, "");
+        zstate->clear_cache();
+        AssertBoolTest(zstate->alloc_counter_[1][0] == 1, "");
+        AssertBoolTest(zstate->req_total_count_ == 1, "");
+        AssertBoolTest(zstate->req_total_bytes_ > 0, "");
+        AssertBoolTest(zstate->alloc_total_bytes_ >= zstate->req_total_bytes_, "");
+        AssertBoolTest(zstate->free_counter_[1][0] == 1, "");
+        AssertBoolTest(zstate->free_total_count_ == 1, "");
+        AssertBoolTest(zstate->free_total_bytes_ >= zstate->req_total_bytes_, "");
+        AssertBoolTest(zstate->free_block_count_ == 1, "");
+        AssertBoolTest(zstate->used_block_count_ == 0, "");
+    }
+
+    if (true)
+    {
+        std::unique_ptr<zmalloc> zstate(new zmalloc());
+        memset(zstate.get(), 0, sizeof(zmalloc));
+        zstate->set_global(zstate.get());
+        for (size_t i = 0; i < 10; i++)
+        {
+            zsummer::shm_zlist_ext<int, 100, 50> l;
+            zsummer::shm_map<int, std::string>  sm;
+            zsummer::shm_vector<int> sv;
+            zsummer::shm_list<int> sl;
+            for (size_t i = 0; i < 100; i++)
+            {
+                sv.push_back(i);
+                sl.push_back(i);
+                sm.insert(std::make_pair(i, ""));
+                l.push_back(i);
+            }
+        }
+        LogDebug() << zstate->debug_string();
+        zstate->clear_cache();
+        zstate->check_health();
+        AssertBoolTest(zstate->used_block_count_ == 0, "");
+    }
 
 
     return 0;
