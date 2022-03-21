@@ -1052,7 +1052,7 @@ namespace zsummer
     {
         static const size_t bufsz = 10 * 1024;
         static char buffer[bufsz] = { 0 };
-        int ret = snprintf(buffer, bufsz, "zmalloc summary: block size:%u, max reserve block:%u \n"
+        snprintf(buffer, bufsz, "zmalloc summary: block size:%u, max reserve block:%u \n"
             "used block:%u, cur reserve block:%u, in hold:%0.4lfm, in real used:%0.4lfm\n"
             "total alloc block count:%.03lfk, total free block count:%.03lfk\n"
             "total alloc cache count:%.03lfk, total free cache count:%.03lfk\n"
