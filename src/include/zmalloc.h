@@ -1032,40 +1032,25 @@ namespace zsummer
         int used = ret;
         for (u32 i = 0; i < (zmalloc::CHUNK_COLOR_MASK_WITH_LEVEL + 1) / 2; i++)
         {
-            
-            u32 c = 0;
             u32 base_color = i << 1;
-            if (base_color > CHUNK_COLOR_MASK_WITH_LEVEL)
+            for (u32 bin_id = 0; bin_id < BINMAP_SIZE * 2; bin_id++)
             {
-                break;
-            }
-            while (ret > 0 && c < BINMAP_SIZE)
-            {
-                if ((alloc_counter_[base_color][c] | free_counter_[base_color][c]) == 0)
+                u32 big_level = bin_id / BINMAP_SIZE;
+                u32 color = base_color + big_level;
+                u32 index = bin_id % BINMAP_SIZE;
+                if ((alloc_counter_[color][index] | free_counter_[color][index]) == 0)
                 {
-                    c++;
                     continue;
                 }
                 ret = snprintf(buffer + used, bufsz - used, "[color:%u][%03u]\t[%u byte]:\t alloc:%llu  \tfree:%llu \tused:%llu\n",
-                    i, c, bin_size_[0][c], alloc_counter_[base_color][c], free_counter_[base_color][c], alloc_counter_[base_color][c] - free_counter_[base_color][c]);
+                    i, bin_id, bin_size_[big_level][index], alloc_counter_[color][index], free_counter_[color][index], alloc_counter_[color][index] - free_counter_[color][index]);
                 used += ret;
-                c++;
-            }
-            c = 0;
-            while (ret > 0 && c < BINMAP_SIZE)
-            {
-                if ((alloc_counter_[base_color | CHUNK_IS_BIG][c] | free_counter_[base_color | CHUNK_IS_BIG][c]) == 0)
+                if (ret <= 0)
                 {
-                    c++;
-                    continue;
+                    return buffer;
                 }
-                ret = snprintf(buffer + used, bufsz - used, "[color:%u][%03u]\t[%u byte]:\t alloc:%llu  \tfree:%llu \tused:%llu\n",
-                    i, c + 64, bin_size_[CHUNK_IS_BIG][c], alloc_counter_[base_color | CHUNK_IS_BIG][c], free_counter_[base_color | CHUNK_IS_BIG][c], alloc_counter_[base_color | CHUNK_IS_BIG][c] - free_counter_[base_color | CHUNK_IS_BIG][c]);
-                used += ret;
-                c++;
             }
         }
-
 #endif
         return buffer;
     }
