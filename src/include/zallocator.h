@@ -78,6 +78,11 @@ namespace zsummer
             //assert free_size > c * sizeof(Ty); 
         }
 
+        template< class U, class... Args >
+        void construct(U* p, Args&&... args) //gcc4.9.4 need, but will remove at C++20. 
+        {
+            ::new((void*)p) U(std::forward<Args>(args)...);
+        }
 
         template<class T = _Ty>
         inline void construct(pointer p, const_reference v) { new ((void*)p) T(v); }
