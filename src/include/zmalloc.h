@@ -299,8 +299,10 @@ namespace zsummer
         free_chunk_type bin_[BITMAP_LEVEL][BINMAP_SIZE];
         free_chunk_type bin_end_[BITMAP_LEVEL][BINMAP_SIZE];
 #if ZMALLOC_OPEN_COUNTER
+        u32 bin_size_[BITMAP_LEVEL][BINMAP_SIZE];
         u64 alloc_counter_[CHUNK_COLOR_MASK_WITH_LEVEL + 1][BINMAP_SIZE];
         u64 free_counter_[CHUNK_COLOR_MASK_WITH_LEVEL + 1][BINMAP_SIZE];
+
 #endif // ZMALLOC_OPEN_COUNTER
     };
 
@@ -676,6 +678,14 @@ namespace zsummer
                     bin_end_[level][bin_id].prev_node = &bin_[level][bin_id];
                 }
             }
+            for (u32 bin_id = 0; bin_id < BINMAP_SIZE; bin_id++)
+            {
+                bin_size_[!CHUNK_IS_BIG][bin_id] = (bin_id) << FINE_GRAINED_SHIFT;
+            }
+            for (u32 bin_id = 0; bin_id < BINMAP_SIZE; bin_id++)
+            {
+                bin_size_[CHUNK_IS_BIG][bin_id] = zmalloc_resolve_order_size(bin_id + 1);
+            }
         }
         req_total_bytes_ += req_bytes;
         req_total_count_++;
@@ -960,6 +970,10 @@ namespace zsummer
     {
         check_block(instance());
         check_bitmap(instance());
+        if (runtime_errors_ > 0)
+        {
+            panic(false, "has runtime_errors");
+        }
     }
 
     void zmalloc::clear_cache()
@@ -992,7 +1006,7 @@ namespace zsummer
     }
     const char* zmalloc::debug_string()
     {
-        static const size_t bufsz = 10 * 1024;
+        static const size_t bufsz = 100 * 1024;
         static char buffer[bufsz] = { 0 };
         
         int ret = snprintf(buffer, bufsz, "zmalloc summary: block size:%u, max reserve block:%u \n"
@@ -1003,7 +1017,7 @@ namespace zsummer
             "total req:%.04lfm, total alloc:%.04lfm, total free:%.04lfm \n"
             "total sale:%.04lfm, total return:%.04lfm\n"
             "sale real:%.04lfm, return real:%.04lfm\n"
-            "avg inner frag:%llu%%.\n",
+            "avg inner frag:%llu%%, runtime_errors_:%d..\n",
             DEFAULT_BLOCK_SIZE, max_reserve_block_count_,
             used_block_count_, reserve_block_count_, (alloc_block_bytes_ - free_block_bytes_) / 1024.0 / 1024.0, (alloc_total_bytes_ - free_total_bytes_) / 1024.0 / 1024.0,
             alloc_block_count_ / 1000.0, free_block_count_ / 1000.0, 
@@ -1012,10 +1026,10 @@ namespace zsummer
             req_total_bytes_ / 1024.0 / 1024.0, alloc_total_bytes_ / 1024.0 / 1024.0, free_total_bytes_ / 1024.0 / 1024.0,
             (alloc_block_cached_ * DEFAULT_BLOCK_SIZE + alloc_block_bytes_) / 1024.0 / 1024.0, (free_block_cached_ * DEFAULT_BLOCK_SIZE + free_block_bytes_) / 1024.0 / 1024.0,
             alloc_block_bytes_ / 1024.0 / 1024.0, free_block_bytes_ / 1024.0 / 1024.0,
-            req_total_bytes_ * 100 / (alloc_total_bytes_ == 0 ? 1 : alloc_total_bytes_));
+            req_total_bytes_ * 100 / (alloc_total_bytes_ == 0 ? 1 : alloc_total_bytes_), runtime_errors_);
         (void)ret;
 #if ZMALLOC_OPEN_COUNTER
-        int used = 0;
+        int used = ret;
         for (u32 i = 0; i < (zmalloc::CHUNK_COLOR_MASK_WITH_LEVEL + 1) / 2; i++)
         {
             
@@ -1032,23 +1046,22 @@ namespace zsummer
                     c++;
                     continue;
                 }
-                used += ret;
                 ret = snprintf(buffer + used, bufsz - used, "[color:%u][%03u]\t[%u byte]:\t alloc:%llu  \tfree:%llu \tused:%llu\n",
-                    i, c, ((c) << FINE_GRAINED_SHIFT), alloc_counter_[base_color][c], free_counter_[base_color][c], alloc_counter_[base_color][c] - free_counter_[base_color][c]);
+                    i, c, bin_size_[0][c], alloc_counter_[base_color][c], free_counter_[base_color][c], alloc_counter_[base_color][c] - free_counter_[base_color][c]);
+                used += ret;
                 c++;
             }
             c = 0;
             while (ret > 0 && c < BINMAP_SIZE)
             {
-                used += ret;
-                u64 bytes = zmalloc_resolve_order_size(c);
                 if ((alloc_counter_[base_color | CHUNK_IS_BIG][c] | free_counter_[base_color | CHUNK_IS_BIG][c]) == 0)
                 {
                     c++;
                     continue;
                 }
-                ret = snprintf(buffer + used, bufsz - used, "[color:%u][%03u]\t[%llu byte]:\t alloc:%llu  \tfree:%llu \tused:%llu\n",
-                    i, c + 64, bytes, alloc_counter_[base_color | CHUNK_IS_BIG][c], free_counter_[base_color | CHUNK_IS_BIG][c], alloc_counter_[base_color | CHUNK_IS_BIG][c] - free_counter_[base_color | CHUNK_IS_BIG][c]);
+                ret = snprintf(buffer + used, bufsz - used, "[color:%u][%03u]\t[%u byte]:\t alloc:%llu  \tfree:%llu \tused:%llu\n",
+                    i, c + 64, bin_size_[CHUNK_IS_BIG][c], alloc_counter_[base_color | CHUNK_IS_BIG][c], free_counter_[base_color | CHUNK_IS_BIG][c], alloc_counter_[base_color | CHUNK_IS_BIG][c] - free_counter_[base_color | CHUNK_IS_BIG][c]);
+                used += ret;
                 c++;
             }
         }

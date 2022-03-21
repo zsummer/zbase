@@ -566,7 +566,7 @@ public:
 #endif
 
 #ifndef FN_LOG_MAX_LOG_SIZE
-#define FN_LOG_MAX_LOG_SIZE 10000
+#define FN_LOG_MAX_LOG_SIZE 100000
 #endif
 
 #ifndef FN_LOG_MAX_LOG_QUEUE_SIZE //the size need big than push log thread count
