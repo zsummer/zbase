@@ -51,13 +51,13 @@ namespace zsummer
         template<typename U>
         struct rebind { using other = zallocator<U, _Color>; };
 
-#ifdef WIN32
+
         inline explicit zallocator() {}
         inline ~zallocator() {}
         inline  zallocator(const zallocator&) {}
         template<typename U>
-        inline zallocator(const zallocator<U>&) {}
-#endif // WIN32
+        inline zallocator(const zallocator<U, _Color>&) {}
+
 
 
 
