@@ -230,10 +230,6 @@ s32 zmalloc_stress()
         zstate->check_health();
         if (true)
         {
-            cost.start();
-            LogDebug() << zmalloc::instance().debug_state_string();
-            LogDebug() << zmalloc::instance().debug_color_string();
-            PROF_OUTPUT_SINGLE_CPU("zamlloc debug_state_string debug_color_string cost", cost.stop_and_save().cycles());
             auto new_log = []() { return LOG_STREAM_DEFAULT_LOGGER(0, FNLog::PRIORITY_DEBUG, 0, 0, FNLog::LOG_PREFIX_NULL); };
             cost.start();
             zmalloc::instance().debug_state_log(new_log);

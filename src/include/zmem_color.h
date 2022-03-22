@@ -21,6 +21,11 @@
 #define _ZMEM_COLOR_H_
 #include "zallocator.h"
 #include "zlist_ext.h"
+#include <map>
+#include <set>
+#include <vector>
+#include <list>
+#include <string>
 namespace zsummer
 {
     enum zmem_color_enum
