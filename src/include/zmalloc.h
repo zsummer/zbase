@@ -21,7 +21,7 @@
 #include <sstream>
 #include <thread>
 #include <chrono>
-
+#include <string.h>
 #ifdef WIN32
 #define WIN32_LEAN_AND_MEAN
 #include <WinSock2.h>
@@ -171,7 +171,7 @@ namespace zsummer
         static const u32 DEFAULT_BLOCK_SIZE = (8 * 1024 * 1024);
     public:
         inline static zmalloc& instance();
-        inline static zmalloc* instance_ptr();
+        inline static zmalloc*& instance_ptr();
         inline static void* default_block_alloc(u64 );
         inline static u64 default_block_free(void*);
         inline static void set_global(zmalloc* state);
@@ -183,8 +183,6 @@ namespace zsummer
 
         inline void check_health();
         inline void clear_cache();
-        inline const char* debug_state_string();
-        inline const char* debug_color_string();
         template<class StreamLog>
         inline void debug_state_log(StreamLog& logwrap);
         template<class StreamLog>
@@ -375,21 +373,17 @@ namespace zsummer
 #define zmalloc_get_block_head(block) zmalloc_chunk_cast( zmalloc_u64_cast(block)+zmalloc::BLOCK_TYPE_SIZE)
 
 
-    static inline zmalloc*& zmalloc_global_instance()
-    {
-        static zmalloc* g_zmalloc_state = NULL;
-        return g_zmalloc_state;
-    }
 
 
 
     zmalloc& zmalloc::instance()
     {
-        return *zmalloc_global_instance();
+        return *instance_ptr();
     }
-    zmalloc* zmalloc::instance_ptr()
+    zmalloc*& zmalloc::instance_ptr()
     {
-        return zmalloc_global_instance();
+        static zmalloc* g_zmalloc_state = NULL;
+        return g_zmalloc_state;
     }
 
     void* zmalloc::default_block_alloc(u64 req_size)
@@ -423,7 +417,7 @@ namespace zsummer
 
     void zmalloc::set_global(zmalloc* state)
     {
-        zmalloc_global_instance() = state;
+        instance_ptr() = state;
     }
 
     void zmalloc::set_block_callback(block_alloc_func block_alloc, block_free_func block_free)
@@ -1048,63 +1042,7 @@ namespace zsummer
 #endif
     }
 
-    const char* zmalloc::debug_state_string()
-    {
-        static const size_t bufsz = 10 * 1024;
-        static char buffer[bufsz] = { 0 };
-        snprintf(buffer, bufsz, "zmalloc summary: block size:%u, max reserve block:%u \n"
-            "used block:%u, cur reserve block:%u, in hold:%0.4lfm, in real used:%0.4lfm\n"
-            "total alloc block count:%.03lfk, total free block count:%.03lfk\n"
-            "total alloc cache count:%.03lfk, total free cache count:%.03lfk\n"
-            "total req count:%.03lfk, free count:%.03lfk\n"
-            "total req:%.04lfm, total alloc:%.04lfm, total free:%.04lfm \n"
-            "total sale:%.04lfm, total return:%.04lfm\n"
-            "sale real:%.04lfm, return real:%.04lfm\n"
-            "avg inner frag:%llu%%, runtime_errors_:%d..\n",
-            DEFAULT_BLOCK_SIZE, max_reserve_block_count_,
-            used_block_count_, reserve_block_count_, (alloc_block_bytes_ - free_block_bytes_) / 1024.0 / 1024.0, (alloc_total_bytes_ - free_total_bytes_) / 1024.0 / 1024.0,
-            alloc_block_count_ / 1000.0, free_block_count_ / 1000.0,
-            alloc_block_cached_ / 1000.0, free_block_cached_ / 1000.0,
-            req_total_count_ / 1000.0, free_total_count_ / 1000.0,
-            req_total_bytes_ / 1024.0 / 1024.0, alloc_total_bytes_ / 1024.0 / 1024.0, free_total_bytes_ / 1024.0 / 1024.0,
-            (alloc_block_cached_ * DEFAULT_BLOCK_SIZE + alloc_block_bytes_) / 1024.0 / 1024.0, (free_block_cached_ * DEFAULT_BLOCK_SIZE + free_block_bytes_) / 1024.0 / 1024.0,
-            alloc_block_bytes_ / 1024.0 / 1024.0, free_block_bytes_ / 1024.0 / 1024.0,
-            req_total_bytes_ * 100 / (alloc_total_bytes_ == 0 ? 1 : alloc_total_bytes_), runtime_errors_);
-        return buffer;
-    }
 
-
-    const char* zmalloc::debug_color_string()
-    {
-        static const size_t bufsz = 100 * 1024;
-        static char buffer[bufsz] = { 0 };
-        int ret = 0;
-#if ZMALLOC_OPEN_COUNTER
-        int used = ret;
-        for (u32 i = 0; i < (zmalloc::CHUNK_COLOR_MASK_WITH_LEVEL + 1) / 2; i++)
-        {
-            u32 base_color = i << 1;
-            for (u32 bin_id = 0; bin_id < BINMAP_SIZE * 2; bin_id++)
-            {
-                u32 big_level = bin_id / BINMAP_SIZE;
-                u32 color = base_color + big_level;
-                u32 index = bin_id % BINMAP_SIZE;
-                if ((alloc_counter_[color][index] | free_counter_[color][index]) == 0)
-                {
-                    continue;
-                }
-                ret = snprintf(buffer + used, bufsz - used, "[color:%u][%03u]\t[%u byte]:\t alloc:%llu  \tfree:%llu \tused:%llu\n",
-                    i, bin_id, bin_size_[big_level][index], alloc_counter_[color][index], free_counter_[color][index], alloc_counter_[color][index] - free_counter_[color][index]);
-                used += ret;
-                if (ret <= 0)
-                {
-                    return buffer;
-                }
-            }
-        }
-#endif
-        return buffer;
-    }
 
 
     void zmalloc::panic(bool expr, const char* str)

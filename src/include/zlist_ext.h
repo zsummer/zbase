@@ -193,8 +193,8 @@ namespace zsummer
         static_assert(_FixedSize > 0, "");
         static_assert(_FixedSize <= _Size, "");
 
-        using iterator = zlist_ext_iterator<zlist_ext<_Ty, _Size, _FixedSize>>;
-        using const_iterator = const_zlist_ext_iterator<zlist_ext<_Ty, _Size, _FixedSize>>;
+        using iterator = zlist_ext_iterator<zlist_ext<_Ty, _Size, _FixedSize, _Alloc>>;
+        using const_iterator = const_zlist_ext_iterator<zlist_ext<_Ty, _Size, _FixedSize, _Alloc>>;
 
         using reverse_iterator = std::reverse_iterator<iterator>;
         using const_reverse_iterator = std::reverse_iterator<const_iterator>;
