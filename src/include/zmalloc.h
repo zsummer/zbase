@@ -22,6 +22,7 @@
 #include <thread>
 #include <chrono>
 #include <string.h>
+#include <stdlib.h>
 #ifdef WIN32
 #define WIN32_LEAN_AND_MEAN
 #include <WinSock2.h>
@@ -386,15 +387,23 @@ namespace zsummer
         return g_zmalloc_state;
     }
 
+
     void* zmalloc::default_block_alloc(u64 req_size)
     {
-        char* addr = (char*)malloc(req_size + 8);
+        req_size = (req_size + 15) / 16 * 16; // align size to 16 byte;   
+        
+#ifdef WIN32
+        char* addr = (char*)_aligned_malloc(req_size + 16, 16);
+#else
+        char* addr = (char*)aligned_alloc(16, req_size + 16);
+#endif // WIN32
+
         if (addr == NULL)
         {
             return NULL;
         }
         *((u64*)addr) = req_size;
-        return addr + sizeof(u64);
+        return addr + 16;
    }
 
     u64 zmalloc::default_block_free(void* addr)
@@ -403,14 +412,23 @@ namespace zsummer
         {
             return 0;
         }
-        char* req_addr = ((char*)addr) - sizeof(u64);
+        char* req_addr = ((char*)addr) - 16;
         u64 req_size = *((u64*)req_addr);
         if (req_size > 1*1024*1024*1024*1024ULL) //1 T
         {
             //will memory leak;  
+            if (instance_ptr() != NULL)
+            {
+                instance().runtime_errors_++;
+            }
             return 0;
         }
+#ifdef WIN32
+        _aligned_free(req_addr);
+#else
         free(req_addr);
+#endif // WIN32
+        
         return req_size;
     }
 
