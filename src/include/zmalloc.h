@@ -146,7 +146,7 @@ static const u64 max_resolve_order_size = zmalloc_resolve_order_size(62);
 #endif // !ZMALLOC_OPEN_COUNTER
 
 #ifndef ZMALLOC_OPEN_CHECK
-#define ZMALLOC_OPEN_CHECK 0
+#define ZMALLOC_OPEN_CHECK 1
 #endif // !ZMALLOC_OPEN_CHECK
 
 namespace zsummer
@@ -266,6 +266,7 @@ namespace zsummer
         inline static void check_block_list(block_type* block_list, u32 block_list_size, u32 max_list_size);
         inline static void check_block(zmalloc& zstate);
         inline static void check_bitmap(zmalloc& zstate);
+        inline static void check_align(void* addr);
         inline static void panic(bool expr, const char * str);
     public:
         u32 inited_;
@@ -323,6 +324,7 @@ namespace zsummer
 #define zmalloc_check_color_counter(state, c)   check_color_counter(state, c)
 #define zmalloc_check_block(state) zmalloc::check_block(state)
 #define zmalloc_check_bitmap(state) zmalloc::check_bitmap(state)
+#define zmalloc_check_align(addr) zmalloc::check_align(addr)
 
 #else
 
@@ -332,6 +334,7 @@ namespace zsummer
 #define zmalloc_check_color_counter(state, c) ;
 #define zmalloc_check_block(state)  (void)(state)
 #define zmalloc_check_bitmap(state) (void)(state)
+#define zmalloc_check_align(addr) (void)(addr)
 
 #endif
 
@@ -397,11 +400,12 @@ namespace zsummer
 #else
         char* addr = (char*)aligned_alloc(16, req_size + 16);
 #endif // WIN32
-
         if (addr == NULL)
         {
             return NULL;
         }
+        zmalloc_check_align(addr);
+        zmalloc_check_align((void*)req_size);
         *((u64*)addr) = req_size;
         return addr + 16;
    }
@@ -782,7 +786,7 @@ namespace zsummer
             u32 third_order = zmalloc_align_third_bit_order(padding);
             u32 align_id = zmalloc_third_sequence(third_order, padding);
             u32 compress_id = zmalloc_third_sequence_compress(align_id);
-
+            padding = padding & ~((1u << third_order) - 1);
             padding += CHUNK_PADDING_SIZE;
             u64 bitmap = bitmap_[level] >> compress_id;
             if (bitmap & 0x1)
@@ -1296,6 +1300,11 @@ namespace zsummer
                 }
             }
         }
+    }
+
+    void zmalloc::check_align(void* addr)
+    {
+        panic(((u64)addr) % 16 == 0, "check align error");
     }
 
   
