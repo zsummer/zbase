@@ -146,7 +146,7 @@ static const u64 max_resolve_order_size = zmalloc_resolve_order_size(62);
 #endif // !ZMALLOC_OPEN_COUNTER
 
 #ifndef ZMALLOC_OPEN_CHECK
-#define ZMALLOC_OPEN_CHECK 1
+#define ZMALLOC_OPEN_CHECK 0
 #endif // !ZMALLOC_OPEN_CHECK
 
 namespace zsummer
