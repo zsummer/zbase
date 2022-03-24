@@ -139,7 +139,9 @@ static_assert(zmalloc_third_sequence(9, 2048) == 36, "");
 #define zmalloc_third_sequence_compress(sequence) (sequence - 32)
 #define zmalloc_resolve_order_size(index )  ((((index + 32) & 0x3) | 0x4) << (((index +32) >> 2) ))
 
-static const u64 max_resolve_order_size = zmalloc_resolve_order_size(62);
+static const u64 BIG_MAX_BIN_ID = 62;
+static const u64 BIG_LOG_BYTES_BIN_ID = 63;
+static const u64 max_resolve_order_size = zmalloc_resolve_order_size(BIG_MAX_BIN_ID);
 
 #ifndef ZMALLOC_OPEN_COUNTER
 #define ZMALLOC_OPEN_COUNTER 1
@@ -870,6 +872,11 @@ namespace zsummer
         u32 compress_id = zmalloc_third_sequence_compress(align_id);
         chunk->bin_id = compress_id;
         alloc_counter_[(COLOR * 2) | CHUNK_IS_BIG][chunk->bin_id] ++;
+        if (compress_id == BIG_MAX_BIN_ID)
+        {
+            alloc_counter_[(COLOR * 2) | CHUNK_IS_BIG][BIG_LOG_BYTES_BIN_ID] += chunk->this_size;
+        }
+        
 #endif
         zmalloc_set_chunk(chunk, CHUNK_IS_IN_USED | (COLOR * 2));
         alloc_total_bytes_ += chunk->this_size;
@@ -910,6 +917,10 @@ namespace zsummer
         {
 #if ZMALLOC_OPEN_COUNTER
             free_counter_[zmalloc_chunk_color_level(chunk)][chunk->bin_id]++;
+            if (chunk->bin_id == BIG_MAX_BIN_ID)
+            {
+                free_counter_[zmalloc_chunk_color_level(chunk)][BIG_LOG_BYTES_BIN_ID] += chunk->this_size;
+            }
 #endif
             zmalloc_unset_chunk(chunk, CHUNK_COLOR_MASK_WITH_USED);
             block_type* block = zmalloc_get_block(chunk);
@@ -1036,10 +1047,10 @@ namespace zsummer
         logwrap() << "[free]: free_total_count_:" << free_total_count_ << ", free_total_bytes_:" << free_total_bytes_;
         logwrap() << "[free]: free_block_count_:" << free_block_count_ << ", free_block_bytes_:" << free_block_bytes_ / 1024.0 / 1024.0 << "m, free_block_cached_:" << free_block_cached_ / 1024.0 / 1024.0 <<"m.";
 
-        logwrap() << "[analysis]:  mem usage rate(inner frag):" << req_total_bytes_ * 100.0 / (alloc_total_bytes_ ? alloc_total_bytes_ : 1) << "%"
+        logwrap() << "[analysis]: mem usage rate(inner frag):" << req_total_bytes_ * 100.0 / (alloc_total_bytes_ ? alloc_total_bytes_ : 1) << "%, \t"
                         << "mem usage rate(total):" << req_total_bytes_ * 100.0 / (alloc_block_bytes_ ? alloc_block_bytes_ : 1) << "%";
-        logwrap() << "[analysis]: block cached rate:" << (alloc_block_bytes_ - alloc_block_cached_) * 100.0 / (alloc_block_bytes_ ? alloc_block_bytes_ : 1) << "%";
-        logwrap() << "[analysis]: used memory:" << (alloc_total_bytes_ - free_total_bytes_)/1024.0/1024.0 << "m, used_block_count_" << used_block_count_ << ", reserve_block_count_" << reserve_block_count_;
+        logwrap() << "[analysis]: block cached rate:" << (alloc_block_cached_) * 100.0 / (alloc_block_bytes_ ? alloc_block_bytes_ : 1) << "%";
+        logwrap() << "[analysis]: used memory:" << (alloc_total_bytes_ - free_total_bytes_)/1024.0/1024.0 << "m, used_block_count_:" << used_block_count_ << ", reserve_block_count_:" << reserve_block_count_;
     }
 
 
@@ -1054,7 +1065,12 @@ namespace zsummer
             u64 color_alloc = 0;
             u64 color_free = 0;
             u64 color_count = 0;
-            for (u32 bin_id = 0; bin_id < BINMAP_SIZE * 2; bin_id++)
+            u32 last_valid_bin_id = 0;
+            static const u32 costom_val = BINMAP_SIZE - BIG_MAX_BIN_ID;
+            static_assert(costom_val == 2, "");
+            static_assert(BIG_LOG_BYTES_BIN_ID == BIG_MAX_BIN_ID + 1, "");
+
+            for (u32 bin_id = 0; bin_id < BINMAP_SIZE * 2- costom_val; bin_id++)
             {
                 u32 big_level = bin_id / BINMAP_SIZE;
                 u32 color = base_level + big_level;
@@ -1063,19 +1079,36 @@ namespace zsummer
                 {
                     continue;
                 }
+                last_valid_bin_id = bin_id;
                 color_alloc += alloc_counter_[color][index] * bin_size_[big_level][index];
                 color_count += alloc_counter_[color][index];
                 color_free += free_counter_[color][index] * bin_size_[big_level][index];
                 logwrap() << "[color:" << user_color << "][bin:" << bin_id << "]\t[size:" << bin_size_[big_level][index] << "]\t[alloc:" << alloc_counter_[color][index] << "]\t[free:" << free_counter_[color][index]
                     << "]\t[usedc:" << alloc_counter_[color][index] - free_counter_[color][index] << "]\t[used:" << (alloc_counter_[color][index] - free_counter_[color][index]) * bin_size_[big_level][index] * 1.0 / (1024 * 1024) << "m].";
             }
+
+            if (alloc_counter_[base_level | CHUNK_IS_BIG][BIG_MAX_BIN_ID])
+            {
+                color_alloc += alloc_counter_[base_level | CHUNK_IS_BIG][BIG_LOG_BYTES_BIN_ID];
+                color_count += alloc_counter_[base_level | CHUNK_IS_BIG][BIG_MAX_BIN_ID];
+                color_free += free_counter_[base_level | CHUNK_IS_BIG][BIG_LOG_BYTES_BIN_ID];
+                logwrap() << "[color:" << user_color << "][bin:" << BINMAP_SIZE + BIG_MAX_BIN_ID << "]\t[size: dynamic]\t[alloc:" << alloc_counter_[base_level | CHUNK_IS_BIG][BIG_MAX_BIN_ID] << "]\t[free:" << free_counter_[base_level | CHUNK_IS_BIG][BIG_MAX_BIN_ID]
+                    << "]\t[usedc:" << alloc_counter_[base_level | CHUNK_IS_BIG][BIG_MAX_BIN_ID] - free_counter_[base_level | CHUNK_IS_BIG][BIG_MAX_BIN_ID]
+                    << "]\t[used:" << (alloc_counter_[base_level | CHUNK_IS_BIG][BIG_LOG_BYTES_BIN_ID] - free_counter_[base_level | CHUNK_IS_BIG][BIG_LOG_BYTES_BIN_ID]) * 1.0 / (1024 * 1024) << "m].";
+            }
+
+
             if ((color_alloc | color_free) != 0)
             {
                 double total_used = (alloc_total_bytes_ - free_total_bytes_) > 0 ? (alloc_total_bytes_ - free_total_bytes_) : 1.0;
-                logwrap() << "[color:" << user_color << " analysis] alloc:" << color_alloc * 1.0 / 1024  << "k, \tfree:" << color_free * 1.0 / 1024 
-                    << "k, \tcur used:" << (color_alloc - color_free) * 1.0 / 1024 / 1024 << "m, \t used of total(used):" << (color_alloc - color_free)  / total_used << "%. ";
-                logwrap() << "[color:" << user_color << " analysis] req avg:" << color_alloc * 1.0 / color_count / 1024 << "k, \tcount:" << color_count ;
-                logwrap() << "  ---  ";
+                logwrap() << "[color:" << user_color << " analysis] alloc:" << color_alloc * 1.0 / 1024 << "k, \tfree:" << color_free * 1.0 / 1024
+                    << "k, \tcur used:" << (color_alloc - color_free) * 1.0 / 1024 / 1024 << "m, \t used of total(used):" << (color_alloc - color_free) * 100 / total_used << "%,  call of total:" << color_count * 100.0 / req_total_count_ << "%.";
+                logwrap() << "[color:" << user_color << " analysis] req avg:" << color_alloc * 1.0 / color_count / 1024 << "k, \tcount:" << color_count;
+                if (last_valid_bin_id >= 126)
+                {
+                    logwrap() << "  ---  note: color count is real.  color memory size is padding size . ---    ";
+                }
+                logwrap() << "  ---  ---    ";
             }
         }
 #endif
