@@ -1029,14 +1029,17 @@ namespace zsummer
     inline void zmalloc::debug_state_log(StreamLog& logwrap)
     {
         logwrap() << "[meta]: block_power_is_2_:" << block_power_is_2_ << ", max_reserve_block_count_:" << max_reserve_block_count_ << ", runtime_errors_:" << runtime_errors_;
-        logwrap() << "[req]: req_total_count_:" << req_total_count_ << ", req_total_bytes_:" << req_total_bytes_ << ", alloc_total_bytes_:" << req_total_count_ << ", alloc_total_bytes_:" << alloc_total_bytes_;
-        logwrap() << "[req]: alloc_block_count_:" << alloc_block_count_ << ", alloc_block_bytes_:" << alloc_block_bytes_ << ", alloc_block_cached_:" << alloc_block_cached_;
-        logwrap() << "[free]: free_total_count_:" << free_total_count_ << ", free_total_bytes_:" << free_total_bytes_;
-        logwrap() << "[free]: free_block_count_:" << free_block_count_ << ", free_block_bytes_:" << free_block_bytes_ << ", free_block_cached_:" << free_block_cached_;
-        logwrap() << "[state]: used memory:" << alloc_total_bytes_ - free_total_bytes_ << ", used_block_count_" << used_block_count_ << ", reserve_block_count_" << reserve_block_count_;
+        logwrap() << "[req]: req_total_count_:" << req_total_count_ << ", req_total_bytes_:" << req_total_bytes_ << ", alloc_total_bytes_:" << alloc_total_bytes_;
+        logwrap() << "[req]: alloc_block_count_:" << alloc_block_count_ << ", alloc_block_bytes_:" << alloc_block_bytes_/1024.0/1024.0 << "m, alloc_block_cached_:" << alloc_block_cached_/1024.0/1024.0 <<"m.";
         logwrap() << "[analysis]: req avg:" << req_total_bytes_ * 1.0 / (req_total_count_ ? req_total_count_ : 1);
-        logwrap() << "[analysis]:  mem usage rate(inner frag):" << req_total_bytes_ * 1.0 / (alloc_total_bytes_ ? alloc_total_bytes_ : 1);
-        logwrap() << "[analysis]: block cached rate:" << (alloc_block_bytes_ - alloc_block_cached_) * 1.0 / (alloc_block_bytes_ ? alloc_block_bytes_ : 1);
+
+        logwrap() << "[free]: free_total_count_:" << free_total_count_ << ", free_total_bytes_:" << free_total_bytes_;
+        logwrap() << "[free]: free_block_count_:" << free_block_count_ << ", free_block_bytes_:" << free_block_bytes_ / 1024.0 / 1024.0 << "m, free_block_cached_:" << free_block_cached_ / 1024.0 / 1024.0 <<"m.";
+
+        logwrap() << "[analysis]:  mem usage rate(inner frag):" << req_total_bytes_ * 100.0 / (alloc_total_bytes_ ? alloc_total_bytes_ : 1) << "%"
+                        << "mem usage rate(total):" << req_total_bytes_ * 100.0 / (alloc_block_bytes_ ? alloc_block_bytes_ : 1) << "%";
+        logwrap() << "[analysis]: block cached rate:" << (alloc_block_bytes_ - alloc_block_cached_) * 100.0 / (alloc_block_bytes_ ? alloc_block_bytes_ : 1) << "%";
+        logwrap() << "[analysis]: used memory:" << (alloc_total_bytes_ - free_total_bytes_)/1024.0/1024.0 << "m, used_block_count_" << used_block_count_ << ", reserve_block_count_" << reserve_block_count_;
     }
 
 
@@ -1048,6 +1051,9 @@ namespace zsummer
         for (u32 user_color = 0; user_color < end_color; user_color++)
         {
             u32 base_level = user_color << 1;
+            u64 color_alloc = 0;
+            u64 color_free = 0;
+            u64 color_count = 0;
             for (u32 bin_id = 0; bin_id < BINMAP_SIZE * 2; bin_id++)
             {
                 u32 big_level = bin_id / BINMAP_SIZE;
@@ -1057,8 +1063,19 @@ namespace zsummer
                 {
                     continue;
                 }
+                color_alloc += alloc_counter_[color][index] * bin_size_[big_level][index];
+                color_count += alloc_counter_[color][index];
+                color_free += free_counter_[color][index] * bin_size_[big_level][index];
                 logwrap() << "[color:" << user_color << "][bin:" << bin_id << "]\t[size:" << bin_size_[big_level][index] << "]\t[alloc:" << alloc_counter_[color][index] << "]\t[free:" << free_counter_[color][index]
                     << "]\t[usedc:" << alloc_counter_[color][index] - free_counter_[color][index] << "]\t[used:" << (alloc_counter_[color][index] - free_counter_[color][index]) * bin_size_[big_level][index] * 1.0 / (1024 * 1024) << "m].";
+            }
+            if ((color_alloc | color_free) != 0)
+            {
+                double total_used = (alloc_total_bytes_ - free_total_bytes_) > 0 ? (alloc_total_bytes_ - free_total_bytes_) : 1.0;
+                logwrap() << "[color:" << user_color << " analysis] alloc:" << color_alloc * 1.0 / 1024  << "k, \tfree:" << color_free * 1.0 / 1024 
+                    << "k, \tcur used:" << (color_alloc - color_free) * 1.0 / 1024 / 1024 << "m, \t used of total(used):" << (color_alloc - color_free)  / total_used << "%. ";
+                logwrap() << "[color:" << user_color << " analysis] req avg:" << color_alloc * 1.0 / color_count / 1024 << "k, \tcount:" << color_count ;
+                logwrap() << "  ---  ";
             }
         }
 #endif
