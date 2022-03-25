@@ -32,41 +32,26 @@ s32 STSetPageOpPtrs(AllocPagesPtr alloc_ptr, FreePagesPtr free_ptr)
 
 void* STAllocPages(s32 order)
 {
-	if (true)
+	u64 req_size = 1ULL << order;
+#ifdef WIN32
+	char* addr = (char*)_aligned_malloc(req_size, kPageSize);
+#else
+	char* addr = (char*)aligned_alloc(kPageSize, req_size);
+#endif // WIN32
+	if (addr == NULL)
 	{
-		s32 align_size = 1u << (order + 1);
-		align_size += 16;
-		char* p = new char[align_size];
-		u64 addr = (u64)(p);
-		addr &= ~((1ull << order) - 1);
-		addr += (1ull << order);
-		*(u64*)(addr - 16) = (u64)p;
-		*(u64*)(addr - 8) = 1ull << (order);
-		return (void*)addr;
+		return NULL;
 	}
-
-
-	if (true)
-	{
-		s32 align_size = 1u << (order);
-		align_size += 1u << kPageShift;
-		align_size += 16;
-		char* p = new char[align_size];
-		u64 addr = (u64)(p);
-		addr &= ~((1ull << kPageShift) - 1);
-		addr += (1ull << kPageShift);
-		*(u64*)(addr - 16) = (u64)p;
-		*(u64*)(addr - 8) = 1ull << (order);
-		return (void*)addr;
-	}
-	return NULL;
+	return addr;
 }
 
 s32 STFreePages(void* ptr, size_t size)
 {
-	u64* addr = (u64*)ptr;
-	void* old_addr = (void*)*(addr - 2);
-	delete old_addr;
-	//delete ptr;
+#ifdef WIN32
+	_aligned_free(ptr);
+#else
+	free(ptr);
+#endif // WIN32
+	(void)size;
 	return 0;
 }

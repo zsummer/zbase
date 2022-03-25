@@ -227,6 +227,11 @@ s32 zmalloc_stress()
         }
         PROF_OUTPUT_MULTI_COUNT_CPU(fbuf, buffers->size(), cost.stop_and_save().cycles());
         buffers->clear();
+        if (loop > 5)
+        {
+            LogInfo() << "this st malloc has problem,  loop finish. ";
+            break;
+        }
     }
     PROF_OUTPUT_SELF_MEM("st malloc finish");
 
@@ -269,12 +274,12 @@ s32 zmalloc_stress()
         zstate->check_health();
         if (true)
         {
+            LogDebug() << "zmalloc state log:";
             auto new_log = []() { return LOG_STREAM_DEFAULT_LOGGER(0, FNLog::PRIORITY_DEBUG, 0, 0, FNLog::LOG_PREFIX_NULL); };
             cost.start();
             zmalloc::instance().debug_state_log(new_log);
             zmalloc::instance().debug_color_log(new_log, (zsummer::zmalloc::CHUNK_COLOR_MASK_WITH_LEVEL + 1) / 2);
             PROF_OUTPUT_SINGLE_CPU("zamlloc debug_state_log debug_color_log cost", cost.stop_and_save().cycles());
-
         }
         
         for (auto p : *buffers)
@@ -287,6 +292,10 @@ s32 zmalloc_stress()
         }
         buffers->clear();
         buffers2->clear();
+        LogDebug() << "zmalloc clear all buffers state log:";
+        auto new_log = []() { return LOG_STREAM_DEFAULT_LOGGER(0, FNLog::PRIORITY_DEBUG, 0, 0, FNLog::LOG_PREFIX_NULL); };
+        zmalloc::instance().debug_state_log(new_log);
+        zmalloc::instance().debug_color_log(new_log, (zsummer::zmalloc::CHUNK_COLOR_MASK_WITH_LEVEL + 1) / 2);
     }
     PROF_OUTPUT_SELF_MEM("z malloc finish");
     if (true)
@@ -339,31 +348,9 @@ s32 zmalloc_stress()
     PROF_OUTPUT_SELF_MEM("sys malloc finish");
 
 
-    for (size_t loop = 0; loop < 40; loop++) //系统分配太慢了 只
-    {
-        if (loop % 2 == 0 && loop != 0)
-        {
-            continue;//系统分配太慢了  不需要覆盖性测试  删除一半数据. 
-        }
-        PROF_START_COUNTER(cost);
-        for (u64 i = cover_size / 40 * loop; i < cover_size / 40 * (loop + 1); i++)
-        {
-            u32 test_size = fixed_size;
-            void* p = malloc(test_size);
-            buffers->push_back(p);
-        }
-        PROF_OUTPUT_MULTI_COUNT_CPU("sys malloc(100) bat", buffers->size(), cost.stop_and_save().cycles());
-        PROF_START_COUNTER(cost);
-        for (auto p : *buffers)
-        {
-            free(p);
-        }
-        PROF_OUTPUT_MULTI_COUNT_CPU("sys free(100) bat", buffers->size(), cost.stop_and_save().cycles());
-        buffers->clear();
-    }
-    PROF_OUTPUT_SELF_MEM("sys malloc finish");
 
-    for (size_t loop = 0; loop < 40; loop++) 
+
+    for (size_t loop = 0; loop < 5; loop++) 
     {
         PROF_START_COUNTER(cost);
         for (u64 i = cover_size / 40 * loop; i < cover_size / 40 * (loop + 1); i++)
@@ -386,7 +373,32 @@ s32 zmalloc_stress()
     zstate->clear_cache();
     PROF_OUTPUT_SELF_MEM("z malloc finish");
 
-    for (size_t loop = 0; loop < 40; loop++)
+    for (size_t loop = 0; loop < 5; loop++) //系统分配太慢了 只
+    {
+        if (loop % 2 == 0 && loop != 0)
+        {
+            continue;//系统分配太慢了  不需要覆盖性测试  删除一半数据. 
+        }
+
+        PROF_START_COUNTER(cost);
+        for (u64 i = cover_size / 40 * loop; i < cover_size / 40 * (loop + 1); i++)
+        {
+            u32 test_size = fixed_size;
+            void* p = malloc(test_size);
+            buffers->push_back(p);
+        }
+        PROF_OUTPUT_MULTI_COUNT_CPU("sys malloc(100) bat", buffers->size(), cost.stop_and_save().cycles());
+        PROF_START_COUNTER(cost);
+        for (auto p : *buffers)
+        {
+            free(p);
+        }
+        PROF_OUTPUT_MULTI_COUNT_CPU("sys free(100) bat", buffers->size(), cost.stop_and_save().cycles());
+        buffers->clear();
+    }
+    PROF_OUTPUT_SELF_MEM("sys malloc finish");
+
+    for (size_t loop = 0; loop < 5; loop++)
     {
         PROF_START_COUNTER(cost);
         for (u64 i = cover_size / 40 * loop; i < cover_size / 40 * (loop + 1); i++)
