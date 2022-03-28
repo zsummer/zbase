@@ -148,7 +148,7 @@ static const u64 max_resolve_order_size = zmalloc_resolve_order_size(BIG_MAX_BIN
 #endif // !ZMALLOC_OPEN_COUNTER
 
 #ifndef ZMALLOC_OPEN_CHECK
-#define ZMALLOC_OPEN_CHECK 0
+#define ZMALLOC_OPEN_CHECK 1
 #endif // !ZMALLOC_OPEN_CHECK
 
 namespace zsummer
@@ -498,6 +498,10 @@ namespace zsummer
         {
             bytes = zmalloc_ceil_power_of_2(bytes);
         }
+        else
+        {
+            bytes = (bytes + 15) / 16 * 16;
+        }
         block_type* block = NULL;
         if (!dirct && reserve_block_count_ > 0)
         {
@@ -797,6 +801,7 @@ namespace zsummer
             alloc_counter_[(COLOR * 2)][chunk->bin_id] ++;
 #endif
             alloc_total_bytes_ += chunk->this_size;
+            zmalloc_check_align((void*)(zmalloc_u64_cast(chunk) + CHUNK_PADDING_SIZE));
             return (void*)(zmalloc_u64_cast(chunk) + CHUNK_PADDING_SIZE);
         }
         //(1008~BIG_MAX_REQUEST)
@@ -874,6 +879,7 @@ namespace zsummer
             alloc_counter_[(COLOR * 2) | CHUNK_IS_BIG][chunk->bin_id] ++;
 #endif
             alloc_total_bytes_ += chunk->this_size;
+            zmalloc_check_align((void*)(zmalloc_u64_cast(chunk) + CHUNK_PADDING_SIZE));
             return (void*)(zmalloc_u64_cast(chunk) + CHUNK_PADDING_SIZE);
         }
 
@@ -900,6 +906,7 @@ namespace zsummer
 #endif
         zmalloc_set_chunk(chunk, CHUNK_IS_IN_USED | (COLOR * 2));
         alloc_total_bytes_ += chunk->this_size;
+        zmalloc_check_align((void*)(zmalloc_u64_cast(chunk) + CHUNK_PADDING_SIZE));
         return (void*)(zmalloc_u64_cast(chunk) + CHUNK_PADDING_SIZE);
     }
 
@@ -1133,8 +1140,8 @@ namespace zsummer
             {
                 double total_used = (alloc_total_bytes_ - free_total_bytes_) > 0 ? (alloc_total_bytes_ - free_total_bytes_) : 1.0;
                 logwrap() << "    * color:" << user_color << " analysis] alloc:" << color_alloc * 1.0 / 1024 << "k, \tfree:" << color_free * 1.0 / 1024
-                    << "k, \tcur used:" << (color_alloc - color_free) * 1.0 / 1024 / 1024 << "m, \t used bytes of total:" << (color_alloc - color_free) * 100 / total_used 
-                    << "%,  alloc chunk bytes(>alloc size) of total:" << color_alloc * 100.0 / (alloc_total_bytes_ ? alloc_total_bytes_:1) << "%.";
+                    << "k, \tcur used bin size sum:" << (color_alloc - color_free) * 1.0 / 1024 / 1024 << "m, \t used bin size sum of total:" << (color_alloc - color_free) * 100 / total_used 
+                    << "%,  bin size (>alloc size) sum of total:" << color_alloc * 100.0 / (alloc_total_bytes_ ? alloc_total_bytes_:1) << "%.";
                 logwrap() << "    * color:" << user_color << " analysis] req avg:" << color_alloc * 1.0 / color_count / 1024 << "k, \t req count:" << color_count << ",  req of total:" << color_count * 100.0 / req_total_count_ << "%.";
                 logwrap() << "    ------    ";
             }
@@ -1263,7 +1270,7 @@ namespace zsummer
         block_type* front_block = block;
         while (block)
         {
-            panic(zmalloc_is_power_of_2(block->block_size), "align");
+            panic((block->block_size & 15) == 0, "align");
 
 
             if (zmalloc_has_chunk(zmalloc_get_first_chunk(block), CHUNK_IS_DIRECT))
