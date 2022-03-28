@@ -392,22 +392,37 @@ namespace zsummer
     }
 
 
+    //tcmalloc some version not hook aligned alloc.  
+#define DEFAULT_SYS_ALIGN_ALLOC_FAULT  
+
     void* zmalloc::default_block_alloc(u64 req_size)
     {
         req_size = (req_size + 15) / 16 * 16; // align size to 16 byte;   
-        
+#ifdef DEFAULT_SYS_ALIGN_ALLOC_FAULT
+        void* org_addr = malloc(req_size + 32);
+        u64 addr_num = (u64)org_addr;
+        addr_num += 32;
+        addr_num = addr_num/16*16;
+        char* addr = (char*)(addr_num - 16);
+#else
 #ifdef WIN32
         char* addr = (char*)_aligned_malloc(req_size + 16, 16);
+        void* org_addr = addr;
 #else
         char* addr = (char*)aligned_alloc(16, req_size + 16);
+        void* org_addr = addr;
 #endif // WIN32
+#endif // DEFAULT_SYS_ALIGN_ALLOC_FAULT
+
         if (addr == NULL)
         {
             return NULL;
         }
         zmalloc_check_align(addr);
         zmalloc_check_align((void*)req_size);
-        *((u64*)addr) = req_size;
+
+        *(u64*)(void*)(addr) = req_size;
+        *(u64*)(void*)(addr + 8) = (u64)org_addr;
         return addr + 16;
    }
 
@@ -417,8 +432,8 @@ namespace zsummer
         {
             return 0;
         }
-        char* req_addr = ((char*)addr) - 16;
-        u64 req_size = *((u64*)req_addr);
+        void* org_addr = (void*)   * (u64*)   ((char*)addr - 8);
+        u64 req_size =                  * (u64*)   ((char*)addr - 16);
         if (req_size > 1*1024*1024*1024*1024ULL) //1 T
         {
             //will memory leak;  
@@ -428,12 +443,16 @@ namespace zsummer
             }
             return 0;
         }
-#ifdef WIN32
-        _aligned_free(req_addr);
+
+#ifdef DEFAULT_SYS_ALIGN_ALLOC_FAULT
+        free(org_addr);
 #else
-        free(req_addr);
+#ifdef WIN32
+        _aligned_free(org_addr);
+#else
+        free(org_addr);
 #endif // WIN32
-        
+#endif
         return req_size;
     }
 
