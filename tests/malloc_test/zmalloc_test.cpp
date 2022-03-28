@@ -628,6 +628,37 @@ s32 zmalloc_base_test()
         zstate->check_health();
         AssertBoolTest(zstate->used_block_count_ == 0, "");
     }
+    if (true)
+    {
+        std::unique_ptr<zmalloc> zstate(new zmalloc());
+        memset(zstate.get(), 0, sizeof(zmalloc));
+        zstate->set_global(zstate.get());
+
+        zarray<void*, 100> a;
+        for (size_t i = max_resolve_order_size; i < max_resolve_order_size + 10000; i++)
+        {
+            void* addr = global_zmalloc(i);
+            if (a.full())
+            {
+                u32 index = rand() % a.size();
+                global_zfree(a[index]);
+                a.erase(&a[0] + index);
+            }
+            a.push_back(addr);
+            zmalloc_check_align(addr);
+        }
+        while (!a.empty())
+        {
+            global_zfree(a.back());
+            a.pop_back();
+        }
+        auto new_log = []() { return LOG_STREAM_DEFAULT_LOGGER(0, FNLog::PRIORITY_DEBUG, 0, 0, FNLog::LOG_PREFIX_NULL); };
+        zmalloc::instance().debug_state_log(new_log);
+        zmalloc::instance().debug_color_log(new_log, (zsummer::zmalloc::CHUNK_COLOR_MASK_WITH_LEVEL + 1) / 2);
+        zstate->clear_cache();
+        zstate->check_health();
+        AssertBoolTest(zstate->used_block_count_ == 0, "");
+    }
     return 0;
 }
 
