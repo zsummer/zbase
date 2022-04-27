@@ -905,7 +905,7 @@ s32 contiainer_stress_test()
         if (true)
         {
 
-            PROF_DEFINE_AUTO_SINGLE_RECORD(cost, LOOP_CAPACITY, PROF_LEVEL_NORMAL, "sys map foreach");
+            PROF_DEFINE_AUTO_MULTI_ANON_RECORD(cost, LOOP_CAPACITY, "sys map foreach");
             for (int i = 0; i < LOOP_CAPACITY; i++)
             {
                 for (auto& kv : sys_map)
@@ -917,7 +917,7 @@ s32 contiainer_stress_test()
         if (true)
         {
             
-            PROF_DEFINE_AUTO_SINGLE_RECORD(cost, LOOP_CAPACITY, PROF_LEVEL_NORMAL, "sys hash_map foreach");
+            PROF_DEFINE_AUTO_MULTI_ANON_RECORD(cost, LOOP_CAPACITY, "sys hash_map foreach");
             for (int i = 0; i < LOOP_CAPACITY; i++)
             {
                 for (auto&kv: sys_hashmap)
@@ -929,7 +929,7 @@ s32 contiainer_stress_test()
         if (true)
         {
             
-            PROF_DEFINE_AUTO_SINGLE_RECORD(cost, LOOP_CAPACITY, PROF_LEVEL_NORMAL, "z hash_map foreach");
+            PROF_DEFINE_AUTO_MULTI_ANON_RECORD(cost, LOOP_CAPACITY, "z hash_map foreach");
             for (int i = 0; i < LOOP_CAPACITY; i++)
             {
                 for (auto& kv : z_hashmap)
