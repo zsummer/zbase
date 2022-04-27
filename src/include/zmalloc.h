@@ -1069,8 +1069,8 @@ namespace zsummer
         logwrap() << "* [meta]: block_power_is_2_:" << block_power_is_2_ << ", max_reserve_block_count_:" << max_reserve_block_count_ << ", runtime_errors_:" << runtime_errors_
             <<", used_block_count_ : " << used_block_count_ << ", reserve_block_count_ : " << reserve_block_count_;
 
-        logwrap() << "* [req]: req_total_count_:" << req_total_count_ << ", req_total_bytes_:" << req_total_bytes_ << ", alloc_total_bytes_:" << alloc_total_bytes_;
-        logwrap() << "* [free]: free_total_count_:" << free_total_count_ << ", free_total_bytes_:" << free_total_bytes_;
+        logwrap() << "* [req]: req_total_count_:" << req_total_count_ << ", req_total_bytes_:" << (req_total_bytes_)/1024.0/1024.0 << "m, alloc_total_bytes_:" << alloc_total_bytes_/1024.0/1024.0 <<"m.";
+        logwrap() << "* [free]: free_total_count_:" << free_total_count_ << ", free_total_bytes_:" << free_total_bytes_/1024.0/1024.0 <<"m.";
 
         logwrap() << "* [req]: alloc_block_count_:" << alloc_block_count_ << ", alloc_block_cached_(count):" << alloc_block_cached_  << ", alloc_block_bytes_:" << alloc_block_bytes_/1024.0/1024.0 <<"m.";
         logwrap() << "* [free]: free_block_count_:" << free_block_count_ << ", free_block_cached_(count):" << free_block_cached_ << ", free_block_bytes_:" << free_block_bytes_ / 1024.0 / 1024.0 << "m.";
@@ -1087,9 +1087,9 @@ namespace zsummer
             << ", sys count of total(miss block cache):" << (free_block_count_ - free_block_cached_) * 100.0 / (free_block_count_ > 0 ? free_block_count_ : 1) << "%."
             << ", sys bytes of total(miss block cache):" << (free_block_bytes_ - free_block_cached_ * DEFAULT_BLOCK_SIZE) * 100.0 / (free_block_bytes_ > 0 ? free_block_bytes_ : 1) << "%.";
 
-        logwrap() << "* [analysis]: mem usage rate(inner frag):" << req_total_bytes_ * 100.0 / (alloc_total_bytes_ ? alloc_total_bytes_ : 1) << "%";
+        logwrap() << "* [analysis]: mem usage rate(related inner frag):" << req_total_bytes_ * 100.0 / (alloc_total_bytes_ ? alloc_total_bytes_ : 1) << "%";
 
-        logwrap() << "* [analysis]: used memory:" << (alloc_total_bytes_ - free_total_bytes_)/1024.0/1024.0 <<", hold sys memory:" << alloc_block_bytes_ - free_block_bytes_;
+        logwrap() << "* [analysis]: used memory:" << (alloc_total_bytes_ - free_total_bytes_)/1024.0/1024.0 <<"m, hold sys memory:" << (alloc_block_bytes_ - free_block_bytes_)/1024.0/1024.0 <<"m.";
     }
 
 

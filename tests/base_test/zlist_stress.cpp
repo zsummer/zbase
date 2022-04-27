@@ -152,7 +152,7 @@ s32 likely_test()
     volatile int no_likely_count = 0;
     if (true)
     {
-        PROF_DEFINE_AUTO_SINGLE_RECORD(prof_cost, 1, PROF_LEVEL_NORMAL, "nolikey");
+        PROF_DEFINE_AUTO_MULTI_ANON_RECORD(prof_cost, 1, "nolikey");
         for (size_t i = 0; i < 10000; i++)
         {
             for (size_t i = 0; i < rand_size; i++)
@@ -166,7 +166,7 @@ s32 likely_test()
     }
     if (true)
     {
-        PROF_DEFINE_AUTO_SINGLE_RECORD(prof_cost, 1, PROF_LEVEL_NORMAL, "likey");
+        PROF_DEFINE_AUTO_MULTI_ANON_RECORD(prof_cost, 1, "likey");
         for (size_t i = 0; i < 10000; i++)
         {
             for (size_t i = 0; i < rand_size; i++)
