@@ -921,6 +921,7 @@ namespace zsummer
         if (!zmalloc_chunk_in_use(chunk))
         {
             //LogError() << "free error";
+            runtime_errors_++;
             return 0;
         }
         zmalloc_check_chunk(chunk);
