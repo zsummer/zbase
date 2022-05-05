@@ -187,9 +187,9 @@ namespace zsummer
         inline void check_health();
         inline void clear_cache();
         template<class StreamLog>
-        inline void debug_state_log(StreamLog& logwrap);
+        inline void debug_state_log(StreamLog logwrap);
         template<class StreamLog>
-        inline void debug_color_log(StreamLog& logwrap, u32 begin_color, u32 end_color);
+        inline void debug_color_log(StreamLog logwrap, u32 begin_color, u32 end_color);
     public:
         struct chunk_type
         {
@@ -1065,7 +1065,7 @@ namespace zsummer
     }
 
     template<class StreamLog>
-    inline void zmalloc::debug_state_log(StreamLog& logwrap)
+    inline void zmalloc::debug_state_log(StreamLog logwrap)
     {
         logwrap() << "* [meta]: block_power_is_2_:" << block_power_is_2_ << ", max_reserve_block_count_:" << max_reserve_block_count_ << ", runtime_errors_:" << runtime_errors_
             <<", used_block_count_ : " << used_block_count_ << ", reserve_block_count_ : " << reserve_block_count_;
@@ -1095,7 +1095,7 @@ namespace zsummer
 
 
     template<class StreamLog>
-    inline void zmalloc::debug_color_log(StreamLog& logwrap, u32 begin_color, u32 end_color)
+    inline void zmalloc::debug_color_log(StreamLog logwrap, u32 begin_color, u32 end_color)
     {
         end_color = end_color > (zmalloc::CHUNK_COLOR_MASK_WITH_LEVEL + 1) / 2 ? (zmalloc::CHUNK_COLOR_MASK_WITH_LEVEL + 1) / 2 : end_color;
 #if ZMALLOC_OPEN_COUNTER
