@@ -189,7 +189,7 @@ namespace zsummer
         template<class StreamLog>
         inline void debug_state_log(StreamLog& logwrap);
         template<class StreamLog>
-        inline void debug_color_log(StreamLog& logwrap, u32 end_color);
+        inline void debug_color_log(StreamLog& logwrap, u32 begin_color, u32 end_color);
     public:
         struct chunk_type
         {
@@ -1095,12 +1095,12 @@ namespace zsummer
 
 
     template<class StreamLog>
-    inline void zmalloc::debug_color_log(StreamLog& logwrap, u32 end_color)
+    inline void zmalloc::debug_color_log(StreamLog& logwrap, u32 begin_color, u32 end_color)
     {
         end_color = end_color > (zmalloc::CHUNK_COLOR_MASK_WITH_LEVEL + 1) / 2 ? (zmalloc::CHUNK_COLOR_MASK_WITH_LEVEL + 1) / 2 : end_color;
 #if ZMALLOC_OPEN_COUNTER
         logwrap() << "------    ";
-        for (u32 user_color = 0; user_color < end_color; user_color++)
+        for (u32 user_color = begin_color; user_color < end_color; user_color++)
         {
             u32 base_level = user_color << 1;
             u64 color_alloc = 0;
