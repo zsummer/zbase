@@ -38,26 +38,25 @@ namespace zsummer
     using f32 = float;
     using f64 = double;
 
-    //核心目标: 分帧分段驱动大间隔轮询 借此削峰   
-    //需求环境:  不要求间隔精度, 甚至允许多触发 少触发.  例如超时管理. 
-    //实现环境: 静态数组软边界  
-    //  - 非静态数组会遇到多触发 漏触发问题, 特别是轮询中大规模批量插入删除等情况  
-    //  - 其他容器类 迭代器失效 引用数据失效 以及多触发漏触发问题
+    //分帧分段驱动大间隔轮询 削峰  
+    //note: 不保证间隔绝对精准, 特别是首次触发,  在频繁发生软窗口变化时, 不保证间隔精准, 但保证每次触发的触发窗口边界内.  
+    //note: 如有精确要求, 在root tick中手动解决(root tick跳帧) , 或者使用定时器,  这里最好是一些超时检测, 定时检测, 延迟处理等需求.  
 
     namespace zforeach_impl
     {
         struct subframe
         {
-            using Trigger = s32(*)(u64, u64, s64);
-            u64 key_;
-            Trigger trigger_;
+            using Hook = s32(*)(const subframe&, u32, u32, s64);
+            Hook hook_;
+            u64 userkey_;
+            u64 userdata_;
             u32 segments_;
             u32 hard_begin_;
             u32 hard_end_;
             u32 soft_begin_;
             u32 soft_end_;
             u32 tick_;
-            u32 next_id_; //总量动态变化时 起点在老的节点上连续, 保证每轮驱动不会漏掉或者重复.  (前提是索引不会发生平移变化)  
+            u32 next_id_; //locked cursor when soft window has change   
         };
 
         static inline s32 init(subframe& sub)
@@ -69,7 +68,7 @@ namespace zsummer
 
         static inline bool is_valid(const subframe& sub)
         {
-            if (sub.trigger_ == NULL)
+            if (sub.hook_ == NULL)
             {
                 return false;
             }
@@ -92,7 +91,7 @@ namespace zsummer
             }
             sub.tick_ = (sub.tick_ + 1) % sub.segments_;
             u32 begin_id = sub.next_id_;
-            u32 end_id = sub.next_id_ + (sub.soft_end_ - sub.soft_begin_) / sub.segments_ + 1;
+            u32 end_id = sub.next_id_ + (sub.soft_end_ - sub.soft_begin_ + sub.segments_ - 1) / sub.segments_ ;
             if (end_id > sub.soft_end_)
             {
                 end_id = sub.soft_end_;
@@ -109,12 +108,10 @@ namespace zsummer
                 sub.next_id_ = end_id;
             }
 
-            for (u32 i = begin_id; i < end_id; i++)
-            {
-                sub.trigger_(sub.key_, (u64)i, now_ms);
-            }
+            sub.hook_(sub, begin_id, end_id, now_ms);
             return 0;
         }
+
         static inline s32 root_tick(subframe& sub, s64 now_ms)
         {
             sub.soft_begin_ = sub.hard_begin_;
@@ -123,9 +120,10 @@ namespace zsummer
         }
     }
 
-    struct zforeach
+    class zforeach
     {
-        inline s32 init(u64 key, u32 begin_id, u32 end_id, zforeach_impl::subframe::Trigger trigger, u32 base_tick, u32 foreach_tick)
+    public:
+        inline s32 init(u64 userkey, u64 userdata, u32 begin_id, u32 end_id, zforeach_impl::subframe::Hook hook, u32 base_tick, u32 foreach_tick)
         {
             zforeach_impl::init(subframe_);
             if (base_tick == 0 || foreach_tick == 0)
@@ -140,7 +138,7 @@ namespace zsummer
             {
                 return -3;
             }
-            if (trigger == NULL)
+            if (hook == NULL)
             {
                 return -4;
             }
@@ -148,6 +146,8 @@ namespace zsummer
             {
                 return -5;
             }
+            subframe_.userkey_ = userkey;
+            subframe_.userdata_ = userdata;
             subframe_.hard_begin_ = begin_id;
             subframe_.hard_end_ = end_id;
             subframe_.next_id_ = subframe_.hard_begin_;
@@ -155,8 +155,7 @@ namespace zsummer
             subframe_.soft_begin_ = subframe_.hard_begin_;
             subframe_.soft_end_ = subframe_.hard_end_;
             subframe_.tick_ = 0;
-            subframe_.key_ = key;
-            subframe_.trigger_ = trigger;
+            subframe_.hook_ = hook;
             return 0;
         }
         inline s32 window_tick(u32 begin_id, u32 end_id, s64 now_ms)
@@ -167,6 +166,9 @@ namespace zsummer
         }
         zforeach_impl::subframe subframe_;
     };
+
+
+
 
 
 
