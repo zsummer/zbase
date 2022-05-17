@@ -392,6 +392,24 @@ int main(int argc, char *argv[])
                 g_pool.push_back(n);
             }
         }
+        if (!g_pool.full())
+        {
+            LogError() << "error";
+        }
+        for (auto& o: g_pool)
+        {
+            if (o.valid)
+            {
+                for (u32 i = 0; i < TT_MAX; i++)
+                {
+                    if (o.triggers[i].total_count == 0)
+                    {
+                        LogError() << "error";
+                    }
+                }
+
+            }
+        }
     }
 
     if (true)
