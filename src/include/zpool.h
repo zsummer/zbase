@@ -102,6 +102,24 @@ namespace zsummer
             return (_Ty * )exploit();
         }
 
+        template<class _Ty >
+        inline typename std::enable_if <std::is_trivial<_Ty>::value, _Ty>::type* create()
+        {
+            return (_Ty*)exploit();
+        }
+
+        template<class _Ty >
+        inline typename std::enable_if <!std::is_trivial<_Ty>::value, _Ty>::type* create()
+        {
+            void* p = exploit();
+            if (p == NULL)
+            {
+                return NULL;
+            }
+            return new (p) _Ty();
+        }
+
+
         template<class _Ty, class... Args >
         inline _Ty* create(Args&&... args)
         {
@@ -112,7 +130,6 @@ namespace zsummer
             }
             return new (p) _Ty(std::forward<Args>(args) ...);
         }
-   
 
         template<class _Ty>
         inline void destroy(const typename std::enable_if <std::is_trivial<_Ty>::value, _Ty>::type * obj)
@@ -150,8 +167,7 @@ namespace zsummer
         inline u32   full()const { return ref().full(); }
 
         template<class _Ty>
-        inline _Ty* create_without_construct() { return ref().template create_without_construct<_Ty>(); }
-
+        inline _Ty* create() { return ref().template create<_Ty>(); }
         template<class _Ty, class... Args >
         inline _Ty* create(Args&&... args) { return ref().template create<_Ty, Args ...>(std::forward<Args>(args) ... ); }
 
