@@ -33,7 +33,7 @@ typedef float f32;
 #include "zforeach.h"
 #include "zlist.h"
 #include "zarray.h"
-#include "zmem_space.h"
+#include "zpool.h"
 using namespace zsummer;
 
 
@@ -53,20 +53,33 @@ int main(int argc, char *argv[])
     LogDebug() << " main begin test. ";
     if (true)
     {
-        zstatic_trivial_pool<int, 100> ds;
+        zpool_obj_static<int, 100> ds;
         zarray<int*, 100> store;
         for (int loop = 0; loop < 2; loop++)
         {
             for (int i = 0; i < 100; i++)
             {
-                int* p = ds.exploit();
+                int* p = ds.create();
                 if (p == NULL)
                 {
                     LogError() << "has error";
                     return -1;
                 }
+                if (*p != 0)
+                {
+                    LogError() << "has error";
+                    return -11;
+                }
                 *p = i;
                 store.push_back(p);
+            }
+            for (int i = 0; i < 100; i++)
+            {
+                if (*store[i] != i)
+                {
+                    LogError() << "has error";
+                    return -10;
+                }
             }
             if (!ds.full())
             {
@@ -83,7 +96,7 @@ int main(int argc, char *argv[])
                 ds.back(p);
             }
             store.clear();
-            if (ds.used_count() != 0)
+            if (ds.size() != 0)
             {
                 LogError() << "has error";
                 return -4;
