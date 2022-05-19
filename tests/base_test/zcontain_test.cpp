@@ -7,7 +7,6 @@
 #include "zlist_ext.h"
 #include "zhash_map.h"
 #include "zcontain_test.h"
-#include "zobj_pool.h"
 using namespace zsummer;
 
 
@@ -665,87 +664,7 @@ s32 by_order_test()
     }
     return 0;
 }
-s32 object_test()
-{
-    std::unique_ptr<char[]> zspace(new char[zobj_pool<u32>::static_buf_size(200U)]);
-    ((zobj_pool<u32>*)zspace.get())->init(200U, zobj_pool<u32>::static_buf_size(200U));
-    zobj_pool<u32>& zp = *((zobj_pool<u32>*)zspace.get());
-    zlist<u32*, 200> zl;
-    for (u32 i = 0; i < 200; i++)
-    {
-        zl.push_back(zp.create());
-        if (zl.back() == NULL)
-        {
-            LogError();
-            return -1;
-        }
-        *zl.back() = i;
-        if (zl.size() != zp.size())
-        {
-            LogError();
-            return -2;
-        }
-    }
-    for (u32 i = 0; i < 200; i++)
-    {
-        if (*zl.front() != i)
-        {
-            LogError();
-            return -3;
-        }
-        zp.destroy(zl.front());
-        zl.pop_front();
-        if (zl.size() != zp.size())
-        {
-            LogError();
-            return -4;
-        }
-    }
-    if (!zl.empty() || !zp.empty())
-    {
-        return -5;
-    }
 
-
-    for (u32 i = 1; i < 10; i++)
-    {
-        u32 obj_count = i;
-        std::unique_ptr<char[]> space(new char[zobj_pool<size_t>::static_buf_size(i)]);
-        u32 buff_size = zobj_pool<size_t>::static_buf_size(i);
-        char* buff = new char[buff_size];
-        zobj_pool<size_t>* op = (zobj_pool<size_t>*) space.get();
-        if (op->init(obj_count, zobj_pool<size_t>::static_buf_size(i)) != 0)
-        {
-            return -9;
-        }
-        for (size_t j = 0; j < i; j++)
-        {
-            if (op->create() == NULL)
-            {
-                LogError() << "error";
-                return -6;
-            }
-            if (op->size() != j+1)
-            {
-                LogError() << "error";
-                return -6;
-            }
-        }
-        if (op->create() != NULL)
-        {
-            LogError() << "error";
-            return -7;
-        }
-        op->clear();
-        if (!op->empty())
-        {
-            LogError() << "error";
-            return -7;
-        }
-        delete[] buff;
-    }
-    return 0;
-}
 
 s32 contiainer_base_test()
 {
@@ -755,7 +674,6 @@ s32 contiainer_base_test()
     AssertTest(copy_test((zlist<size_t, 100>*)NULL), 0, "copy_test((zlist<size_t, 100>*)NULL)");
     AssertTest(copy_test((zarray<size_t, 100>*)NULL), 0, "copy_test((zarray<size_t, 100>*)NULL)");
     AssertTest(hash_map_test(), 0, " hash_map_test()");
-    AssertTest(object_test(), 0, " object_test()");
     return 0;
 }
 
