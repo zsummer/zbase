@@ -7,7 +7,6 @@
 #include "zlist.h"
 #include "zhash_map.h"
 #include "zcontain_test.h"
-#include "zobj_pool.h"
 #include "zlist_ext.h"
 using namespace zsummer;
 

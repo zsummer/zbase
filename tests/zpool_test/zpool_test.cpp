@@ -36,6 +36,44 @@ typedef float f32;
 #include "zpool.h"
 using namespace zsummer;
 
+//#define DEBUG_AT 
+#ifndef DEBUG_AT
+
+#define AssertTest(var, desc)   \
+{\
+    if (!(var)) \
+    { \
+        LogError() << desc << " error.";  \
+        return -1;  \
+    } \
+}
+
+#else
+void AssertTest(bool var, const char* desc)
+{
+    if (!(var)) 
+    { 
+        LogError() << desc << " error.";  
+        return;  
+    } 
+}
+
+#endif
+
+struct Node
+{
+    Node()
+    {
+        node_seq_id++;
+    }
+    Node(u32 n)
+    {
+        node_seq_id+= n;
+    }
+    u64 seq[5] = { 0 };
+    static u64 node_seq_id;
+};
+u64 Node::node_seq_id = 0;
 
 
 
@@ -51,6 +89,82 @@ int main(int argc, char *argv[])
     }
 
     LogDebug() << " main begin test. ";
+
+    if (true)
+    {
+        Node::node_seq_id = 0;
+        zpool_obj_static<Node, 100> ds;
+        zarray<Node*, 100> store;
+        for (int loop = 0; loop < 2; loop++)
+        {
+            for (int i = 0; i < 100; i++)
+            {
+                AssertTest(Node::node_seq_id == (u64)loop*100 + i, "");
+                Node* p = ds.create();
+                AssertTest(p != NULL, "");
+                for (u32 j = 0; j < 5; j++)
+                {
+                    p->seq[j] = (u64)loop * 100 + i;
+                }
+                AssertTest(Node::node_seq_id == (u64)loop * 100 + i + 1, "");
+                store.push_back(p);
+            }
+            for (int i = 0; i < 100; i++)
+            {
+                for (u32 j = 0; j < 5; j++)
+                {
+                    AssertTest(store[i]->seq[j] == (u64)loop * 100 + i, "");
+                }
+            }
+            AssertTest(ds.full(), "");
+            AssertTest(ds.exploit() == NULL, "");
+            for (auto p : store)
+            {
+                ds.back(p);
+            }
+            store.clear();
+            AssertTest(ds.empty(), "");
+        }
+    }
+
+
+    if (true)
+    {
+        Node::node_seq_id = 0;
+        zpool_obj_static<Node, 100> ds;
+        zarray<Node*, 100> store;
+        for (int loop = 0; loop < 2; loop++)
+        {
+            for (int i = 0; i < 100; i++)
+            {
+                AssertTest(Node::node_seq_id == (u64)loop * 100 * 5 + i * 5, "");
+                Node* p = ds.create(5);
+                AssertTest(p != NULL, "");
+                for (u32 j = 0; j < 5; j++)
+                {
+                    p->seq[j] = (u64)loop * 100 * 5 + i * 5;
+                }
+                AssertTest(Node::node_seq_id == (u64)loop * 100*5 + i*5 + 5, "");
+                store.push_back(p);
+            }
+            for (int i = 0; i < 100; i++)
+            {
+                for (u32 j = 0; j < 5; j++)
+                {
+                    AssertTest(store[i]->seq[j] == (u64)loop * 100 * 5 + i * 5, "");
+                }
+            }
+            AssertTest(ds.full(), "");
+            AssertTest(ds.exploit() == NULL, "");
+            for (auto p : store)
+            {
+                ds.back(p);
+            }
+            store.clear();
+            AssertTest(ds.empty(), "");
+        }
+    }
+
     if (true)
     {
         zpool_obj_static<int, 100> ds;
@@ -60,52 +174,57 @@ int main(int argc, char *argv[])
             for (int i = 0; i < 100; i++)
             {
                 int* p = ds.create();
-                if (p == NULL)
-                {
-                    LogError() << "has error";
-                    return -1;
-                }
-                if (*p != 0)
-                {
-                    LogError() << "has error";
-                    return -11;
-                }
+                AssertTest(p != NULL, "");
                 *p = i;
                 store.push_back(p);
             }
             for (int i = 0; i < 100; i++)
             {
-                if (*store[i] != i)
-                {
-                    LogError() << "has error";
-                    return -10;
-                }
+                AssertTest(*store[i] == i, "");
             }
-            if (!ds.full())
-            {
-                LogError() << "has error";
-                return -2;
-            }
-            if (ds.exploit() != NULL)
-            {
-                LogError() << "has error";
-                return -3;
-            }
+            AssertTest(ds.full(), "");
+            AssertTest(ds.exploit() == NULL, "");
             for (auto p : store)
             {
                 ds.back(p);
             }
             store.clear();
-            if (ds.size() != 0)
-            {
-                LogError() << "has error";
-                return -4;
-            }
+            AssertTest(ds.empty(), "");
         }
-        
-
     }
-    
+
+
+
+    if (true)
+    {
+        zpool_obj_static<int, 100> ds;
+        zarray<int*, 100> store;
+        for (int loop = 0; loop < 2; loop++)
+        {
+            for (int i = 0; i < 100; i++)
+            {
+                int* p = ds.create(0);
+                AssertTest(p != NULL, "");
+                AssertTest(*p == 0, "");
+                *p = i;
+                store.push_back(p);
+            }
+            for (int i = 0; i < 100; i++)
+            {
+                AssertTest(*store[i] == i, "");
+            }
+            AssertTest(ds.full(), "");
+            AssertTest(ds.exploit() == NULL, "");
+            for (auto p : store)
+            {
+                ds.back(p);
+            }
+            store.clear();
+            AssertTest(ds.empty(), "");
+        }
+    }
+
+
 
 
     LogInfo() << "all test finish .";

@@ -8,7 +8,6 @@
 #include "zlist_ext.h"
 #include "zhash_map.h"
 #include "zcontain_test.h"
-#include "zobj_pool.h"
 #include "zlist_stress.h"
 #include <unordered_map>
 #include "zprof.h"
