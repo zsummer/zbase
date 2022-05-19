@@ -134,7 +134,10 @@ endmacro()
 SUB_DIR_LIST(SUB_DIRS ${CMAKE_SOURCE_DIR}/tests/)
 FOREACH(SUB_DIR ${SUB_DIRS}) 
     set(EXAMPLE_SOURCE "")
-    FILE(GLOB_RECURSE EXAMPLE_SOURCE  
+    if (NOT ${SUB_DIR} STREQUAL "zpool_test") 
+        #continue()
+    endif()
+    FILE(GLOB_RECURSE EXAMPLE_SOURCE
     ${CMAKE_SOURCE_DIR}/tests/*.h 
     ${CMAKE_SOURCE_DIR}/tests/${SUB_DIR}/*.h 
     ${CMAKE_SOURCE_DIR}/tests/${SUB_DIR}/*.c 
