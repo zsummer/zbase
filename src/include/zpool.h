@@ -36,6 +36,8 @@ namespace zsummer
     using f32 = float;
     using f64 = double;
 
+
+
     class zpool
     {
     public:
@@ -48,13 +50,13 @@ namespace zsummer
         char space_[1];
     public:
         //the real size need minus sizeof(block_[1]);  
-        constexpr static u32 align_chunk_size(u32 mem_size) { return ((mem_size == 0 ? 1 : mem_size) + 3) / 4 * 4; }
-        constexpr static u32 calculate_total_size(u32 mem_size, u32 mem_count) { return align_chunk_size(mem_size) * mem_count + sizeof(zpool); }
-        inline void init(u32 mem_size, u32 mem_count)
+        constexpr static u32 align_chunk_size(u32 mem_size, u32 align_size) { return ((mem_size == 0 ? 1 : mem_size) + align_size - 1) / align_size * align_size; }
+        constexpr static u32 calculate_total_size(u32 mem_size, u32 align_size, u32 mem_count) { return align_chunk_size(mem_size, align_size) * mem_count + sizeof(zpool); }
+        inline void init(u32 mem_size, u32 align_size, u32 mem_count)
         {
             //clear head. 
             memset(this, 0, sizeof(zpool));
-            chunk_size_ = align_chunk_size(mem_size);
+            chunk_size_ = align_chunk_size(mem_size, align_size);
             chunk_count_ = mem_count;
             chunk_free_id_ = (u32)-1;
         }
@@ -146,13 +148,13 @@ namespace zsummer
 
 
 
-    template<u32 ChunkSize, u32 ChunkCount>
+    template<u32 MEM_MIN_SIZE, u32 MEM_COUNT, u32 MEM_ALIGN_SIZE = sizeof(u32)>
     class zpool_static
     {
     public:
         inline void init()
         {
-            ref().init(ChunkSize, ChunkCount);
+            ref().init(MEM_MIN_SIZE, MEM_ALIGN_SIZE, MEM_COUNT);
         }
         inline void* exploit() { return ref().exploit(); }
         inline void back(void* addr) { return ref().back(addr); }
@@ -176,15 +178,15 @@ namespace zsummer
     private:
         inline zpool& ref() { return  *((zpool*)solo_); }
         inline const zpool& ref() const { return  *((zpool*)solo_); }
-        constexpr static u32 SPACE_SIZE = zpool::calculate_total_size(ChunkSize, ChunkCount);
+        constexpr static u32 SPACE_SIZE = zpool::calculate_total_size(MEM_MIN_SIZE, MEM_ALIGN_SIZE, MEM_COUNT);
         char solo_[SPACE_SIZE];
     };
 
     template<class _Ty, u32 ChunkCount>
-    class zpool_obj_static : public zpool_static<sizeof(_Ty), ChunkCount>
+    class zpool_obj_static : public zpool_static<sizeof(_Ty), ChunkCount, max(alignof(_Ty), sizeof(u32))>
     {
     public:
-        using zsuper = zpool_static<sizeof(_Ty), ChunkCount>;
+        using zsuper = zpool_static<sizeof(_Ty), ChunkCount, max(alignof(_Ty), sizeof(u32))>;
         zpool_obj_static()
         {
             zsuper::init();
