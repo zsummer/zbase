@@ -183,10 +183,10 @@ namespace zsummer
     };
 
     template<class _Ty, u32 ChunkCount>
-    class zpool_obj_static : public zpool_static<sizeof(_Ty), ChunkCount, max(alignof(_Ty), sizeof(u32))>
+    class zpool_obj_static : public zpool_static<sizeof(_Ty), ChunkCount, (alignof(_Ty) > sizeof(u32) ? alignof(_Ty)  : sizeof(u32)  )>
     {
     public:
-        using zsuper = zpool_static<sizeof(_Ty), ChunkCount, max(alignof(_Ty), sizeof(u32))>;
+        using zsuper = zpool_static<sizeof(_Ty), ChunkCount, (alignof(_Ty) > sizeof(u32) ? alignof(_Ty) : sizeof(u32) )>;
         zpool_obj_static()
         {
             zsuper::init();
