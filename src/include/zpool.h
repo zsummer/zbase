@@ -91,6 +91,9 @@ namespace zsummer
 
         inline void back(void* addr)
         {
+#ifdef ZDEBUG_DEATH_MEMORY
+            memset(addr, 0xfd, chunk_size_);
+#endif // ZDEBUG_DEATH_MEMORY
             u32 id = (u32)((char*)addr - &space_[0]) / chunk_size_;
             u32* p = (u32*)addr;
             *p = chunk_free_id_;

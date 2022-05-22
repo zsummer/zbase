@@ -315,6 +315,9 @@ namespace zsummer
         bool push_free_node(u32 id)
         {
             node_type& node = data_[id];
+#ifdef ZDEBUG_DEATH_MEMORY
+            memset(&node.space, 0xfd, sizeof(space_type));
+#endif // ZDEBUG_DEATH_MEMORY
             node.next = free_id_;
             node.front = END_ID;
             free_id_ = id;
