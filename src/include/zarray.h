@@ -264,6 +264,10 @@ namespace zsummer
                 erase_first->~_Ty();
                 ++erase_first;
             }
+#ifdef ZDEBUG_DEATH_MEMORY
+            memset(cp_first, 0xfd, distance(cp_first, end()) * sizeof(_Ty));
+#endif // ZDEBUG_DEATH_MEMORY
+
             count_ -= distance(cp_first, end());
             return end();
         }

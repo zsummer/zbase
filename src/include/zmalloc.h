@@ -34,6 +34,9 @@
 #ifndef  ZMALLOC_H
 #define ZMALLOC_H
 #define ZMALLOC_OPEN_FENCE 1
+
+//#define ZDEBUG_DEATH_MEMORY
+
 using s8 = char;
 using u8 = unsigned char;
 using s16 = short int;
@@ -627,6 +630,7 @@ namespace zsummer
         }
         zmalloc_check_block(*this);
         free_block_bytes_ += block->block_size;
+
         if (block_free_)
         {
             return block_free_(block, block->block_size);
@@ -940,7 +944,14 @@ namespace zsummer
         u32 level = zmalloc_chunk_level(chunk);
         u64 bytes = chunk->this_size - CHUNK_PADDING_SIZE;
         (void)level;
-
+#ifdef ZDEBUG_DEATH_MEMORY
+        if (true)
+        {
+            char* clean_addr = ((char*)chunk) + sizeof(chunk_type);
+            u32 size = chunk->this_size - sizeof(chunk_type);
+            memset(clean_addr, 0xfd, size);
+        }
+#endif
         if (zmalloc_chunk_is_dirct(chunk))
         {
 #if ZMALLOC_OPEN_COUNTER
