@@ -123,6 +123,12 @@ namespace zsummer
             {
                 ref(i) = value;
             }
+#ifdef ZDEBUG_UNINIT_MEMORY
+            if (_Size > count_)
+            {
+                memset(ptr(count_), 0xfd, (_Size - count_) * sizeof(_Ty));
+            }
+#endif // ZDEBUG_UNINIT_MEMORY
             for (size_type i = count_; i < _Size; i++)
             {
                 new (ptr(i)) _Ty(value);
@@ -140,6 +146,9 @@ namespace zsummer
                     pbegin[i].~_Ty();
                 }
             }
+#ifdef ZDEBUG_UNINIT_MEMORY
+            memset(ptr(0), 0xfd, max_size() * sizeof(_Ty));
+#endif // ZDEBUG_UNINIT_MEMORY
             count_ = 0;
         }
 
@@ -160,19 +169,28 @@ namespace zsummer
             {
                 return;
             }
+#ifdef ZDEBUG_UNINIT_MEMORY
+            memset(ptr(count_), 0xfd, sizeof(_Ty));
+#endif // ZDEBUG_UNINIT_MEMORY
             new (ptr(count_++)) _Ty(value);
         }
 
         template<class T = _Ty>
         void pop_back(const typename std::enable_if<std::is_trivial<T>::value>::type*  = 0)
         {
+#ifdef ZDEBUG_DEATH_MEMORY
+            memset(ptr(count_ - 1), 0xfd, sizeof(_Ty));
+#endif // ZDEBUG_DEATH_MEMORY
             count_--;
         }
 
         template<class T = _Ty>
         void pop_back(const typename std::enable_if<!std::is_trivial<T>::value>::type*  =0)
         {
-            ptr(count_)->~_Ty();
+            ptr(count_ - 1)->~_Ty();
+#ifdef ZDEBUG_DEATH_MEMORY
+            memset(ptr(count_ - 1), 0xfd, sizeof(_Ty));
+#endif // ZDEBUG_DEATH_MEMORY
             count_--;
         }
 
@@ -188,6 +206,9 @@ namespace zsummer
                 return pos;
             }
             memmove((space_type*)in_pos + count, (space_type*)in_pos, sizeof(space_type) * ((space_type*)old_end - (space_type*)in_pos));
+#ifdef ZDEBUG_UNINIT_MEMORY
+            memset(pos, 0xfd, count * sizeof(_Ty));
+#endif // ZDEBUG_UNINIT_MEMORY
             return pos;
         }
         template<class T = _Ty>
@@ -240,6 +261,9 @@ namespace zsummer
             size_type island_count = distance(last, end());
             memmove((space_type*)first, (space_type*)last, island_count * sizeof(space_type));
             iterator new_end = (iterator)(first + island_count);
+#ifdef ZDEBUG_DEATH_MEMORY
+            memset(new_end, 0xfd, distance(new_end, end()) * sizeof(_Ty));
+#endif // ZDEBUG_DEATH_MEMORY
             count_ -= distance(new_end, end());
             return end();
         }
