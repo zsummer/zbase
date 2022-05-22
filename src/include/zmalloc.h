@@ -36,6 +36,7 @@
 #define ZMALLOC_OPEN_FENCE 1
 
 //#define ZDEBUG_DEATH_MEMORY
+//#define ZDEBUG_UNINIT_MEMORY
 
 using s8 = char;
 using u8 = unsigned char;
@@ -804,6 +805,9 @@ namespace zsummer
 #if ZMALLOC_OPEN_COUNTER
             alloc_counter_[(COLOR * 2)][chunk->bin_id] ++;
 #endif
+#ifdef ZDEBUG_UNINIT_MEMORY
+            memset((void*)(zmalloc_u64_cast(chunk) + CHUNK_PADDING_SIZE), 0xfd, chunk->this_size - CHUNK_PADDING_SIZE);
+#endif // ZDEBUG_UNINIT_MEMORY
             alloc_total_bytes_ += chunk->this_size;
             zmalloc_check_align((void*)(zmalloc_u64_cast(chunk) + CHUNK_PADDING_SIZE));
             return (void*)(zmalloc_u64_cast(chunk) + CHUNK_PADDING_SIZE);
@@ -882,6 +886,9 @@ namespace zsummer
 #if ZMALLOC_OPEN_COUNTER
             alloc_counter_[(COLOR * 2) | CHUNK_IS_BIG][chunk->bin_id] ++;
 #endif
+#ifdef ZDEBUG_UNINIT_MEMORY
+            memset((void*)(zmalloc_u64_cast(chunk) + CHUNK_PADDING_SIZE), 0xfd, chunk->this_size - CHUNK_PADDING_SIZE);
+#endif // ZDEBUG_UNINIT_MEMORY
             alloc_total_bytes_ += chunk->this_size;
             zmalloc_check_align((void*)(zmalloc_u64_cast(chunk) + CHUNK_PADDING_SIZE));
             return (void*)(zmalloc_u64_cast(chunk) + CHUNK_PADDING_SIZE);
@@ -909,6 +916,9 @@ namespace zsummer
         
 #endif
         zmalloc_set_chunk(chunk, CHUNK_IS_IN_USED | (COLOR * 2));
+#ifdef ZDEBUG_UNINIT_MEMORY
+        memset((void*)(zmalloc_u64_cast(chunk) + CHUNK_PADDING_SIZE), 0xfd, chunk->this_size - CHUNK_PADDING_SIZE);
+#endif // ZDEBUG_UNINIT_MEMORY
         alloc_total_bytes_ += chunk->this_size;
         zmalloc_check_align((void*)(zmalloc_u64_cast(chunk) + CHUNK_PADDING_SIZE));
         return (void*)(zmalloc_u64_cast(chunk) + CHUNK_PADDING_SIZE);
