@@ -77,6 +77,9 @@ namespace zsummer
                 u32* p = (u32*)&space_[chunk_free_id_ * chunk_size_];
                 chunk_free_id_ = *p;
                 chunk_used_count_++;
+#ifdef ZDEBUG_UNINIT_MEMORY
+                memset(p, 0xfd, chunk_size_);
+#endif // ZDEBUG_UNINIT_MEMORY
                 return (void*)p;
             }
             if (chunk_exploit_offset_ < chunk_count_)
@@ -84,6 +87,9 @@ namespace zsummer
                 void* p = &space_[chunk_exploit_offset_ * chunk_size_];
                 chunk_exploit_offset_++;
                 chunk_used_count_++;
+#ifdef ZDEBUG_UNINIT_MEMORY
+                memset(p, 0xfd, chunk_size_);
+#endif // ZDEBUG_UNINIT_MEMORY
                 return (void*)p;
             }
             return NULL;

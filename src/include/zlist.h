@@ -408,6 +408,9 @@ namespace zsummer
 
             data_[pos_id].front = new_id;
             used_count_++;
+#ifdef ZDEBUG_UNINIT_MEMORY
+            memset(&data_[new_id].space, 0xfd, sizeof(space_type));
+#endif // ZDEBUG_UNINIT_MEMORY
         }
 
         template<class T = _Ty>
