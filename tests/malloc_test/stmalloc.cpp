@@ -116,17 +116,17 @@ static void* st_alloc_do_malloc_small(size_t size)
 {
 	if (size > kMaxSize || size == 0)
 	{
-		error_tlog("invalid size<%llu>.", size);
+		error_tlog("invalid size<%llu>.", (u64)size);
 		return NULL;
 	}
 
-	size_t old_size = size;
-	SizeClass cl = g_st_malloc->size_map().SizeClass(size);
+
+	SizeClass cl = g_st_malloc->size_map().SizeClass((s32)size);
 	size = g_st_malloc->size_map().ByteSizeForClass(cl);
 	void* ptr = g_st_malloc->thread_cache().Allocate(cl, size);
 	if (NULL == ptr)
 	{
-		error_tlog("Allocate failed, size<%llu>, cl<%u>.", size, cl);
+		error_tlog("Allocate failed, size<%llu>, cl<%u>.", (u64)size, cl);
 		return NULL;
 	}
 
@@ -137,11 +137,11 @@ static void* st_alloc_do_malloc_pages(size_t size)
 {
 	if (size <= kMaxSize)
 	{
-		error_tlog("invalid size<%llu>.", size);
+		error_tlog("invalid size<%llu>.", (u64)size);
 		return NULL;
 	}
 
-	u64 old_size = size;
+
 	void* ptr = NULL;
 	Length num_pages = GetPagesNum(size);
 	size = num_pages << kPageShift;
@@ -178,7 +178,7 @@ void* st_malloc(size_t size)
 		ptr = st_alloc_do_malloc_small(size);
 		if (NULL == ptr)
 		{
-			error_tlog("st_alloc_do_malloc_small failed, size<%llu>.", size);
+			error_tlog("st_alloc_do_malloc_small failed, size<%llu>.", (u64)size);
 		}
 	}
 	else
@@ -186,7 +186,7 @@ void* st_malloc(size_t size)
 		ptr = st_alloc_do_malloc_pages(size);
 		if (NULL == ptr)
 		{
-			error_tlog("st_alloc_do_malloc_pages failed, size<%llu>.", size);
+			error_tlog("st_alloc_do_malloc_pages failed, size<%llu>.", (u64)size);
 		}
 
 	}
@@ -209,7 +209,7 @@ void st_free(void* ptr)
 	s32 ret = 0;
 	Span* span = NULL;
 	PageID id = reinterpret_cast<u64>(ptr) >> kPageShift;
-	SizeClass cl = g_st_malloc->page_heap().GetSizeClassIfCached(id);
+	SizeClass cl = (SizeClass)g_st_malloc->page_heap().GetSizeClassIfCached((SizeClass)id);
 	if (cl == 0)
 	{
 		span = g_st_malloc->page_heap().GetDescriptor(id);
@@ -239,7 +239,7 @@ void st_free(void* ptr)
 		}
 		if ((span->start<<kPageShift) != (u64)ptr)
 		{
-			error_tlog("ptr <%p> not equal start addr<%llu>.", ptr, (void*)(span->start << kPageShift));
+			error_tlog("ptr <%p> not equal start addr<%llu>.", ptr, (u64)(void*)(span->start << kPageShift));
 			return;
 		}
 		g_st_malloc->page_heap().Delete(span);

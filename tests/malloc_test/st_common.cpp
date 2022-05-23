@@ -3,14 +3,13 @@
 #include <stddef.h>
 
 
-static AllocPagesPtr s_alloc_pages_ptr = NULL;
-static FreePagesPtr s_free_pages_ptr = NULL;
+
 
 void* MetaDataChunkAlloc(size_t bytes)
 {	
 	if (bytes < kPageSize)
 	{
-		error_tlog("alloc bytes<%llu> less than page size.", bytes);
+		error_tlog("alloc bytes<%llu> less than page size.", (u64)bytes);
 		return NULL;
 	}
 
