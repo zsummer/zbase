@@ -134,11 +134,11 @@ static inline s32 trigger_check(u64 pid, s64 now_ms)
 {
     u64 id = (u64)pid;
     obj_pool* p = (obj_pool*)&g_pool;
-    if (!p->at(id).valid)
+    if (!p->at((u32)id).valid)
     {
         return 0;
     }
-    trigger_info& info = p->at(id).triggers[TT];
+    trigger_info& info = p->at((u32)id).triggers[TT];
     s64 duration = now_ms - info.last_time;
     if (true)
     {
@@ -182,7 +182,7 @@ static inline s32 trigger_empty(u64 pid, s64 now_ms)
 {
     u64 id = (u64)pid;
     obj_pool* p = (obj_pool*)&g_pool;
-    if (!p->at(id).valid)
+    if (!p->at((u32)id).valid)
     {
         return 0;
     }

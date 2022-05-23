@@ -54,7 +54,7 @@ void* ThreadCache::Allocate(SizeClass cl, size_t size)
 
 	if (g_st_malloc->size_map().ByteSizeForClass(cl) != size)
 	{
-		error_tlog("size <%llu> not equal class<%u>.", size, cl);
+		error_tlog("size <%llu> not equal class<%u>.", (u64)size, cl);
 		return NULL;
 	}
 
@@ -65,7 +65,7 @@ void* ThreadCache::Allocate(SizeClass cl, size_t size)
 		ptr = FetchFromCentralCache(cl, size);
 		if (NULL == ptr)
 		{
-			error_tlog("FetchFromCentralCache failed,size <%llu>, class<%u>.", size, cl);
+			error_tlog("FetchFromCentralCache failed,size <%llu>, class<%u>.", (u64)size, cl);
 			return NULL;
 		}
 	}
@@ -211,7 +211,7 @@ s32 ThreadCache::ReleaseToCentralCache(FreeList* src, SizeClass cl, s32 num)
 s32 ThreadCache::Scavenge()
 {
 	s32 ret = 0;
-	for (size_t cl = 1; cl < kNumClasses; ++cl)
+	for (s32 cl = 1; cl < (s32)kNumClasses; ++cl)
 	{
 		FreeList* list = &list_[cl];
 		s32 lowmark = list->lowwater_mark();
@@ -245,7 +245,7 @@ s32 ThreadCache::ReduceTooLongList(FreeList* list, size_t cl)
 
 	s32 ret = 0;
 	s32 batch_size = g_st_malloc->size_map().num_objects_to_move(cl);
-	ret = ReleaseToCentralCache(list, cl, batch_size);
+	ret = ReleaseToCentralCache(list, (SizeClass)cl, batch_size);
 	if (ret != 0)
 	{
 		error_tlog("ReleaseToCentralCache failed, ret<%d>.", ret);
