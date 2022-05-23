@@ -49,7 +49,7 @@ s32 CentralFreeList::Init(SizeClass cl)
 
 	if (cl > 0)
 	{
-		s32 bytes = g_st_malloc->size_map().ByteSizeForClass(cl);
+		s32 bytes = (s32)g_st_malloc->size_map().ByteSizeForClass(cl);
 		s32 objs_to_move = g_st_malloc->size_map().num_objects_to_move(cl);
 
 		max_cache_size_ = (std::min)(max_cache_size_,
@@ -109,7 +109,6 @@ s32 CentralFreeList::RemoveRange(void** start, void** end, s32 num)
 		return num;
 	}
 
-	s32 ret = 0;
 	*start = NULL;
 	*end = NULL;
 
@@ -345,12 +344,12 @@ s32 CentralFreeList::Populate()
 		return -1;
 	}
 
-	s32 ret = 0;
+
 	Span* span = NULL;
 	span = g_st_malloc->page_heap().New(pages);
 	if (NULL == span || span->page_num != pages)
 	{
-		error_tlog("New pages<%llu> span failed.", pages);
+		error_tlog("New pages<%llu> span failed.", (u64)pages);
 		return -2;
 	}
 

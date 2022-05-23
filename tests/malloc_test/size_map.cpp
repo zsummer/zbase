@@ -12,7 +12,7 @@ void SizeMap::Dump()
     for (size_t i = 0; i < kNumClasses; ++i)
     {
         infor_tlog("index<%llu> class to size<%llu>  num to move<%d> class to page<%llu>.",
-                   i, class_to_size_[i], num_objects_to_move_[i], class_to_pages_[i]);
+            (u64)i, (u64)class_to_size_[i], num_objects_to_move_[i], (u64)class_to_pages_[i]);
     }
     infor_tlog("SizeMap::Dump end!");
 }
@@ -86,14 +86,14 @@ s32 SizeMap::Init()
 
     if (sc != kNumClasses)
     {
-        error_tlog("sc is <%d>, kNumClass<%llu>.", sc, kNumClasses);
+        error_tlog("sc is <%d>, kNumClass<%llu>.", sc, (u64)kNumClasses);
         return -2;
     }
 
     s32 next_size = 0;
-    for (size_t cl = 1; cl < kNumClasses; ++cl)
+    for (s32 cl = 1; cl < (s32)kNumClasses; ++cl)
     {
-        const s32 max_size_in_class = class_to_size_[cl];
+        const s32 max_size_in_class = (s32)class_to_size_[cl];
         for (s32 s = next_size; s <= max_size_in_class; s += kAlignment)
         {
             class_array_[ClassArrayIndex(s)] = cl;
@@ -102,24 +102,24 @@ s32 SizeMap::Init()
     }
 
     // 这个地方加个check, 防止前面初始化不正确
-    for (size_t size = 0; size <= kMaxSize;)
+    for (s32 size = 0; size <= (s32)kMaxSize;)
     {
         const s32 sc = SizeClass(size);
         if (sc <= 0 || (size_t) sc >= kNumClasses)
         {
-            error_tlog("bad size class sc<%d>, size<%llu>.", sc, size);
+            error_tlog("bad size class sc<%d>, size<%d>.", sc, size);
             return -3;
         }
 
-        if (sc > 1 && size <= class_to_size_[sc - 1])
+        if (sc > 1 && size <= (s32)class_to_size_[sc - 1])
         {
-            error_tlog("size not in right sc, sc<%d>, size<%llu>.", sc, size);
+            error_tlog("size not in right sc, sc<%d>, size<%d>.", sc, size);
             return -3;
         }
         size_t sc_size = class_to_size_[sc];
-        if (size > sc_size || sc_size == 0)
+        if (size > (s32)sc_size || sc_size == 0)
         {
-            error_tlog(" sc<%d>, size<%llu> more than sc size<%llu>.", sc, size, sc_size);
+            error_tlog(" sc<%d>, size<%d> more than sc size<%llu>.", sc, size, (u64)sc_size);
             return -4;
         }
         if (size <= kMaxSmallSize)
@@ -135,7 +135,7 @@ s32 SizeMap::Init()
     for (size_t cl = 1; cl < kNumClasses; ++cl)
     {
         size_t size = ByteSizeForClass(cl);
-        num_objects_to_move_[cl] = NumMoveSize(size);
+        num_objects_to_move_[cl] = (s32)NumMoveSize(size);
     }
     return 0;
 }

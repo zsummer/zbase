@@ -263,7 +263,7 @@ s32 zmalloc_stress()
             }
             u32 push_size1 = rand_array[i] % (2048);
             u32 push_size2 = rand_array[cover_size - i] % (2048);
-            if ((push_size1 + push_size2) % 3 == 0 || buffers->size() > rand() % 1000 || buffers->full())
+            if ((push_size1 + push_size2) % 3 == 0 || buffers->size() > (u32)rand() % 1000 || buffers->full())
             {
                 if (!buffers->empty())
                 {
@@ -272,7 +272,7 @@ s32 zmalloc_stress()
                     free_count++;
                 }
             }
-            if ((push_size1 + push_size2) % 7 == 0 || buffers->size() > rand()%1000 || buffers2->full())
+            if ((push_size1 + push_size2) % 7 == 0 || buffers->size() > (u32)rand()%1000 || buffers2->full())
             {
                 if (!buffers2->empty())
                 {
@@ -329,7 +329,7 @@ s32 zmalloc_stress()
             }
             u32 push_size1 = rand_array[i] % (2048) + 1;
             u32 push_size2 = rand_array[cover_size - i] % (2048) + 1;
-            if ((push_size1 + push_size2) % 3 == 0 || buffers->size() > rand() % 1000 || buffers->full())
+            if ((push_size1 + push_size2) % 3 == 0 || buffers->size() > (u32)rand() % 1000 || buffers->full())
             {
                 if (!buffers->empty())
                 {
@@ -338,7 +338,7 @@ s32 zmalloc_stress()
                     free_count++;
                 }
             }
-            if ((push_size1 + push_size2) % 7 == 0 || buffers->size() > rand() % 1000 || buffers2->full())
+            if ((push_size1 + push_size2) % 7 == 0 || buffers->size() > (u32)rand() % 1000 || buffers2->full())
             {
                 if (!buffers2->empty())
                 {
