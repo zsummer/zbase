@@ -33,10 +33,19 @@
 
 #ifndef  ZMALLOC_H
 #define ZMALLOC_H
-#define ZMALLOC_OPEN_FENCE 1
+//#define ZMALLOC_OPEN_FENCE 1
 
 //#define ZDEBUG_DEATH_MEMORY
 //#define ZDEBUG_UNINIT_MEMORY
+
+#ifndef ZMALLOC_OPEN_COUNTER
+#define ZMALLOC_OPEN_COUNTER 1
+#endif // !ZMALLOC_OPEN_COUNTER
+
+#ifndef ZMALLOC_OPEN_CHECK
+#define ZMALLOC_OPEN_CHECK 0
+#endif // !ZMALLOC_OPEN_CHECK
+
 
 using s8 = char;
 using u8 = unsigned char;
@@ -147,13 +156,6 @@ static const u64 BIG_MAX_BIN_ID = 62;
 static const u64 BIG_LOG_BYTES_BIN_ID = 63;
 static const u64 max_resolve_order_size = zmalloc_resolve_order_size(BIG_MAX_BIN_ID);
 
-#ifndef ZMALLOC_OPEN_COUNTER
-#define ZMALLOC_OPEN_COUNTER 1
-#endif // !ZMALLOC_OPEN_COUNTER
-
-#ifndef ZMALLOC_OPEN_CHECK
-#define ZMALLOC_OPEN_CHECK 1
-#endif // !ZMALLOC_OPEN_CHECK
 
 namespace zsummer
 {
