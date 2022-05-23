@@ -203,6 +203,9 @@ namespace zsummer
             count_ += count;
             if (pos == old_end)
             {
+#ifdef ZDEBUG_UNINIT_MEMORY
+                memset(pos, 0xfd, count * sizeof(_Ty));
+#endif // ZDEBUG_UNINIT_MEMORY
                 return pos;
             }
             memmove((space_type*)in_pos + count, (space_type*)in_pos, sizeof(space_type) * ((space_type*)old_end - (space_type*)in_pos));
@@ -220,6 +223,9 @@ namespace zsummer
             count_ += count;
             if (pos == old_end)
             {
+#ifdef ZDEBUG_UNINIT_MEMORY
+                memset(pos, 0xfd, count * sizeof(_Ty));
+#endif // ZDEBUG_UNINIT_MEMORY
                 return pos;
             }
             iterator new_end = end();
@@ -241,6 +247,9 @@ namespace zsummer
             {
                 src++->~_Ty();
             }
+#ifdef ZDEBUG_UNINIT_MEMORY
+            memset(pos, 0xfd, count * sizeof(_Ty));
+#endif // ZDEBUG_UNINIT_MEMORY
             return pos;
         }
 
