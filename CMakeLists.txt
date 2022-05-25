@@ -146,15 +146,18 @@ endmacro()
 SUB_DIR_LIST(SUB_DIRS ${CMAKE_SOURCE_DIR}/tests/)
 FOREACH(SUB_DIR ${SUB_DIRS}) 
     set(EXAMPLE_SOURCE "")
-    if (NOT ${SUB_DIR} STREQUAL "zpool_test") 
-        #continue()
+    if (${SUB_DIR} STREQUAL "common") 
+        continue()
     endif()
-    FILE(GLOB_RECURSE EXAMPLE_SOURCE
+    #FILE(GLOB_RECURSE EXAMPLE_SOURCE
+    FILE(GLOB EXAMPLE_SOURCE
     ${CMAKE_SOURCE_DIR}/tests/*.h 
     ${CMAKE_SOURCE_DIR}/tests/${SUB_DIR}/*.h 
     ${CMAKE_SOURCE_DIR}/tests/${SUB_DIR}/*.c 
     ${CMAKE_SOURCE_DIR}/tests/${SUB_DIR}/*.cc 
     ${CMAKE_SOURCE_DIR}/tests/${SUB_DIR}/*.cpp)
+
+    Message(${EXAMPLE_SOURCE})
     Message(${EXAMPLE_SOURCE})
     GROUP_SRC_BY_DIR(EXAMPLE_SOURCE)
     ADD_EXECUTABLE(${SUB_DIR} ${ARENA_C} ${ARENA_H} ${EXAMPLE_SOURCE})
