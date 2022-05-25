@@ -549,6 +549,13 @@ s32 zmalloc_base_test()
         AssertBoolTest(zstate->free_total_bytes_ >= zstate->req_total_bytes_, "");
         AssertBoolTest(zstate->free_block_count_ == 1, "");
         AssertBoolTest(zstate->used_block_count_ == 0, "");
+
+        shm_string sss;
+        sss.append("123");
+        AssertBoolTest(sss.size() == 3, "");
+        AssertBoolTest(sss.length() == 3, "");
+        AssertBoolTest(sss == "123", "");
+
     }
     if (true)
     {

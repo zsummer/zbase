@@ -36,6 +36,7 @@ namespace zsummer
     using f32 = float;
     using f64 = double;
 
+
     template <class _Ty, unsigned short _Color = 0>
     class zallocator
     {
@@ -44,13 +45,12 @@ namespace zsummer
         using reference = value_type&;
         using const_reference = const reference;
         using pointer = value_type*;
-        using const_pointer = const pointer;
+        using const_pointer = const value_type*;
         using size_type = std::size_t;
         using difference_type = std::ptrdiff_t;
 
         template<typename U>
         struct rebind { using other = zallocator<U, _Color>; };
-
 
         inline explicit zallocator() {}
         inline ~zallocator() {}
@@ -58,18 +58,14 @@ namespace zsummer
         template<typename U>
         inline zallocator(const zallocator<U, _Color>&) {}
 
-
-
-
         inline pointer address(reference r) { return &r; }
         inline const_pointer address(const_reference r) const { return &r; }
         inline size_type max_size() const { return (std::numeric_limits<size_type>::max)() / sizeof(_Ty); }
 
-        inline pointer allocate(size_type cnt, typename std::allocator<void>::const_pointer = 0) 
+        inline pointer allocate(size_type cnt, typename std::allocator<void>::const_pointer = 0)
         {
             return reinterpret_cast<pointer>(zmalloc::instance().alloc_memory<_Color>((u64)cnt * (u64)sizeof(_Ty)));
         }
-
         inline void deallocate(pointer p, size_type c)
         {
             u64 free_size = zmalloc::instance().free_memory(p);
@@ -78,24 +74,16 @@ namespace zsummer
             //assert free_size > c * sizeof(Ty); 
         }
 
-        template< class U, class... Args >
-        void construct(U* p, Args&&... args) //gcc4.9.4 need, but will remove at C++20. 
-        {
-            ::new((void*)p) U(std::forward<Args>(args)...);
-        }
+        template <class... Args>
+        inline void construct(pointer p, Args&&... args) { new (p) _Ty(std::forward<Args>(args)...); }
+        inline void construct(pointer p) { new (p) _Ty(); }
+        inline void construct(pointer p, const_reference v) { new ((void*)p) _Ty(v); }
 
-        template<class T = _Ty>
-        inline void construct(pointer p, const_reference v) { new ((void*)p) T(v); }
-        template<class T = _Ty>
-        inline void destroy(pointer p) { ((T*)p)->~T(); }
+        inline void destroy(pointer p) { ((_Ty*)p)->~_Ty(); }
 
-
-        inline bool operator==(const zallocator &) { return true; }
-        inline bool operator !=(const zallocator & a) { return !operator==(a); }
+        inline bool operator==(const zallocator&)const { return true; }
+        inline bool operator !=(const zallocator& a)const { return !operator==(a); }
     };
-
-
-
 
 }
 #endif
