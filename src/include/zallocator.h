@@ -43,7 +43,7 @@ namespace zsummer
     public:
         using value_type = _Ty;
         using reference = value_type&;
-        using const_reference = const reference;
+        using const_reference = const value_type&;
         using pointer = value_type*;
         using const_pointer = const value_type*;
         using size_type = std::size_t;

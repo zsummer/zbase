@@ -19,8 +19,8 @@
 #include <vector>
 #include <iostream>
 #include <sstream>
-#include <thread>
 #include <chrono>
+#include <thread>
 #include <string.h>
 #include <stdlib.h>
 #ifdef WIN32
@@ -1181,7 +1181,7 @@ namespace zsummer
     {
         if (!expr)
         {
-            std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+            std::this_thread::sleep_for(std::chrono::milliseconds(200));
             volatile const char* panic_str = str;
             (void)panic_str;
             *(volatile u64*)NULL = 1987;
