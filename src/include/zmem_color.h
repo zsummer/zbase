@@ -26,6 +26,11 @@
 #include <vector>
 #include <list>
 #include <string>
+#include <unordered_map>
+#include <unordered_set>
+#include <deque>
+#include <queue>
+
 namespace zsummer
 {
     enum zmem_color_enum
