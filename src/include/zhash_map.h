@@ -381,6 +381,12 @@ namespace zsummer
             return end();
         }
 
+        bool contains(const key_type& key)
+        {
+            return find(key) != end();
+        }
+
+
         iterator erase(iterator iter)
         {
             u32 node_id = iter.cur_node_id_;
