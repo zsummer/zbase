@@ -20,6 +20,7 @@
 #include "zmalloc.h"
 #include <memory>
 #include <limits>
+#include <cstddef>
 #ifndef  ZALLOCATOR_H
 #define ZALLOCATOR_H
 

@@ -22,6 +22,8 @@
 #define ZLIST_EXT_H
 #include <iterator>
 #include <memory>
+#include <cstddef>
+
 namespace zsummer
 {
     using s8 = char;

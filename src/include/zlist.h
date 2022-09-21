@@ -21,6 +21,7 @@
 #ifndef  ZLIST_H
 #define ZLIST_H
 #include <iterator>
+#include <cstddef>
 
 namespace zsummer
 {

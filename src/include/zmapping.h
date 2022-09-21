@@ -45,6 +45,7 @@
 #include <unordered_set>
 #include <memory>
 #include <atomic>
+#include <cstddef>
 
 #ifdef WIN32
 

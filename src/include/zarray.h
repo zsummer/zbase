@@ -25,6 +25,7 @@
 
 #include <type_traits>
 #include <iterator>
+#include <cstddef>
 namespace zsummer
 {
     using s8 = char;

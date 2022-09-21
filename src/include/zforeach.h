@@ -17,6 +17,7 @@
 
 
 #include <memory>
+#include <cstddef>
 
 #ifndef ZFOREACH_H
 #define ZFOREACH_H
