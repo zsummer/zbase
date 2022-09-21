@@ -18,11 +18,14 @@
 
 #include <vector>
 #include <iostream>
+#include <thread>
 #include <sstream>
 #include <chrono>
-#include <thread>
 #include <string.h>
 #include <stdlib.h>
+#include <cstddef>
+#include <type_traits>
+
 #ifdef WIN32
 #define WIN32_LEAN_AND_MEAN
 #include <WinSock2.h>
@@ -1114,6 +1117,29 @@ namespace zsummer
         logwrap() << "* [analysis]: mem usage rate(related inner frag):" << req_total_bytes_ * 100.0 / (alloc_total_bytes_ ? alloc_total_bytes_ : 1) << "%";
 
         logwrap() << "* [analysis]: used memory:" << (alloc_total_bytes_ - free_total_bytes_)/1024.0/1024.0 <<"m, hold sys memory:" << (alloc_block_bytes_ - free_block_bytes_)/1024.0/1024.0 <<"m.";
+
+        block_type* block_head = used_block_list_;
+        
+        u64 total_bytes[3] = { 0 };
+        u64 total_count[3] = { 0 };
+        while (block_head != NULL)
+        {
+            free_chunk_type* head_chunk = zmalloc_free_chunk_cast(zmalloc_get_block_head(block_head));
+            if (zmalloc_has_chunk(head_chunk, CHUNK_IS_DIRECT))
+            {
+                total_count[2]++;
+                total_bytes[2] += block_head->block_size;
+                block_head = block_head->next;
+                continue;
+            }
+            total_bytes[head_chunk->flags & CHUNK_IS_BIG] += block_head->block_size;
+            total_count[head_chunk->flags & CHUNK_IS_BIG] ++;
+            block_head = block_head->next;
+        }
+        logwrap() << "* [analysis]: hold small block:[" << total_count[0] << "]: " << total_bytes[0] / 1024.0 / 1024.0 << "m,  avg:" << total_bytes[0] / 1.0 / total_count[0] / 1024.0 / 1024.0 << "m.";
+        logwrap() << "* [analysis]: hold big block:[" << total_count[1] << "]: " << total_bytes[1] / 1024.0 / 1024.0 << "m,  avg:" << total_bytes[1] / 1.0 / total_count[1] / 1024.0 / 1024.0 << "m.";
+        logwrap() << "* [analysis]: hold direct block:[" << total_count[2] << "]: " << total_bytes[2] / 1024.0 / 1024.0 << "m,  avg:" << total_bytes[2] / 1.0 / total_count[2] / 1024.0 / 1024.0 << "m.";
+
     }
 
 
