@@ -22,6 +22,7 @@
 #define ZPOOL_H
 #include <string.h>
 #include <type_traits>
+#include <cstddef>
 
 namespace zsummer
 {

@@ -30,6 +30,7 @@
 #include <unordered_set>
 #include <deque>
 #include <queue>
+#include <cstddef>
 
 namespace zsummer
 {
