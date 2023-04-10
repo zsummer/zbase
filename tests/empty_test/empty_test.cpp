@@ -30,6 +30,15 @@ typedef float f32;
 #include <unordered_set>
 #include "fn_log.h"
 #include "zprof.h"
+#include "zarray.h"
+
+struct MyStruct
+{
+public:
+    const static u32 MODULE_TYPE = 5;
+};
+
+#define D(m)   z.push_back(decltype(m)::MODULE_TYPE);
 
 
 

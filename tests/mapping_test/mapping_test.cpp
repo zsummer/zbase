@@ -33,7 +33,7 @@ typedef float f32;
 #include "zmapping.h"
 
 
-using namespace zsummer;
+
 
 int main(int argc, char *argv[])
 {

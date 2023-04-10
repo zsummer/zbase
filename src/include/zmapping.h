@@ -91,200 +91,197 @@
 #endif
 #endif
 
-namespace zsummer
+
+using s8 = char;
+using u8 = unsigned char;
+using s16 = short int;
+using u16 = unsigned short int;
+using s32 = int;
+using u32 = unsigned int;
+using s64 = long long;
+using u64 = unsigned long long;
+using f32 = float;
+using f64 = double;
+
+
+//comment: grep -i commit /proc/meminfo   #查看overcommit value和当前commit   
+//comment: sar -r											#查看kbcommit   %   
+//comment: cat /proc/981/oom_score		#查看OOM分数  
+
+
+//内存水位线
+//watermark[min] = min_free_kbytes/4*zone.pages/zone.allpages    # cat /proc/sys/vm/min_free_kbytes    #32M    total/1000 左右,   通常在128k~65M之间  
+//watermark[low] = watermark[min] * 5 / 4      
+//watermark[high] = watermark[min] * 3 / 2
+
+//当前水位线  cat /proc/zoneinfo | grep -E "Node|min|low|high "       #注意是页;  一般4k   每个zone都有自己的水位线   剩余内存超过HIGH代表内存剩余较多.  
+
+//other   
+//overcommit :   page table
+//filesystem: page cache & buffer cache   
+//kswapd: 水位线  
+//内存不足会触发内存回收.   
+
+
+
+
+class zmapping
 {
-	using s8 = char;
-	using u8 = unsigned char;
-	using s16 = short int;
-	using u16 = unsigned short int;
-	using s32 = int;
-	using u32 = unsigned int;
-	using s64 = long long;
-	using u64 = unsigned long long;
-	using f32 = float;
-	using f64 = double;
-
-
-	//comment: grep -i commit /proc/meminfo   #查看overcommit value和当前commit   
-	//comment: sar -r											#查看kbcommit   %   
-	//comment: cat /proc/981/oom_score		#查看OOM分数  
-
-
-	//内存水位线
-	//watermark[min] = min_free_kbytes/4*zone.pages/zone.allpages    # cat /proc/sys/vm/min_free_kbytes    #32M    total/1000 左右,   通常在128k~65M之间  
-	//watermark[low] = watermark[min] * 5 / 4      
-	//watermark[high] = watermark[min] * 3 / 2
-
-	//当前水位线  cat /proc/zoneinfo | grep -E "Node|min|low|high "       #注意是页;  一般4k   每个zone都有自己的水位线   剩余内存超过HIGH代表内存剩余较多.  
-
-	//other   
-	//overcommit :   page table
-	//filesystem: page cache & buffer cache   
-	//kswapd: 水位线  
-	//内存不足会触发内存回收.   
-
-
-
-
-	class zmapping
-	{
-	private:
+private:
 #ifdef WIN32
-		HANDLE mapping_fd_;
-		HANDLE mapping_obj_;
+	HANDLE mapping_fd_;
+	HANDLE mapping_obj_;
 #else
-		int mapping_fd_;
+	int mapping_fd_;
 #endif // WIN32
-		char* file_data_;
-		u64   file_size_;
+	char* file_data_;
+	u64   file_size_;
 
-	public:
-		zmapping()
-		{
+public:
+	zmapping()
+	{
 #ifdef WIN32
-			mapping_obj_ = NULL;
-			mapping_fd_ = NULL;
+		mapping_obj_ = NULL;
+		mapping_fd_ = NULL;
 #else
-			mapping_fd_ = -1;
+		mapping_fd_ = -1;
 #endif 
 
-			file_data_ = NULL;
-			file_size_ = 0;
-		}
-		~zmapping()
+		file_data_ = NULL;
+		file_size_ = 0;
+	}
+	~zmapping()
+	{
+		unmap_res();
+	}
+	const char* data() { return file_data_; }
+	u64 data_len() { return file_size_; }
+	u64 file_size() { return file_size_; }
+
+	s32 mapping_res(const char* file_path, bool remapping = false)
+	{
+		s32 ret = 0;
+		if (remapping)
 		{
 			unmap_res();
 		}
-		const char* data() { return file_data_; }
-		u64 data_len() { return file_size_; }
-		u64 file_size() { return file_size_; }
+		ret = mapping_res_default(file_path, remapping);
+		ret |= mapping_res_win32(file_path, remapping);
+		return ret;
+	}
 
-		s32 mapping_res(const char* file_path, bool remapping = false)
-		{
-			s32 ret = 0;
-			if (remapping)
-			{
-				unmap_res();
-			}
-			ret = mapping_res_default(file_path, remapping);
-			ret |= mapping_res_win32(file_path, remapping);
-			return ret;
-		}
-
-		s32 mapping_res_default(const char* file_path, bool remapping)
-		{
+	s32 mapping_res_default(const char* file_path, bool remapping)
+	{
 #ifndef WIN32	
-			if (mapping_fd_ != -1)
-			{
-				return 1;
-			}
-			struct stat sb;
-			mapping_fd_ = open(file_path, O_RDONLY);
-			if (mapping_fd_ == -1)
-			{
-				return 10;
-			}
-
-			if (fstat(mapping_fd_, &sb) == -1)
-			{
-				close(mapping_fd_);
-				mapping_fd_ = -1;
-				return 11;
-			}
-			file_data_ = (char*)mmap(NULL, sb.st_size, PROT_READ, MAP_SHARED, mapping_fd_, 0);
-			file_size_ = sb.st_size;
-#endif 
-			return 0;
+		if (mapping_fd_ != -1)
+		{
+			return 1;
+		}
+		struct stat sb;
+		mapping_fd_ = open(file_path, O_RDONLY);
+		if (mapping_fd_ == -1)
+		{
+			return 10;
 		}
 
-
-		s32 mapping_res_win32(const char* file_path, bool remapping)
+		if (fstat(mapping_fd_, &sb) == -1)
 		{
-#ifdef WIN32	
-			if (mapping_fd_ != NULL)
-			{
-				return 1;
-			}
-
-			mapping_fd_ = ::CreateFile(file_path, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
-			if (mapping_fd_ == INVALID_HANDLE_VALUE)
-			{
-				return 1;
-			}
-			LARGE_INTEGER file_size;
-			if (!GetFileSizeEx(mapping_fd_, &file_size))
-			{
-				::CloseHandle(mapping_fd_);
-				mapping_fd_ = NULL;
-				return 2;
-			}
-
-			mapping_obj_ = CreateFileMapping(mapping_fd_, NULL, PAGE_READONLY, 0, 0, NULL);
-			if (mapping_obj_ == NULL)
-			{
-				::CloseHandle(mapping_fd_);
-				mapping_fd_ = NULL;
-				return 2;
-			}
-			file_data_ = (char*)::MapViewOfFile(mapping_obj_, FILE_MAP_READ, 0, 0, 0);
-			if (file_data_)
-			{
-				file_size_ = (u64)file_size.QuadPart;
-			}
-			else
-			{
-				::CloseHandle(mapping_fd_);
-				::CloseHandle(mapping_obj_);
-				mapping_fd_ = NULL;
-				mapping_obj_ = NULL;
-				return 3;
-			}
-#endif 
-			return 0;
-		}
-
-		s32 is_mapped()
-		{
-#ifdef WIN32
-			return mapping_fd_ != NULL;
-#else
-			return mapping_fd_ != -1;
-#endif 
-		}
-
-		s32 unmap_res()
-		{
-			if (mapping_fd_ == 0)
-			{
-				return 1;
-			}
-#ifndef WIN32
-			if (file_data_ != NULL && file_size_ != 0)
-			{
-				munmap(file_data_, file_size_);
-			}
 			close(mapping_fd_);
-			file_data_ = NULL;
-			file_size_ = 0;
 			mapping_fd_ = -1;
-#else
-			if (file_data_)
-			{
-				::UnmapViewOfFile(file_data_);
-			}
-			::CloseHandle(mapping_obj_);
-			::CloseHandle(mapping_fd_);
-			file_data_ = NULL;
-			file_size_ = 0;
-			mapping_obj_ = NULL;
-			mapping_fd_ = NULL;
-#endif // 0
-			return 0;
+			return 11;
 		}
-	};
+		file_data_ = (char*)mmap(NULL, sb.st_size, PROT_READ, MAP_SHARED, mapping_fd_, 0);
+		file_size_ = sb.st_size;
+#endif 
+		return 0;
+	}
 
 
-}
+	s32 mapping_res_win32(const char* file_path, bool remapping)
+	{
+#ifdef WIN32	
+		if (mapping_fd_ != NULL)
+		{
+			return 1;
+		}
+
+		mapping_fd_ = ::CreateFile(file_path, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+		if (mapping_fd_ == INVALID_HANDLE_VALUE)
+		{
+			return 1;
+		}
+		LARGE_INTEGER file_size;
+		if (!GetFileSizeEx(mapping_fd_, &file_size))
+		{
+			::CloseHandle(mapping_fd_);
+			mapping_fd_ = NULL;
+			return 2;
+		}
+
+		mapping_obj_ = CreateFileMapping(mapping_fd_, NULL, PAGE_READONLY, 0, 0, NULL);
+		if (mapping_obj_ == NULL)
+		{
+			::CloseHandle(mapping_fd_);
+			mapping_fd_ = NULL;
+			return 2;
+		}
+		file_data_ = (char*)::MapViewOfFile(mapping_obj_, FILE_MAP_READ, 0, 0, 0);
+		if (file_data_)
+		{
+			file_size_ = (u64)file_size.QuadPart;
+		}
+		else
+		{
+			::CloseHandle(mapping_fd_);
+			::CloseHandle(mapping_obj_);
+			mapping_fd_ = NULL;
+			mapping_obj_ = NULL;
+			return 3;
+		}
+#endif 
+		return 0;
+	}
+
+	s32 is_mapped()
+	{
+#ifdef WIN32
+		return mapping_fd_ != NULL;
+#else
+		return mapping_fd_ != -1;
+#endif 
+	}
+
+	s32 unmap_res()
+	{
+		if (mapping_fd_ == 0)
+		{
+			return 1;
+		}
+#ifndef WIN32
+		if (file_data_ != NULL && file_size_ != 0)
+		{
+			munmap(file_data_, file_size_);
+		}
+		close(mapping_fd_);
+		file_data_ = NULL;
+		file_size_ = 0;
+		mapping_fd_ = -1;
+#else
+		if (file_data_)
+		{
+			::UnmapViewOfFile(file_data_);
+		}
+		::CloseHandle(mapping_obj_);
+		::CloseHandle(mapping_fd_);
+		file_data_ = NULL;
+		file_size_ = 0;
+		mapping_obj_ = NULL;
+		mapping_fd_ = NULL;
+#endif // 0
+		return 0;
+	}
+};
+
 
 
 #endif

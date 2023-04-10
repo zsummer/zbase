@@ -13,7 +13,7 @@
 #define Now() std::chrono::duration<double>(std::chrono::system_clock().now().time_since_epoch()).count()
 
 
-using namespace zsummer;
+
 
 
 s32 zmalloc_stress()
@@ -294,7 +294,7 @@ s32 zmalloc_stress()
             auto new_log = []() { return LOG_STREAM_DEFAULT_LOGGER(0, FNLog::PRIORITY_DEBUG, 0, 0, FNLog::LOG_PREFIX_NULL); };
             cost.start();
             zmalloc::instance().debug_state_log(new_log);
-            zmalloc::instance().debug_color_log(new_log, 0, (zsummer::zmalloc::CHUNK_COLOR_MASK_WITH_LEVEL + 1) / 2);
+            zmalloc::instance().debug_color_log(new_log, 0, (zmalloc::CHUNK_COLOR_MASK_WITH_LEVEL + 1) / 2);
             PROF_OUTPUT_SINGLE_CPU("zamlloc debug_state_log debug_color_log cost", cost.stop_and_save().cycles());
         }
         
@@ -311,7 +311,7 @@ s32 zmalloc_stress()
         LogDebug() << "zmalloc clear all buffers state log:";
         auto new_log = []() { return LOG_STREAM_DEFAULT_LOGGER(0, FNLog::PRIORITY_DEBUG, 0, 0, FNLog::LOG_PREFIX_NULL); };
         zmalloc::instance().debug_state_log(new_log);
-        zmalloc::instance().debug_color_log(new_log, 0, (zsummer::zmalloc::CHUNK_COLOR_MASK_WITH_LEVEL + 1) / 2);
+        zmalloc::instance().debug_color_log(new_log, 0, (zmalloc::CHUNK_COLOR_MASK_WITH_LEVEL + 1) / 2);
     }
     PROF_OUTPUT_SELF_MEM("z malloc finish");
     if (true)
@@ -622,10 +622,10 @@ s32 zmalloc_base_test()
         zstate->set_global(zstate.get());
         for (size_t i = 0; i < 10; i++)
         {
-            zsummer::shm_zlist_ext<int, 100, 50> l;
-            zsummer::shm_map<int, std::string>  sm;
-            zsummer::shm_vector<int> sv;
-            zsummer::shm_list<int> sl;
+           shm_zlist_ext<int, 100, 50> l;
+           shm_map<int, std::string>  sm;
+           shm_vector<int> sv;
+           shm_list<int> sl;
             for (int i = 0; i < 100; i++)
             {
                 sv.push_back(i);
@@ -636,7 +636,7 @@ s32 zmalloc_base_test()
         }
         auto new_log = []() { return LOG_STREAM_DEFAULT_LOGGER(0, FNLog::PRIORITY_DEBUG, 0, 0, FNLog::LOG_PREFIX_NULL); };
         zmalloc::instance().debug_state_log(new_log);
-        zmalloc::instance().debug_color_log(new_log, 0, (zsummer::zmalloc::CHUNK_COLOR_MASK_WITH_LEVEL + 1) / 2);
+        zmalloc::instance().debug_color_log(new_log, 0, (zmalloc::CHUNK_COLOR_MASK_WITH_LEVEL + 1) / 2);
         zstate->clear_cache();
         zstate->check_health();
         AssertBoolTest(zstate->used_block_count_ == 0, "");
@@ -647,7 +647,7 @@ s32 zmalloc_base_test()
         std::unique_ptr<zmalloc> zstate(new zmalloc());
         memset(zstate.get(), 0, sizeof(zmalloc));
         zstate->set_global(zstate.get());
-        for (size_t i = 0; i < zsummer::zmalloc::BIG_MAX_REQUEST + 2000; i++)
+        for (size_t i = 0; i < zmalloc::BIG_MAX_REQUEST + 2000; i++)
         {
             void* addr = global_zmalloc(i);
             zmalloc_check_align(addr);
@@ -655,7 +655,7 @@ s32 zmalloc_base_test()
         }
         auto new_log = []() { return LOG_STREAM_DEFAULT_LOGGER(0, FNLog::PRIORITY_DEBUG, 0, 0, FNLog::LOG_PREFIX_NULL); };
         zmalloc::instance().debug_state_log(new_log);
-        zmalloc::instance().debug_color_log(new_log, 0, (zsummer::zmalloc::CHUNK_COLOR_MASK_WITH_LEVEL + 1) / 2);
+        zmalloc::instance().debug_color_log(new_log, 0, (zmalloc::CHUNK_COLOR_MASK_WITH_LEVEL + 1) / 2);
         zstate->clear_cache();
         zstate->check_health();
         AssertBoolTest(zstate->used_block_count_ == 0, "");
@@ -679,7 +679,7 @@ s32 zmalloc_base_test()
         }
         auto new_log = []() { return LOG_STREAM_DEFAULT_LOGGER(0, FNLog::PRIORITY_DEBUG, 0, 0, FNLog::LOG_PREFIX_NULL); };
         zmalloc::instance().debug_state_log(new_log);
-        zmalloc::instance().debug_color_log(new_log, 0, (zsummer::zmalloc::CHUNK_COLOR_MASK_WITH_LEVEL + 1) / 2);
+        zmalloc::instance().debug_color_log(new_log, 0, (zmalloc::CHUNK_COLOR_MASK_WITH_LEVEL + 1) / 2);
         zstate->clear_cache();
         zstate->check_health();
         AssertBoolTest(zstate->used_block_count_ == 0, "");
@@ -714,7 +714,7 @@ s32 zmalloc_base_test()
         }
         auto new_log = []() { return LOG_STREAM_DEFAULT_LOGGER(0, FNLog::PRIORITY_DEBUG, 0, 0, FNLog::LOG_PREFIX_NULL); };
         zmalloc::instance().debug_state_log(new_log);
-        zmalloc::instance().debug_color_log(new_log, 0, (zsummer::zmalloc::CHUNK_COLOR_MASK_WITH_LEVEL + 1) / 2);
+        zmalloc::instance().debug_color_log(new_log, 0, (zmalloc::CHUNK_COLOR_MASK_WITH_LEVEL + 1) / 2);
         zstate->clear_cache();
         zstate->check_health();
         AssertBoolTest(zstate->used_block_count_ == 0, "");

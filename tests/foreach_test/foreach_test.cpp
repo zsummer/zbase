@@ -33,7 +33,7 @@ typedef float f32;
 #include "zforeach.h"
 #include "zlist.h"
 #include "zarray.h"
-using namespace zsummer;
+
 s32 tick1000(u64 id, s64 now_ms)
 {
     LogDebug() << "tick1000: id:" << id ;
