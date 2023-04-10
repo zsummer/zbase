@@ -8,7 +8,6 @@
 #include "zhash_map.h"
 #include "zcontain_test.h"
 #include "zlist_ext.h"
-using namespace zsummer;
 
 
 

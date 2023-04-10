@@ -34,7 +34,7 @@ typedef float f32;
 #include "zlist.h"
 #include "zarray.h"
 #include "zpool.h"
-using namespace zsummer;
+
 
 //#define DEBUG_AT 
 #ifndef DEBUG_AT
