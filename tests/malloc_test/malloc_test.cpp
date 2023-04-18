@@ -47,7 +47,7 @@ int main(int argc, char *argv[])
     LogDebug() << " main begin test. ";
     volatile double cycles = 0.0f;
 
-    AssertTest(zmalloc_test(), 0, "main error");
+    ASSERT_TEST_EQ(zmalloc_test(), 0, "main error");
 
     PROF_UPDATE_MERGE();
     PROF_SERIALIZE_FN_LOG();

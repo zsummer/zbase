@@ -17,196 +17,140 @@ RAIIVal<> rand_obj_array[MAX_SIZE];
 RAIIVal<> sort_obj_array[MAX_SIZE];
 
 
-template<class T, class V>
-s32 CheckPushArray(T& a, const V & rand_a)
+template<class Target, class DataSets>
+s32 CheckPushArray(Target& target, const DataSets& datasets)
 {
     for (u32 i = 0; i < MAX_SIZE; i++)
     {
-        a.push_back(rand_a[i]);
-        if (a.back() != rand_a[i])
-        {
-            LogError() << "  has error";
-            return -1;
-        }
+        target.push_back(datasets[i]);
+        ASSERT_TEST_NOLOG(target.back() == datasets[i]);
     }
-    if (a.size() != MAX_SIZE)
-    {
-        LogError() << "  has error";
-        return -1;
-    }
-    return 0;
-}
-template<class T, class V>
-s32 CheckEmplacePushArray(T& a, const V& rand_a)
-{
-    for (u32 i = 0; i < MAX_SIZE; i++)
-    {
-        a.emplace_back(rand_a[i]);
-        if (a.back() != rand_a[i])
-        {
-            LogError() << "  has error";
-            return -1;
-        }
-    }
-    if (a.size() != MAX_SIZE)
-    {
-        LogError() << "  has error";
-        return -1;
-    }
+    ASSERT_TEST(target.size() == MAX_SIZE);
     return 0;
 }
 
-template<class T, class V>
-s32 CheckInsertBeginArray(T& a, const V& rand_a)
+template<class Target, class DataSets>
+s32 CheckEmplacePushArray(Target& target, const DataSets& datasets)
 {
     for (u32 i = 0; i < MAX_SIZE; i++)
     {
-        a.insert(a.begin(), rand_a[i]);
-        if (a.front() != rand_a[i])
-        {
-            LogError() << "  has error";
-            return -1;
-        }
+        target.emplace_back(datasets[i]);
+        ASSERT_TEST_NOLOG(target.back() == datasets[i]);
     }
-    if (a.size() != MAX_SIZE)
-    {
-        LogError() << "  has error";
-        return -1;
-    }
+    ASSERT_TEST(target.size() == MAX_SIZE);
     return 0;
 }
 
-template<class T, class V>
-s32 CheckInsertEndArray(T& a, const V& rand_a)
+template<class Target, class DataSets>
+s32 CheckInsertBeginArray(Target& target, const DataSets& datasets)
 {
     for (u32 i = 0; i < MAX_SIZE; i++)
     {
-        a.insert(a.end(), rand_a[i]);
-        if (a.back() != rand_a[i])
-        {
-            LogError() << "  has error";
-            return -1;
-        }
+        target.insert(target.begin(), datasets[i]);
+        ASSERT_TEST_NOLOG(target.front() == datasets[i]);
     }
-    if (a.size() != MAX_SIZE)
+    ASSERT_TEST(target.size() == MAX_SIZE);
+
+    return 0;
+}
+
+template<class Target, class DataSets>
+s32 CheckInsertEndArray(Target& target, const DataSets& datasets)
+{
+    for (u32 i = 0; i < MAX_SIZE; i++)
     {
-        LogError() << "  has error";
-        return -1;
+        target.insert(target.end(), datasets[i]);
+        ASSERT_TEST_NOLOG(target.back() == datasets[i]);
     }
+    ASSERT_TEST(target.size() == MAX_SIZE);
     return 0;
 }
 
 
-template<class T, class V>
-s32 CheckEmplaceInsertBeginArray(T& a, const V& rand_a)
+template<class Target, class DataSets>
+s32 CheckEmplaceInsertBeginArray(Target& target, const DataSets& datasets)
 {
     for (u32 i = 0; i < MAX_SIZE; i++)
     {
-        a.emplace(a.begin(), rand_a[i]);
-        if (a.front() != rand_a[i])
-        {
-            LogError() << "  has error";
-            return -1;
-        }
+        target.emplace(target.begin(), datasets[i]);
+        ASSERT_TEST_NOLOG(target.front() == datasets[i]);
     }
-    if (a.size() != MAX_SIZE)
-    {
-        LogError() << "  has error";
-        return -1;
-    }
+    ASSERT_TEST(target.size() == MAX_SIZE);
     return 0;
 }
 
-template<class T>
-s32 CheckRandArray(T& a)
+template<class Target>
+s32 CheckRandArray(Target& target)
 {
     if (true)
     {
         int i = 0;
-        for (auto& v : a)
+        for (auto& v : target)
         {
-            if ((int)v != rand_array[i])
-            {
-                LogError() << "  has error";
-                return -1;
-            }
+            ASSERT_TEST_NOLOG(v == rand_array[i]);
+            i++;
+        }
+    }
+    if (true)
+    {
+        int i = 0;
+        const Target& const_target = target;
+        for (auto& v : const_target)
+        {
+            ASSERT_TEST_NOLOG(v == rand_array[i]);
             i++;
         }
     }
     return 0;
 }
 
-template<class T>
-s32 CheckRevertRandArray(T& a)
+template<class Target>
+s32 CheckRandArrayRevertIter(Target& target)
 {
     if (true)
     {
         u32 i = MAX_SIZE - 1;
-        for (auto& v : a)
+        for (auto iter = target.rbegin(); iter != target.rend(); iter++)
         {
-            if ((int)v != rand_array[i])
-            {
-                LogError() << "  has error";
-                return -1;
-            }
+            ASSERT_TEST_NOLOG(*iter == rand_array[i]);
             i--;
         }
     }
-    return 0;
-}
-
-template<class T>
-s32 CheckRandArrayAt(T& a)
-{
+    
     if (true)
     {
-        u32 i = 0;
-        for (auto& v : a)
+        u32 i = MAX_SIZE - 1;
+        const Target& const_target = target;
+        for (auto iter = const_target.rbegin(); iter != const_target.rend(); iter++)
         {
-            if ((int)v != rand_array[i])
-            {
-                LogError() << "  has error";
-                return -1;
-            }
-            if ((int)v != (int)a.at(i))
-            {
-                LogError() << "  has error";
-                return -1;
-            }
-            if ((int)v != (int)a[i])
-            {
-                LogError() << "  has error";
-                return -1;
-            }
-            i++;
+            ASSERT_TEST_NOLOG(*iter == rand_array[i]);
+            i--;
         }
     }
+    
     return 0;
 }
 
-template<class T>
-s32 CheckRevertRandArrayAt(T& a)
+
+template<class Target>
+s32 CheckRevertRandArray(Target& target)
 {
     if (true)
     {
         u32 i = MAX_SIZE - 1;
-        for (auto& v : a)
+        for (auto& v : target)
         {
-            if ((int)v != rand_array[i])
-            {
-                LogError() << "  has error";
-                return -1;
-            }
-            if ((int)v != (int)a.at(MAX_SIZE - i - 1))
-            {
-                LogError() << "  has error";
-                return -1;
-            }
-            if ((int)v != (int)a[MAX_SIZE - i - 1])
-            {
-                LogError() << "  has error";
-                return -1;
-            }
+            ASSERT_TEST_NOLOG(v == rand_array[i]);
+            i--;
+        }
+    }
+    if (true)
+    {
+        u32 i = MAX_SIZE - 1;
+        const Target& const_target = target;
+        for (auto& v : const_target)
+        {
+            ASSERT_TEST_NOLOG(v == rand_array[i]);
             i--;
         }
     }
@@ -214,153 +158,202 @@ s32 CheckRevertRandArrayAt(T& a)
 }
 
 
-template<class T>
-s32 CheckSortArray(T& a)
+
+
+template<class Target>
+s32 CheckRandArrayAt(Target& target)
 {
     if (true)
     {
         u32 i = 0;
-        for (auto& v : a)
+        for (auto& v : target)
         {
-            if ((int)v != sort_array[i])
-            {
-                LogError() << "  has error";
-                return -1;
-            }
+            ASSERT_TEST_NOLOG((int)v == rand_array[i]);
+            ASSERT_TEST_NOLOG((int)v == (int)target.at(i));
+            ASSERT_TEST_NOLOG((int)v == (int)target[i]);
+            i++;
+        }
+    }
+    if (true)
+    {
+        u32 i = 0;
+        const Target& const_target = target;
+        for (auto& v : const_target)
+        {
+            ASSERT_TEST_NOLOG((int)v == rand_array[i]);
+            ASSERT_TEST_NOLOG((int)v == (int)const_target.at(i));
+            ASSERT_TEST_NOLOG((int)v == (int)const_target[i]);
             i++;
         }
     }
     return 0;
 }
 
-template<class T>
-s32 CheckPopArray(T& a)
+template<class Target>
+s32 CheckRevertRandArrayAt(Target& target)
 {
-    while (a.size() != 0)
+    if (true)
     {
-        a.pop_back();
+        u32 i = MAX_SIZE - 1;
+        for (auto& v : target)
+        {
+            ASSERT_TEST_NOLOG((int)v == rand_array[i]);
+            ASSERT_TEST_NOLOG((int)v == (int)target.at(MAX_SIZE - i - 1));
+            ASSERT_TEST_NOLOG((int)v == (int)target[MAX_SIZE - i - 1]);
+            i--;
+        }
     }
-    if (a.size() != 0)
+    if (true)
     {
-        LogError() << " pop error";
+        u32 i = MAX_SIZE - 1;
+        const Target& const_target = target;
+        for (auto& v : const_target)
+        {
+            ASSERT_TEST_NOLOG((int)v == rand_array[i]);
+            ASSERT_TEST_NOLOG((int)v == (int)const_target.at(MAX_SIZE - i - 1));
+            ASSERT_TEST_NOLOG((int)v == (int)const_target[MAX_SIZE - i - 1]);
+            i--;
+        }
     }
     return 0;
 }
 
-template<class T>
-s32 CheckEraseArray(T& a)
+
+template<class Target>
+s32 CheckSortArray(Target& target)
 {
-    a.erase(a.begin(), a.end());
-    if (a.size() != 0)
+    if (true)
     {
-        LogError() << " erase fail";
+        u32 i = 0;
+        for (auto& v : target)
+        {
+            ASSERT_TEST_NOLOG((int)v == sort_array[i]);
+            i++;
+        }
     }
     return 0;
 }
 
-template<class A, class VS>
-s32 ArrayBaseTest(A& a, VS& v)
+template<class Target>
+s32 CheckPopArray(Target& target)
 {
-    a = { 1, 2,3 };
-    if ((int)a[0] != 1  || (int)a[1] != 2 || (int)a[2] != 3  || a.size() != 3)
+    while (target.size() != 0)
+    {
+        target.pop_back();
+    }
+
+    ASSERT_TEST_NOLOG(target.size() == 0);
+
+    return 0;
+}
+
+template<class Target>
+s32 CheckEraseArray(Target& target)
+{
+    target.erase(target.begin(), target.end());
+    ASSERT_TEST_NOLOG(target.size() == 0);
+    return 0;
+}
+
+template<class Target, class DataSets>
+s32 ArrayBaseTest(Target& target, const DataSets& datasets)
+{
+    target = { 1, 2,3 };
+    if ((int)target[0] != 1  || (int)target[1] != 2 || (int)target[2] != 3  || target.size() != 3)
     {
         LogError() << " pop error";
     }
-    CheckPopArray(a);
-    CheckRAIIVal("ArrayBaseTest");
+    ASSERT_TEST(CheckPopArray(target) == 0);
+    ASSERT_RAII_VAL("ArrayBaseTest");
 
-    CheckPushArray(a, v);
-    CheckRandArray(a);
-    CheckPopArray(a);
-    CheckRAIIVal("ArrayBaseTest");
+    ASSERT_TEST(CheckPushArray(target, datasets) == 0);
+    ASSERT_TEST(CheckRandArray(target) == 0);
+    ASSERT_TEST(CheckPopArray(target) == 0);
+    ASSERT_RAII_VAL("ArrayBaseTest");
 
-    CheckEmplacePushArray(a, v);
-    CheckRandArray(a);
-    CheckPopArray(a);
-    CheckRAIIVal("ArrayBaseTest");
+    ASSERT_TEST(CheckEmplacePushArray(target, datasets) == 0);
+    ASSERT_TEST(CheckRandArray(target) == 0);
+    ASSERT_TEST(CheckPopArray(target) == 0);
+    ASSERT_RAII_VAL("ArrayBaseTest");
 
-    CheckInsertEndArray(a, v);
-    CheckRandArrayAt(a);
-    CheckEraseArray(a);
-    CheckRAIIVal("ArrayBaseTest");
+    ASSERT_TEST(CheckInsertEndArray(target, datasets) == 0);
+    ASSERT_TEST(CheckRandArrayAt(target) == 0);
+    ASSERT_TEST(CheckEraseArray(target) == 0);
+    ASSERT_RAII_VAL("ArrayBaseTest");
 
-    CheckInsertBeginArray(a, v);
-    CheckRevertRandArrayAt(a);
-    CheckEraseArray(a);
-    CheckRAIIVal("ArrayBaseTest");
+    ASSERT_TEST(CheckInsertBeginArray(target, datasets) == 0);
+    ASSERT_TEST(CheckRevertRandArrayAt(target) == 0);
+    ASSERT_TEST(CheckEraseArray(target) == 0);
+    ASSERT_RAII_VAL("ArrayBaseTest");
 
-    CheckEmplaceInsertBeginArray(a, v);
-    CheckRevertRandArrayAt(a);
-    CheckEraseArray(a);
-    CheckRAIIVal("ArrayBaseTest");
+    ASSERT_TEST(CheckEmplaceInsertBeginArray(target, datasets) == 0);
+    ASSERT_TEST(CheckRevertRandArrayAt(target) == 0);
+    ASSERT_TEST(CheckEraseArray(target) == 0);
+    ASSERT_RAII_VAL("ArrayBaseTest");
 
-    CheckEmplaceInsertBeginArray(a, v);
-    std::sort(a.begin(), a.end());
-    CheckSortArray(a);
-    auto m1 = a.begin();
+    ASSERT_TEST(CheckEmplaceInsertBeginArray(target, datasets) == 0);
+    std::sort(target.begin(), target.end());
+    ASSERT_TEST(CheckSortArray(target) == 0);
+    auto m1 = target.begin();
     m1++;
-    auto m2 = a.end();
+    auto m2 = target.end();
     m2--;
-    a.erase(m1, m2);
+    target.erase(m1, m2);
     return 0;
 }
 
-template<class A, class VS>
-s32 ListBaseTest(A& a, VS& v)
+template<class Target, class DataSets>
+s32 ListBaseTest(Target& target, const DataSets& datasets)
 {
-    a = { 1, 2,3 };
+    target = { 1, 2,3 };
     if (true)
     {
         u32 i = 0;
         char vvv[] = { 1,2,3 };
-        for (auto& v:a)
+        for (auto& v:target)
         {
-            if ((int)v != vvv[i])
-            {
-                LogError() << " assign error";
-                return 1;
-            }
+            ASSERT_TEST((int)v == vvv[i]);
             i++;
         }
-        if (a.size() != 3)
-        {
-            LogError() << " assign error";
-        }
-        CheckPopArray(a);
+        ASSERT_TEST(target.size() == 3);
+
+        ASSERT_TEST(CheckPopArray(target) == 0);
     }
 
 
-    CheckPushArray(a, v);
-    CheckRandArray(a);
-    CheckPopArray(a);
-    CheckRAIIVal("ListBaseTest");
+    ASSERT_TEST(CheckPushArray(target, datasets) == 0);
+    ASSERT_TEST(CheckRandArray(target) == 0);
+    ASSERT_TEST(CheckRandArrayRevertIter(target) == 0);
+    ASSERT_TEST(CheckPopArray(target) == 0);
+    ASSERT_RAII_VAL("ListBaseTest");
 
-    CheckEmplacePushArray(a, v);
-    CheckRandArray(a);
-    CheckPopArray(a);
-    CheckRAIIVal("ListBaseTest");
+    ASSERT_TEST(CheckEmplacePushArray(target, datasets) == 0);
+    ASSERT_TEST(CheckRandArray(target) == 0);
+    ASSERT_TEST(CheckPopArray(target) == 0);
+    ASSERT_RAII_VAL("ListBaseTest");
 
-    CheckInsertEndArray(a, v);
-    CheckRandArray(a);
-    CheckEraseArray(a);
-    CheckRAIIVal("ListBaseTest");
+    ASSERT_TEST(CheckInsertEndArray(target, datasets) == 0);
+    ASSERT_TEST(CheckRandArray(target) == 0);
+    ASSERT_TEST(CheckEraseArray(target) == 0);
+    ASSERT_RAII_VAL("ListBaseTest");
 
-    CheckInsertBeginArray(a, v);
-    CheckRevertRandArray(a);
-    CheckEraseArray(a);
-    CheckRAIIVal("ListBaseTest");
+    ASSERT_TEST(CheckInsertBeginArray(target, datasets) == 0);
+    ASSERT_TEST(CheckRevertRandArray(target) == 0);
 
-    CheckEmplaceInsertBeginArray(a, v);
-    CheckRevertRandArray(a);
-    CheckEraseArray(a);
-    CheckRAIIVal("ListBaseTest");
+    ASSERT_TEST(CheckEraseArray(target) == 0);
+    ASSERT_RAII_VAL("ListBaseTest");
 
-    CheckEmplaceInsertBeginArray(a, v);
-    auto m1 = a.begin();
+    ASSERT_TEST(CheckEmplaceInsertBeginArray(target, datasets) == 0);
+    ASSERT_TEST(CheckRevertRandArray(target) == 0);
+    ASSERT_TEST(CheckEraseArray(target) == 0);
+    ASSERT_RAII_VAL("ListBaseTest");
+
+    ASSERT_TEST(CheckEmplaceInsertBeginArray(target, datasets) == 0);
+    auto m1 = target.begin();
     m1++;
-    auto m2 = a.end();
+    auto m2 = target.end();
     m2--;
-    a.erase(m1, m2);
+    target.erase(m1, m2);
     return 0;
 }
 
@@ -382,69 +375,101 @@ s32 array_test()
 
     if (true)
     {
-        std::vector<int> a;
-        ArrayBaseTest(a, rand_array);
+        std::vector<int> target;
+        ASSERT_TEST(ArrayBaseTest(target, rand_array) == 0);
     }
 
     if (true)
     {
-        zarray<int, MAX_SIZE> a;
-        ArrayBaseTest(a, rand_array);
+        zarray<int, MAX_SIZE> target;
+        ASSERT_TEST(ArrayBaseTest(target, rand_array) == 0);
+    }
+
+
+
+    if (true)
+    {
+        RAIIVal<>::reset();
+        std::vector<RAIIVal<>> target;
+        ASSERT_TEST(ArrayBaseTest(target, rand_array) == 0);
     }
 
     if (true)
     {
         RAIIVal<>::reset();
-        std::vector<RAIIVal<>> a;
-        ArrayBaseTest(a, rand_array);
+        zarray<RAIIVal<>, MAX_SIZE> target;
+        ASSERT_TEST(ArrayBaseTest(target, rand_array) == 0);
+
+        
+        if (true)
+        {
+            volatile u32 i = MAX_SIZE - 1;
+            const auto& const_target = target;
+            for (auto iter = const_target.rbegin(); iter != const_target.rend(); iter++)
+            {
+                i--;
+            }
+        }
+
     }
+
+
+
 
     if (true)
     {
-        RAIIVal<>::reset();
-        zarray<RAIIVal<>, MAX_SIZE> a;
-        ArrayBaseTest(a, rand_array);
-    }
-
-
-
-
-    if (true)
-    {
-        zlist<int, MAX_SIZE> a;
-        ListBaseTest(a, rand_array);
-    }
-    if (true)
-    {
-        zlist_ext<int, MAX_SIZE, MAX_SIZE> a;
-        ListBaseTest(a, rand_array);
+        zlist<int, MAX_SIZE> target;
+        ASSERT_TEST(ListBaseTest(target, rand_array) == 0);
+        if (true)
+        {
+            volatile u32 i = MAX_SIZE - 1;
+            const auto& const_target = target;
+            for (auto iter = const_target.rbegin(); iter != const_target.rend(); iter++)
+            {
+                i--;
+            }
+        }
     }
     if (true)
     {
-        zlist_ext<int, MAX_SIZE, 1> a;
-        ListBaseTest(a, rand_array);
+        zlist_ext<int, MAX_SIZE, MAX_SIZE> target;
+        ASSERT_TEST(ListBaseTest(target, rand_array) == 0);
+        if (true)
+        {
+            volatile u32 i = MAX_SIZE - 1;
+            const auto& const_target = target;
+            for (auto iter = const_target.rbegin(); iter != const_target.rend(); iter++)
+            {
+                i--;
+            }
+        }
+    }
+    if (true)
+    {
+        zlist_ext<int, MAX_SIZE, 1> target;
+        ASSERT_TEST(ListBaseTest(target, rand_array) == 0);
     }
 
 
     zarray<std::string, 100> strings = { "123", "2" };
     zarray<std::string, 50> strings2;
     strings2.assign(strings.begin(), strings.end());
-    AssertTest(strings2.size(), 2ULL, "");
+    ASSERT_TEST_EQ(strings2.size(), 2ULL, "");
     strings2.emplace_back("888");
 
     if (true)
     {
         RAIIVal<>& rv = sort_obj_array[0];
         zarray<RAIIVal<>, 100> raii_array;
-        AssertTest(RAIIVal<>::now_live_count_, 0U, "");
+        ASSERT_TEST_EQ(RAIIVal<>::now_live_count_, 0U, "");
         raii_array.push_back(rv);
-        AssertTest(RAIIVal<>::now_live_count_, 1U, "");
+        ASSERT_TEST_EQ(RAIIVal<>::now_live_count_, 1U, "");
         raii_array.insert(raii_array.begin(), rv);
-        AssertTest(RAIIVal<>::now_live_count_, 2U, "");
-        AssertTest(RAIIVal<>::construct_count_, RAIIVal<>::destroy_count_ + 2, "");
+        ASSERT_TEST_EQ(RAIIVal<>::now_live_count_, 2U, "");
+        ASSERT_TEST_EQ(RAIIVal<>::construct_count_, RAIIVal<>::destroy_count_ + 2, "");
         raii_array.clear();
-        AssertTest(RAIIVal<>::now_live_count_, 0U, "");
-        AssertTest(RAIIVal<>::construct_count_, RAIIVal<>::destroy_count_, "");
+        ASSERT_TEST_EQ(RAIIVal<>::now_live_count_, 0U, "");
+        ASSERT_TEST_EQ(RAIIVal<>::construct_count_, RAIIVal<>::destroy_count_, "");
 
 
     }
@@ -454,40 +479,43 @@ s32 array_test()
 
 
 
-
-
+class TestObj
+{
+public:
+    zarray<int, MAX_SIZE> target;
+} obj;
 
 #define Now() std::chrono::duration<double>(std::chrono::system_clock().now().time_since_epoch()).count()                                
 
 s32 list_test()
 {
     zlist<int, 20> numbers = { 1,9,8,7 };
-    AssertTest(numbers.size(), 4ULL, "");
-    zarray<int, 100> a = { 1,9,8,7 };
+    ASSERT_TEST_EQ(numbers.size(), 4ULL, "");
+    zarray<int, 100> target = { 1,9,8,7 };
     u32 i = 0;
     for (auto& n : numbers)
     {
-        AssertTest(a[i++], n, "");
+        ASSERT_TEST_EQ(target[i++], n, "");
     }
     numbers.push_back(9);
     numbers.push_front(9);
-    AssertTest(numbers.size(), 6ULL, "");
-    AssertTest(numbers.front(), 9, "");
-    AssertTest(numbers.back(), 9, "");
+    ASSERT_TEST_EQ(numbers.size(), 6ULL, "");
+    ASSERT_TEST_EQ(numbers.front(), 9, "");
+    ASSERT_TEST_EQ(numbers.back(), 9, "");
     numbers.pop_back();
     numbers.pop_front();
-    AssertTest(numbers.size(), 4ULL, "");
-    AssertTest(numbers.front(), 1, "");
-    AssertTest(numbers.back(), 7, "");
+    ASSERT_TEST_EQ(numbers.size(), 4ULL, "");
+    ASSERT_TEST_EQ(numbers.front(), 1, "");
+    ASSERT_TEST_EQ(numbers.back(), 7, "");
     numbers.erase(++numbers.begin(), --numbers.end());
-    AssertTest(numbers.size(), 2ULL, "");
-    AssertTest(numbers.front(), 1, "");
-    AssertTest(numbers.back(), 7, "");
+    ASSERT_TEST_EQ(numbers.size(), 2ULL, "");
+    ASSERT_TEST_EQ(numbers.front(), 1, "");
+    ASSERT_TEST_EQ(numbers.back(), 7, "");
     numbers.insert(++numbers.begin(), 9);
     numbers.insert(--numbers.end(), 8);
-    AssertTest(numbers.size(), 4ULL, "");
-    AssertTest(numbers.front(), 1, "");
-    AssertTest(numbers.back(), 7, "");
+    ASSERT_TEST_EQ(numbers.size(), 4ULL, "");
+    ASSERT_TEST_EQ(numbers.front(), 1, "");
+    ASSERT_TEST_EQ(numbers.back(), 7, "");
 
     zlist<std::string, 20> strlist;
     strlist.push_back("sss");
@@ -499,16 +527,16 @@ s32 list_test()
     clear_test.push_back(3);
     clear_test.push_back(1);
     clear_test.clear();
-    AssertTest(clear_test.size(), 0ULL, "");
+    ASSERT_TEST_EQ(clear_test.size(), 0ULL, "");
 
 
 
     
     zlist<int, 100> bound_test;
-    AssertTest(bound_test.is_valid_node((void*)((u64)&bound_test - 1 )), false, "");
+    ASSERT_TEST_EQ(bound_test.is_valid_node((void*)((u64)&bound_test - 1 )), false, "");
 
-    AssertTest(bound_test.is_valid_node((void*)((u64)&bound_test + sizeof(bound_test))), false, "");
-    AssertTest(!bound_test.is_valid_node((void*)((u64)&bound_test + sizeof(zlist<int, 100>::node_type) * 99 )), false, "");
+    ASSERT_TEST_EQ(bound_test.is_valid_node((void*)((u64)&bound_test + sizeof(bound_test))), false, "");
+    ASSERT_TEST_EQ(!bound_test.is_valid_node((void*)((u64)&bound_test + sizeof(zlist<int, 100>::node_type) * 99 )), false, "");
 
 
     for (size_t i = 0; i < 100; i++)
@@ -535,9 +563,9 @@ s32 list_test()
 s32 hash_map_test()
 {
     zhash_map<int, int, 2> hash = { {1,1}, {2,2}, {3,3}, {4,4} };
-    AssertTest(hash.size(), 2U, "");
-    AssertTest(hash.insert({ 8,8 }).second, false, "");
-    AssertTest(hash.insert({ 8,8 }).first == hash.end(), true, "");
+    ASSERT_TEST_EQ(hash.size(), 2U, "");
+    ASSERT_TEST_EQ(hash.insert({ 8,8 }).second, false, "");
+    ASSERT_TEST_EQ(hash.insert({ 8,8 }).first == hash.end(), true, "");
     hash[1] = 111;
     return 0;
 }
@@ -582,15 +610,15 @@ s32 ZListValidTest(C& c, size_t s)
         size_t r = rand() % 100;
         c.insert(c.begin(), r);
     }
-    AssertTest(c.size(), s, "");
+    ASSERT_TEST_EQ(c.size(), s, "");
     for (auto& e : c)
     {
         if (!c.is_valid_node(&e))
         {
-            volatile int a = 0;
-            (void)a;
+            volatile int target = 0;
+            (void)target;
         }
-        AssertTest(!c.is_valid_node(&e), false, "");
+        ASSERT_TEST_EQ(!c.is_valid_node(&e), false, "");
     }
     return 0;
 }
@@ -624,7 +652,7 @@ s32 copy_test(C* ptr)
     }
     memcpy((char*)test_addr + sizeof(C), test_addr, sizeof(C));
     memset(test_addr, 0xdeadbeaf, sizeof(C));
-    AssertTest((src + 1)->size(), 10ULL, "");
+    ASSERT_TEST_EQ((src + 1)->size(), 10ULL, "");
 
     size_t i = 0;
     for (auto & n: *(src+1))
@@ -644,12 +672,12 @@ s32 by_order_test()
     if (true)
     {
         zarray<size_t, 200> za;
-        AssertTest(ZSortInsertLogN(za, 200), 0, "");
+        ASSERT_TEST_EQ(ZSortInsertLogN(za, 200), 0, "");
     }
     if (true)
     {
         zlist<size_t, 200> zl;
-        AssertTest(ZSortInsertLine(zl, 200), 0, "");
+        ASSERT_TEST_EQ(ZSortInsertLine(zl, 200), 0, "");
     }
     if (true)
     {
@@ -667,12 +695,12 @@ s32 by_order_test()
 
 s32 contiainer_base_test()
 {
-    AssertTest(array_test(), 0, " array_test()");
-    AssertTest(list_test(), 0, " list_test()");
-    AssertTest(by_order_test(), 0, " by_order_test()");
-    AssertTest(copy_test((zlist<size_t, 100>*)NULL), 0, "copy_test((zlist<size_t, 100>*)NULL)");
-    AssertTest(copy_test((zarray<size_t, 100>*)NULL), 0, "copy_test((zarray<size_t, 100>*)NULL)");
-    AssertTest(hash_map_test(), 0, " hash_map_test()");
+    ASSERT_TEST_EQ(array_test(), 0, " array_test()");
+    ASSERT_TEST_EQ(list_test(), 0, " list_test()");
+    ASSERT_TEST_EQ(by_order_test(), 0, " by_order_test()");
+    ASSERT_TEST_EQ(copy_test((zlist<size_t, 100>*)NULL), 0, "copy_test((zlist<size_t, 100>*)NULL)");
+    ASSERT_TEST_EQ(copy_test((zarray<size_t, 100>*)NULL), 0, "copy_test((zarray<size_t, 100>*)NULL)");
+    ASSERT_TEST_EQ(hash_map_test(), 0, " hash_map_test()");
     return 0;
 }
 

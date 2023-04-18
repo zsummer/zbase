@@ -39,7 +39,7 @@ typedef float f32;
 //#define DEBUG_AT 
 #ifndef DEBUG_AT
 
-#define AssertTest(var, desc)   \
+#define ASSERT_TEST_EQ(var, desc)   \
 {\
     if (!(var)) \
     { \
@@ -49,7 +49,7 @@ typedef float f32;
 }
 
 #else
-void AssertTest(bool var, const char* desc)
+void ASSERT_TEST_EQ(bool var, const char* desc)
 {
     if (!(var)) 
     { 
@@ -99,31 +99,31 @@ int main(int argc, char *argv[])
         {
             for (int i = 0; i < 100; i++)
             {
-                AssertTest(Node::node_seq_id == (u64)loop*100 + i, "");
+                ASSERT_TEST_EQ(Node::node_seq_id == (u64)loop*100 + i, "");
                 Node* p = ds.create();
-                AssertTest(p != NULL, "");
+                ASSERT_TEST_EQ(p != NULL, "");
                 for (u32 j = 0; j < 5; j++)
                 {
                     p->seq[j] = (u64)loop * 100 + i;
                 }
-                AssertTest(Node::node_seq_id == (u64)loop * 100 + i + 1, "");
+                ASSERT_TEST_EQ(Node::node_seq_id == (u64)loop * 100 + i + 1, "");
                 store.push_back(p);
             }
             for (int i = 0; i < 100; i++)
             {
                 for (u32 j = 0; j < 5; j++)
                 {
-                    AssertTest(store[i]->seq[j] == (u64)loop * 100 + i, "");
+                    ASSERT_TEST_EQ(store[i]->seq[j] == (u64)loop * 100 + i, "");
                 }
             }
-            AssertTest(ds.full(), "");
-            AssertTest(ds.exploit() == NULL, "");
+            ASSERT_TEST_EQ(ds.full(), "");
+            ASSERT_TEST_EQ(ds.exploit() == NULL, "");
             for (auto p : store)
             {
                 ds.back(p);
             }
             store.clear();
-            AssertTest(ds.empty(), "");
+            ASSERT_TEST_EQ(ds.empty(), "");
         }
     }
 
@@ -137,31 +137,31 @@ int main(int argc, char *argv[])
         {
             for (int i = 0; i < 100; i++)
             {
-                AssertTest(Node::node_seq_id == (u64)loop * 100 * 5 + i * 5, "");
+                ASSERT_TEST_EQ(Node::node_seq_id == (u64)loop * 100 * 5 + i * 5, "");
                 Node* p = ds.create(5);
-                AssertTest(p != NULL, "");
+                ASSERT_TEST_EQ(p != NULL, "");
                 for (u32 j = 0; j < 5; j++)
                 {
                     p->seq[j] = (u64)loop * 100 * 5 + i * 5;
                 }
-                AssertTest(Node::node_seq_id == (u64)loop * 100*5 + i*5 + 5, "");
+                ASSERT_TEST_EQ(Node::node_seq_id == (u64)loop * 100*5 + i*5 + 5, "");
                 store.push_back(p);
             }
             for (int i = 0; i < 100; i++)
             {
                 for (u32 j = 0; j < 5; j++)
                 {
-                    AssertTest(store[i]->seq[j] == (u64)loop * 100 * 5 + i * 5, "");
+                    ASSERT_TEST_EQ(store[i]->seq[j] == (u64)loop * 100 * 5 + i * 5, "");
                 }
             }
-            AssertTest(ds.full(), "");
-            AssertTest(ds.exploit() == NULL, "");
+            ASSERT_TEST_EQ(ds.full(), "");
+            ASSERT_TEST_EQ(ds.exploit() == NULL, "");
             for (auto p : store)
             {
                 ds.back(p);
             }
             store.clear();
-            AssertTest(ds.empty(), "");
+            ASSERT_TEST_EQ(ds.empty(), "");
         }
     }
 
@@ -174,22 +174,22 @@ int main(int argc, char *argv[])
             for (int i = 0; i < 100; i++)
             {
                 int* p = ds.create();
-                AssertTest(p != NULL, "");
+                ASSERT_TEST_EQ(p != NULL, "");
                 *p = i;
                 store.push_back(p);
             }
             for (int i = 0; i < 100; i++)
             {
-                AssertTest(*store[i] == i, "");
+                ASSERT_TEST_EQ(*store[i] == i, "");
             }
-            AssertTest(ds.full(), "");
-            AssertTest(ds.exploit() == NULL, "");
+            ASSERT_TEST_EQ(ds.full(), "");
+            ASSERT_TEST_EQ(ds.exploit() == NULL, "");
             for (auto p : store)
             {
                 ds.back(p);
             }
             store.clear();
-            AssertTest(ds.empty(), "");
+            ASSERT_TEST_EQ(ds.empty(), "");
         }
     }
 
@@ -204,23 +204,23 @@ int main(int argc, char *argv[])
             for (int i = 0; i < 100; i++)
             {
                 int* p = ds.create(0);
-                AssertTest(p != NULL, "");
-                AssertTest(*p == 0, "");
+                ASSERT_TEST_EQ(p != NULL, "");
+                ASSERT_TEST_EQ(*p == 0, "");
                 *p = i;
                 store.push_back(p);
             }
             for (int i = 0; i < 100; i++)
             {
-                AssertTest(*store[i] == i, "");
+                ASSERT_TEST_EQ(*store[i] == i, "");
             }
-            AssertTest(ds.full(), "");
-            AssertTest(ds.exploit() == NULL, "");
+            ASSERT_TEST_EQ(ds.full(), "");
+            ASSERT_TEST_EQ(ds.exploit() == NULL, "");
             for (auto p : store)
             {
                 ds.back(p);
             }
             store.clear();
-            AssertTest(ds.empty(), "");
+            ASSERT_TEST_EQ(ds.empty(), "");
         }
     }
 

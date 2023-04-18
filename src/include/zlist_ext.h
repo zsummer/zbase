@@ -48,7 +48,7 @@ template<class list_type>
 struct const_zlist_ext_iterator;
 
 template<class list_type>
-struct zlist_ext_iterator
+struct zlist_ext_iterator : public std::iterator<std::bidirectional_iterator_tag, typename list_type::value_type>
 {
     using node_type = typename list_type::node_type;
     using difference_type = typename list_type::difference_type;
@@ -108,65 +108,6 @@ bool operator != (const zlist_ext_iterator<list_type>& n1, const zlist_ext_itera
     return !(n1 == n2);
 }
 
-template<class list_type>
-struct const_zlist_ext_iterator
-{
-    using node_type = typename list_type::node_type;
-    using difference_type = typename list_type::difference_type;
-    using iterator_category = std::bidirectional_iterator_tag;
-    using value_type = typename list_type::value_type;
-    using const_pointer = typename list_type::const_pointer;
-    using const_reference = typename list_type::const_reference;
-
-    const_zlist_ext_iterator(const node_type* const head, u32 id) { head_ = const_cast<node_type*>(head); id_ = id; }
-    const_zlist_ext_iterator(const const_zlist_ext_iterator<list_type>& other) { head_ = const_cast<node_type*>(other.head_); id_ = other.id_; }
-    const_zlist_ext_iterator(const zlist_ext_iterator<list_type>& other) { head_ = const_cast<node_type*>(other.head_); id_ = other.id_; }
-    const_zlist_ext_iterator() :const_zlist_ext_iterator(NULL, 0) {}
-    const_zlist_ext_iterator& operator ++()
-    {
-        id_ = (head_ + id_)->next;
-        return *this;
-    }
-    const_zlist_ext_iterator& operator --()
-    {
-        id_ = (head_ + id_)->front;
-        return *this;
-    }
-    const_zlist_ext_iterator operator ++(int)
-    {
-        const_zlist_ext_iterator old = *this;
-        id_ = (head_ + id_)->next;
-        return old;
-    }
-    const_zlist_ext_iterator operator --(int)
-    {
-        const_zlist_ext_iterator old = *this;
-        id_ = (head_ + id_)->front;
-        return old;
-    }
-
-    const_pointer operator ->() const
-    {
-        return list_type::node_cast(*(head_ + id_));
-    }
-    const_reference operator *() const
-    {
-        return *list_type::node_cast(*(head_ + id_));
-    }
-public:
-    node_type* head_;
-    u32 id_;
-};
-template<class list_type>
-bool operator == (const const_zlist_ext_iterator<list_type>& n1, const const_zlist_ext_iterator<list_type>& n2)
-{
-    return n1.head_ == n2.head_ && n1.id_ == n2.id_;
-}
-template<class list_type>
-bool operator != (const const_zlist_ext_iterator<list_type>& n1, const const_zlist_ext_iterator<list_type>& n2)
-{
-    return !(n1 == n2);
-}
 
 //分段双向链表; 第一段为固定内存, 第二段为动态内存, 均为定长.  
 //_Size == _FixedSize 大小相等时为全静态, 此时与zlist的区别在于, zlist的node和value绑在一起, value小时 zlist因不需要取指针性能更好,  value大时 zlist_ext因分离数据性能会更好一些.  
@@ -195,7 +136,7 @@ public:
     static_assert(_FixedSize <= _Size, "");
 
     using iterator = zlist_ext_iterator<zlist_ext<_Ty, _Size, _FixedSize, _Alloc>>;
-    using const_iterator = const_zlist_ext_iterator<zlist_ext<_Ty, _Size, _FixedSize, _Alloc>>;
+    using const_iterator = iterator;
 
     using reverse_iterator = std::reverse_iterator<iterator>;
     using const_reverse_iterator = std::reverse_iterator<const_iterator>;

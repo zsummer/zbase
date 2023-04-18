@@ -499,7 +499,7 @@ s32 zmalloc_stress()
 
     zstate->clear_cache();
     LogDebug() << "check health finish";
-    AssertTest(zstate->used_block_count_ + zstate->reserve_block_count_, 0U, "");
+    ASSERT_TEST_EQ(zstate->used_block_count_ + zstate->reserve_block_count_, 0U, "");
     delete[]rand_array;
     return 0;
 }
@@ -517,7 +517,7 @@ s32 zmalloc_base_test()
         u32 align_id = zmalloc_third_sequence(bit_order, align_value);
         u32 compress_id = zmalloc_third_sequence_compress(align_id);
         u32 resolve = zmalloc_resolve_order_size(compress_id);
-        AssertBoolTest(i <= resolve, "");
+        ASSERT_TEST_NOLOG(i <= resolve, "");
     }
     PROF_OUTPUT_MULTI_COUNT_CPU("zmalloc third used", 1000 * 10000 - 1024, cost.stop_and_save().cycles());
 
@@ -528,33 +528,33 @@ s32 zmalloc_base_test()
         memset(zstate.get(), 0, sizeof(zmalloc));
         zstate->set_global(zstate.get());
         void* p = global_zmalloc(0);
-        AssertBoolTest(p != NULL, "");
-        AssertBoolTest(zstate->alloc_counter_[0][1] == 1, "");
-        AssertBoolTest(zstate->req_total_count_ == 1, "");
-        AssertBoolTest(zstate->req_total_bytes_ == 0, "");
-        AssertBoolTest(zstate->alloc_total_bytes_ >= zstate->req_total_bytes_, "");
-        AssertBoolTest(zstate->alloc_block_count_ == 1, "");
-        AssertBoolTest(zstate->used_block_count_ == 1, "");
+        ASSERT_TEST_NOLOG(p != NULL, "");
+        ASSERT_TEST_NOLOG(zstate->alloc_counter_[0][1] == 1, "");
+        ASSERT_TEST_NOLOG(zstate->req_total_count_ == 1, "");
+        ASSERT_TEST_NOLOG(zstate->req_total_bytes_ == 0, "");
+        ASSERT_TEST_NOLOG(zstate->alloc_total_bytes_ >= zstate->req_total_bytes_, "");
+        ASSERT_TEST_NOLOG(zstate->alloc_block_count_ == 1, "");
+        ASSERT_TEST_NOLOG(zstate->used_block_count_ == 1, "");
         global_zfree(p);
-        AssertBoolTest(zstate->free_counter_[0][1] == 1, "");
-        AssertBoolTest(zstate->free_total_count_ == 1, "");
-        AssertBoolTest(zstate->free_total_bytes_ >= zstate->req_total_bytes_, "");
+        ASSERT_TEST_NOLOG(zstate->free_counter_[0][1] == 1, "");
+        ASSERT_TEST_NOLOG(zstate->free_total_count_ == 1, "");
+        ASSERT_TEST_NOLOG(zstate->free_total_bytes_ >= zstate->req_total_bytes_, "");
         zstate->clear_cache();
-        AssertBoolTest(zstate->alloc_counter_[0][1] == 1, "");
-        AssertBoolTest(zstate->req_total_count_ == 1, "");
-        AssertBoolTest(zstate->req_total_bytes_ == 0, "");
-        AssertBoolTest(zstate->alloc_total_bytes_ >= zstate->req_total_bytes_, "");
-        AssertBoolTest(zstate->free_counter_[0][1] == 1, "");
-        AssertBoolTest(zstate->free_total_count_ == 1, "");
-        AssertBoolTest(zstate->free_total_bytes_ >= zstate->req_total_bytes_, "");
-        AssertBoolTest(zstate->free_block_count_ == 1, "");
-        AssertBoolTest(zstate->used_block_count_ == 0, "");
+        ASSERT_TEST_NOLOG(zstate->alloc_counter_[0][1] == 1, "");
+        ASSERT_TEST_NOLOG(zstate->req_total_count_ == 1, "");
+        ASSERT_TEST_NOLOG(zstate->req_total_bytes_ == 0, "");
+        ASSERT_TEST_NOLOG(zstate->alloc_total_bytes_ >= zstate->req_total_bytes_, "");
+        ASSERT_TEST_NOLOG(zstate->free_counter_[0][1] == 1, "");
+        ASSERT_TEST_NOLOG(zstate->free_total_count_ == 1, "");
+        ASSERT_TEST_NOLOG(zstate->free_total_bytes_ >= zstate->req_total_bytes_, "");
+        ASSERT_TEST_NOLOG(zstate->free_block_count_ == 1, "");
+        ASSERT_TEST_NOLOG(zstate->used_block_count_ == 0, "");
 
         shm_string sss;
         sss.append("123");
-        AssertBoolTest(sss.size() == 3, "");
-        AssertBoolTest(sss.length() == 3, "");
-        AssertBoolTest(sss == "123", "");
+        ASSERT_TEST_NOLOG(sss.size() == 3, "");
+        ASSERT_TEST_NOLOG(sss.length() == 3, "");
+        ASSERT_TEST_NOLOG(sss == "123", "");
 
     }
     if (true)
@@ -563,27 +563,27 @@ s32 zmalloc_base_test()
         memset(zstate.get(), 0, sizeof(zmalloc));
         zstate->set_global(zstate.get());
         void* p = global_zmalloc(1020);
-        AssertBoolTest(p != NULL, "");
-        AssertBoolTest(zstate->alloc_counter_[1][0] == 1, "");
-        AssertBoolTest(zstate->req_total_count_ == 1, "");
-        AssertBoolTest(zstate->req_total_bytes_ > 0, "");
-        AssertBoolTest(zstate->alloc_total_bytes_ >= zstate->req_total_bytes_, "");
-        AssertBoolTest(zstate->alloc_block_count_ == 1, "");
-        AssertBoolTest(zstate->used_block_count_ == 1, "");
+        ASSERT_TEST_NOLOG(p != NULL, "");
+        ASSERT_TEST_NOLOG(zstate->alloc_counter_[1][0] == 1, "");
+        ASSERT_TEST_NOLOG(zstate->req_total_count_ == 1, "");
+        ASSERT_TEST_NOLOG(zstate->req_total_bytes_ > 0, "");
+        ASSERT_TEST_NOLOG(zstate->alloc_total_bytes_ >= zstate->req_total_bytes_, "");
+        ASSERT_TEST_NOLOG(zstate->alloc_block_count_ == 1, "");
+        ASSERT_TEST_NOLOG(zstate->used_block_count_ == 1, "");
         global_zfree(p);
-        AssertBoolTest(zstate->free_counter_[1][0] == 1, "");
-        AssertBoolTest(zstate->free_total_count_ == 1, "");
-        AssertBoolTest(zstate->free_total_bytes_ >= zstate->req_total_bytes_, "");
+        ASSERT_TEST_NOLOG(zstate->free_counter_[1][0] == 1, "");
+        ASSERT_TEST_NOLOG(zstate->free_total_count_ == 1, "");
+        ASSERT_TEST_NOLOG(zstate->free_total_bytes_ >= zstate->req_total_bytes_, "");
         zstate->clear_cache();
-        AssertBoolTest(zstate->alloc_counter_[1][0] == 1, "");
-        AssertBoolTest(zstate->req_total_count_ == 1, "");
-        AssertBoolTest(zstate->req_total_bytes_ > 0, "");
-        AssertBoolTest(zstate->alloc_total_bytes_ >= zstate->req_total_bytes_, "");
-        AssertBoolTest(zstate->free_counter_[1][0] == 1, "");
-        AssertBoolTest(zstate->free_total_count_ == 1, "");
-        AssertBoolTest(zstate->free_total_bytes_ >= zstate->req_total_bytes_, "");
-        AssertBoolTest(zstate->free_block_count_ == 1, "");
-        AssertBoolTest(zstate->used_block_count_ == 0, "");
+        ASSERT_TEST_NOLOG(zstate->alloc_counter_[1][0] == 1, "");
+        ASSERT_TEST_NOLOG(zstate->req_total_count_ == 1, "");
+        ASSERT_TEST_NOLOG(zstate->req_total_bytes_ > 0, "");
+        ASSERT_TEST_NOLOG(zstate->alloc_total_bytes_ >= zstate->req_total_bytes_, "");
+        ASSERT_TEST_NOLOG(zstate->free_counter_[1][0] == 1, "");
+        ASSERT_TEST_NOLOG(zstate->free_total_count_ == 1, "");
+        ASSERT_TEST_NOLOG(zstate->free_total_bytes_ >= zstate->req_total_bytes_, "");
+        ASSERT_TEST_NOLOG(zstate->free_block_count_ == 1, "");
+        ASSERT_TEST_NOLOG(zstate->used_block_count_ == 0, "");
     }
 
     if (true)
@@ -592,27 +592,27 @@ s32 zmalloc_base_test()
         memset(zstate.get(), 0, sizeof(zmalloc));
         zstate->set_global(zstate.get());
         void* p = global_zmalloc(1024);
-        AssertBoolTest(p != NULL, "");
-        AssertBoolTest(zstate->alloc_counter_[1][0] == 1, "");
-        AssertBoolTest(zstate->req_total_count_ == 1, "");
-        AssertBoolTest(zstate->req_total_bytes_ > 0, "");
-        AssertBoolTest(zstate->alloc_total_bytes_ >= zstate->req_total_bytes_, "");
-        AssertBoolTest(zstate->alloc_block_count_ == 1, "");
-        AssertBoolTest(zstate->used_block_count_ == 1, "");
+        ASSERT_TEST_NOLOG(p != NULL, "");
+        ASSERT_TEST_NOLOG(zstate->alloc_counter_[1][0] == 1, "");
+        ASSERT_TEST_NOLOG(zstate->req_total_count_ == 1, "");
+        ASSERT_TEST_NOLOG(zstate->req_total_bytes_ > 0, "");
+        ASSERT_TEST_NOLOG(zstate->alloc_total_bytes_ >= zstate->req_total_bytes_, "");
+        ASSERT_TEST_NOLOG(zstate->alloc_block_count_ == 1, "");
+        ASSERT_TEST_NOLOG(zstate->used_block_count_ == 1, "");
         global_zfree(p);
-        AssertBoolTest(zstate->free_counter_[1][0] == 1, "");
-        AssertBoolTest(zstate->free_total_count_ == 1, "");
-        AssertBoolTest(zstate->free_total_bytes_ >= zstate->req_total_bytes_, "");
+        ASSERT_TEST_NOLOG(zstate->free_counter_[1][0] == 1, "");
+        ASSERT_TEST_NOLOG(zstate->free_total_count_ == 1, "");
+        ASSERT_TEST_NOLOG(zstate->free_total_bytes_ >= zstate->req_total_bytes_, "");
         zstate->clear_cache();
-        AssertBoolTest(zstate->alloc_counter_[1][0] == 1, "");
-        AssertBoolTest(zstate->req_total_count_ == 1, "");
-        AssertBoolTest(zstate->req_total_bytes_ > 0, "");
-        AssertBoolTest(zstate->alloc_total_bytes_ >= zstate->req_total_bytes_, "");
-        AssertBoolTest(zstate->free_counter_[1][0] == 1, "");
-        AssertBoolTest(zstate->free_total_count_ == 1, "");
-        AssertBoolTest(zstate->free_total_bytes_ >= zstate->req_total_bytes_, "");
-        AssertBoolTest(zstate->free_block_count_ == 1, "");
-        AssertBoolTest(zstate->used_block_count_ == 0, "");
+        ASSERT_TEST_NOLOG(zstate->alloc_counter_[1][0] == 1, "");
+        ASSERT_TEST_NOLOG(zstate->req_total_count_ == 1, "");
+        ASSERT_TEST_NOLOG(zstate->req_total_bytes_ > 0, "");
+        ASSERT_TEST_NOLOG(zstate->alloc_total_bytes_ >= zstate->req_total_bytes_, "");
+        ASSERT_TEST_NOLOG(zstate->free_counter_[1][0] == 1, "");
+        ASSERT_TEST_NOLOG(zstate->free_total_count_ == 1, "");
+        ASSERT_TEST_NOLOG(zstate->free_total_bytes_ >= zstate->req_total_bytes_, "");
+        ASSERT_TEST_NOLOG(zstate->free_block_count_ == 1, "");
+        ASSERT_TEST_NOLOG(zstate->used_block_count_ == 0, "");
     }
 
     if (true)
@@ -639,7 +639,7 @@ s32 zmalloc_base_test()
         zmalloc::instance().debug_color_log(new_log, 0, (zmalloc::CHUNK_COLOR_MASK_WITH_LEVEL + 1) / 2);
         zstate->clear_cache();
         zstate->check_health();
-        AssertBoolTest(zstate->used_block_count_ == 0, "");
+        ASSERT_TEST_NOLOG(zstate->used_block_count_ == 0, "");
     }
 
     if (true)
@@ -658,7 +658,7 @@ s32 zmalloc_base_test()
         zmalloc::instance().debug_color_log(new_log, 0, (zmalloc::CHUNK_COLOR_MASK_WITH_LEVEL + 1) / 2);
         zstate->clear_cache();
         zstate->check_health();
-        AssertBoolTest(zstate->used_block_count_ == 0, "");
+        ASSERT_TEST_NOLOG(zstate->used_block_count_ == 0, "");
     }
 
     if (true)
@@ -682,7 +682,7 @@ s32 zmalloc_base_test()
         zmalloc::instance().debug_color_log(new_log, 0, (zmalloc::CHUNK_COLOR_MASK_WITH_LEVEL + 1) / 2);
         zstate->clear_cache();
         zstate->check_health();
-        AssertBoolTest(zstate->used_block_count_ == 0, "");
+        ASSERT_TEST_NOLOG(zstate->used_block_count_ == 0, "");
     }
     if (true)
     {
@@ -717,7 +717,7 @@ s32 zmalloc_base_test()
         zmalloc::instance().debug_color_log(new_log, 0, (zmalloc::CHUNK_COLOR_MASK_WITH_LEVEL + 1) / 2);
         zstate->clear_cache();
         zstate->check_health();
-        AssertBoolTest(zstate->used_block_count_ == 0, "");
+        ASSERT_TEST_NOLOG(zstate->used_block_count_ == 0, "");
     }
     return 0;
 }
@@ -727,8 +727,8 @@ s32 zmalloc_base_test()
 
 s32 zmalloc_test()
 {
-    AssertTest(zmalloc_base_test(), 0, " zmalloc_base_test()");
-    AssertTest(zmalloc_stress(), 0, " zmalloc_stress()");
+    ASSERT_TEST_EQ(zmalloc_base_test(), 0, " zmalloc_base_test()");
+    ASSERT_TEST_EQ(zmalloc_stress(), 0, " zmalloc_stress()");
     return 0;
 }
 
