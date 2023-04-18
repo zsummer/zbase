@@ -50,7 +50,7 @@ s32 LinerStress(List& l, const std::string& desc,  bool is_static, bool out_prof
             l.push_back(V(LOAD_CAPACITY));
             l.push_back(V(LOAD_CAPACITY));
         }
-        AssertCheck((int)l.size(), LOAD_CAPACITY, desc + ": error");
+        ASSERT_TEST_EQ((int)l.size(), LOAD_CAPACITY, desc + ": error");
 
         int i = 0;
         for (auto &v : l)
@@ -60,7 +60,7 @@ s32 LinerStress(List& l, const std::string& desc,  bool is_static, bool out_prof
                 volatile int a = i;
                 (void)a;
             }
-            AssertCheck((int)v, i, desc + ": error");
+            ASSERT_TEST_EQ((int)v, i, desc + ": error");
             i++;
         }
         
@@ -74,7 +74,7 @@ s32 LinerStress(List& l, const std::string& desc,  bool is_static, bool out_prof
         {
             PROF_OUTPUT_MULTI_COUNT_CPU((ss.str() + "clear").c_str(), 1, cost.stop_and_save().cycles());
         }
-        AssertCheck((int)l.size(), 0, desc + ": error");
+        ASSERT_TEST_EQ((int)l.size(), 0, desc + ": error");
         if (is_static)
         {
             l.erase(l.end());
@@ -101,7 +101,7 @@ s32 LinerStress(List& l, const std::string& desc,  bool is_static, bool out_prof
                 l.erase(l.begin());
             }
         }
-        AssertCheck((int)l.size(), 0, desc + ": error");
+        ASSERT_TEST_EQ((int)l.size(), 0, desc + ": error");
         if (out_prof)
         {
             PROF_OUTPUT_MULTI_COUNT_CPU((ss.str() + "insert begin &erase begin").c_str(), LOAD_CAPACITY * 2, cost.stop_and_save().cycles());
@@ -132,7 +132,7 @@ s32 LinerStress(List& l, const std::string& desc,  bool is_static, bool out_prof
         {
             PROF_OUTPUT_MULTI_COUNT_CPU((ss.str() + "pop begin").c_str(), LOAD_CAPACITY, cost.stop_and_save().cycles());
         }
-        AssertCheck((int)l.size(), 0, desc + ": error");
+        ASSERT_TEST_EQ((int)l.size(), 0, desc + ": error");
 
     }
 
@@ -165,7 +165,7 @@ s32 LinerStress(List& l, const std::string& desc,  bool is_static, bool out_prof
         {
             l.erase(l.end());
         }
-        AssertCheck((int)l.size(), 0, desc + ": error");
+        ASSERT_TEST_EQ((int)l.size(), 0, desc + ": error");
 
     }
 
@@ -193,7 +193,7 @@ s32 LinerStress(List& l, const std::string& desc,  bool is_static, bool out_prof
         {
             PROF_OUTPUT_MULTI_COUNT_CPU((ss.str() + "push back & pop back(capacity)").c_str(), LOAD_CAPACITY * 2, cost.stop_and_save().cycles());
         }
-        AssertCheck((int)l.size(), 0, desc + ": error");
+        ASSERT_TEST_EQ((int)l.size(), 0, desc + ": error");
 
     }
 
@@ -211,7 +211,7 @@ s32 LinerStress(List& l, const std::string& desc,  bool is_static, bool out_prof
         {
             PROF_OUTPUT_MULTI_COUNT_CPU((ss.str() + "push back & pop back (one item)").c_str(), LOAD_CAPACITY * LOOP_CAPACITY * 2, cost.stop_and_save().cycles());
         }
-        AssertCheck((int)l.size(), 0, desc + ": error");
+        ASSERT_TEST_EQ((int)l.size(), 0, desc + ": error");
 
     }
 
@@ -234,7 +234,7 @@ s32 LinerStress(List& l, const std::string& desc,  bool is_static, bool out_prof
         {
             PROF_OUTPUT_MULTI_COUNT_CPU((ss.str() + "push back & pop back(capacity loop 1000)").c_str(), LOAD_CAPACITY * 2 * 1000, cost.stop_and_save().cycles());
         }
-        AssertCheck((int)l.size(), 0, desc + ": error");
+        ASSERT_TEST_EQ((int)l.size(), 0, desc + ": error");
 
     }
 
@@ -260,7 +260,7 @@ s32 MapStress(Map& m, const std::string& desc, bool is_static = false)
             m.insert({ LOAD_CAPACITY, V(LOAD_CAPACITY) });
             m.insert({ LOAD_CAPACITY + 1,  V(LOAD_CAPACITY + 1) });
         }
-        AssertCheck((int)m.size(), LOAD_CAPACITY, desc + ":has error");
+        ASSERT_TEST_EQ((int)m.size(), LOAD_CAPACITY, desc + ":has error");
 
     }
 
@@ -269,7 +269,7 @@ s32 MapStress(Map& m, const std::string& desc, bool is_static = false)
         PROF_START_COUNTER(cost);
         m.clear();
         PROF_OUTPUT_MULTI_COUNT_CPU((ss.str() + "clear").c_str(), 1, cost.stop_and_save().cycles());
-        AssertCheck((int)m.size(), 0, desc + ":has error");
+        ASSERT_TEST_EQ((int)m.size(), 0, desc + ":has error");
 
     }
 
@@ -279,14 +279,14 @@ s32 MapStress(Map& m, const std::string& desc, bool is_static = false)
         {
             m.insert({ i,  V(i) });
         }
-        AssertCheck((int)m.size(), LOAD_CAPACITY, desc + ": error");
+        ASSERT_TEST_EQ((int)m.size(), LOAD_CAPACITY, desc + ": error");
         PROF_START_COUNTER(cost);
         for (int i = 0; i < LOAD_CAPACITY; i++)
         {
             m.erase(i);
         }
         PROF_OUTPUT_MULTI_COUNT_CPU((ss.str() + "erase").c_str(), LOAD_CAPACITY, cost.stop_and_save().cycles());
-        AssertCheck((int)m.size(), 0, desc + ":has error");
+        ASSERT_TEST_EQ((int)m.size(), 0, desc + ":has error");
         for (int i = 0; i < LOAD_CAPACITY; i++)
         {
             m.erase(i);
@@ -302,14 +302,14 @@ s32 MapStress(Map& m, const std::string& desc, bool is_static = false)
         {
             m.insert({ i,  V(i) });
         }
-        AssertCheck((int)m.size(), LOAD_CAPACITY, desc + ": error");
+        ASSERT_TEST_EQ((int)m.size(), LOAD_CAPACITY, desc + ": error");
         PROF_START_COUNTER(cost);
         for (int i = 0; i < LOAD_CAPACITY; i++)
         {
             m.erase(LOAD_CAPACITY - i - 1);
         }
         PROF_OUTPUT_MULTI_COUNT_CPU((ss.str() + "revert erase key (capacity)").c_str(), LOAD_CAPACITY, cost.stop_and_save().cycles());
-        AssertCheck((int)m.size(), 0, desc + ":has error");
+        ASSERT_TEST_EQ((int)m.size(), 0, desc + ":has error");
         for (int i = 0; i < LOAD_CAPACITY; i++)
         {
             m.erase(i);
@@ -325,14 +325,14 @@ s32 MapStress(Map& m, const std::string& desc, bool is_static = false)
         {
             m.insert({ i,  V(i) });
         }
-        AssertCheck((int)m.size(), LOAD_CAPACITY, desc + ": error");
+        ASSERT_TEST_EQ((int)m.size(), LOAD_CAPACITY, desc + ": error");
         PROF_START_COUNTER(cost);
         for (int i = 0; i < LOAD_CAPACITY; i++)
         {
             m.erase(m.begin());
         }
         PROF_OUTPUT_MULTI_COUNT_CPU((ss.str() + "erase begin (capacity)").c_str(), LOAD_CAPACITY, cost.stop_and_save().cycles());
-        AssertCheck((int)m.size(), 0, desc + ":has error");
+        ASSERT_TEST_EQ((int)m.size(), 0, desc + ":has error");
     }
 
 
@@ -343,7 +343,7 @@ s32 MapStress(Map& m, const std::string& desc, bool is_static = false)
         {
             m.insert({ i,  V(i) });
         }
-        AssertCheck((int)m.size(), LOAD_CAPACITY, desc + ": error");
+        ASSERT_TEST_EQ((int)m.size(), LOAD_CAPACITY, desc + ": error");
         PROF_START_COUNTER(cost);
         for (int i = 0; i < 1000 * 10000; i++)
         {
@@ -385,7 +385,7 @@ s32 MapStringStress(Map& m, const std::string& desc, bool is_static = false)
             m.insert({ string_data[i], string_data[i] });
         }
         PROF_OUTPUT_MULTI_COUNT_CPU((ss.str() + "insert").c_str(), LOAD_CAPACITY, cost.stop_and_save().cycles());
-        AssertCheck((int)m.size(), LOAD_CAPACITY, desc + ":has error");
+        ASSERT_TEST_EQ((int)m.size(), LOAD_CAPACITY, desc + ":has error");
 
     }
 
@@ -394,7 +394,7 @@ s32 MapStringStress(Map& m, const std::string& desc, bool is_static = false)
         PROF_START_COUNTER(cost);
         m.clear();
         PROF_OUTPUT_MULTI_COUNT_CPU((ss.str() + "clear").c_str(), 1, cost.stop_and_save().cycles());
-        AssertCheck((int)m.size(), 0, desc + ":has error");
+        ASSERT_TEST_EQ((int)m.size(), 0, desc + ":has error");
 
     }
 
@@ -404,14 +404,14 @@ s32 MapStringStress(Map& m, const std::string& desc, bool is_static = false)
         {
             m.insert({ string_data[i],  string_data[i] });
         }
-        AssertCheck((int)m.size(), LOAD_CAPACITY, desc + ": error");
+        ASSERT_TEST_EQ((int)m.size(), LOAD_CAPACITY, desc + ": error");
         PROF_START_COUNTER(cost);
         for (int i = 0; i < LOAD_CAPACITY; i++)
         {
             m.erase(string_data[i]);
         }
         PROF_OUTPUT_MULTI_COUNT_CPU((ss.str() + "erase").c_str(), LOAD_CAPACITY, cost.stop_and_save().cycles());
-        AssertCheck((int)m.size(), 0, desc + ":has error");
+        ASSERT_TEST_EQ((int)m.size(), 0, desc + ":has error");
         for (int i = 0; i < LOAD_CAPACITY; i++)
         {
             m.erase(string_data[i]);
@@ -427,14 +427,14 @@ s32 MapStringStress(Map& m, const std::string& desc, bool is_static = false)
         {
             m.insert({ string_data[i],   string_data[i] });
         }
-        AssertCheck((int)m.size(), LOAD_CAPACITY, desc + ": error");
+        ASSERT_TEST_EQ((int)m.size(), LOAD_CAPACITY, desc + ": error");
         PROF_START_COUNTER(cost);
         for (int i = 0; i < LOAD_CAPACITY; i++)
         {
             m.erase(string_data[LOAD_CAPACITY - i - 1]);
         }
         PROF_OUTPUT_MULTI_COUNT_CPU((ss.str() + "revert erase key (capacity)").c_str(), LOAD_CAPACITY, cost.stop_and_save().cycles());
-        AssertCheck((int)m.size(), 0, desc + ":has error");
+        ASSERT_TEST_EQ((int)m.size(), 0, desc + ":has error");
         for (int i = 0; i < LOAD_CAPACITY; i++)
         {
             m.erase(string_data[i]);
@@ -450,14 +450,14 @@ s32 MapStringStress(Map& m, const std::string& desc, bool is_static = false)
         {
             m.insert({ string_data[i],  string_data[i] });
         }
-        AssertCheck((int)m.size(), LOAD_CAPACITY, desc + ": error");
+        ASSERT_TEST_EQ((int)m.size(), LOAD_CAPACITY, desc + ": error");
         PROF_START_COUNTER(cost);
         for (int i = 0; i < LOAD_CAPACITY; i++)
         {
             m.erase(m.begin());
         }
         PROF_OUTPUT_MULTI_COUNT_CPU((ss.str() + "erase begin (capacity)").c_str(), LOAD_CAPACITY, cost.stop_and_save().cycles());
-        AssertCheck((int)m.size(), 0, desc + ":has error");
+        ASSERT_TEST_EQ((int)m.size(), 0, desc + ":has error");
     }
 
 
@@ -468,7 +468,7 @@ s32 MapStringStress(Map& m, const std::string& desc, bool is_static = false)
         {
             m.insert({ string_data[i],   string_data[i] });
         }
-        AssertCheck((int)m.size(), LOAD_CAPACITY, desc + ": error");
+        ASSERT_TEST_EQ((int)m.size(), LOAD_CAPACITY, desc + ": error");
         PROF_START_COUNTER(cost);
         for (int i = 0; i < 1000 * 10000; i++)
         {
@@ -505,7 +505,7 @@ s32 SetStress(Map& m, const std::string& desc, bool is_static = false)
             m.insert(V(0));
             m.insert(V(0));
         }
-        AssertCheck((int)m.size(), LOAD_CAPACITY, desc + ":has error");
+        ASSERT_TEST_EQ((int)m.size(), LOAD_CAPACITY, desc + ":has error");
 
     }
 
@@ -514,7 +514,7 @@ s32 SetStress(Map& m, const std::string& desc, bool is_static = false)
         PROF_START_COUNTER(cost);
         m.clear();
         PROF_OUTPUT_MULTI_COUNT_CPU((ss.str() + "clear").c_str(), 1, cost.stop_and_save().cycles());
-        AssertCheck((int)m.size(), 0, desc + ":has error");
+        ASSERT_TEST_EQ((int)m.size(), 0, desc + ":has error");
 
     }
 
@@ -524,14 +524,14 @@ s32 SetStress(Map& m, const std::string& desc, bool is_static = false)
         {
             m.insert(V(i));
         }
-        AssertCheck((int)m.size(), LOAD_CAPACITY, desc + ": error");
+        ASSERT_TEST_EQ((int)m.size(), LOAD_CAPACITY, desc + ": error");
         PROF_START_COUNTER(cost);
         for (int i = 0; i < LOAD_CAPACITY; i++)
         {
             m.erase(i);
         }
         PROF_OUTPUT_MULTI_COUNT_CPU((ss.str() + "erase").c_str(), LOAD_CAPACITY, cost.stop_and_save().cycles());
-        AssertCheck((int)m.size(), 0, desc + ":has error");
+        ASSERT_TEST_EQ((int)m.size(), 0, desc + ":has error");
         for (int i = 0; i < LOAD_CAPACITY; i++)
         {
             m.erase(i);
@@ -547,14 +547,14 @@ s32 SetStress(Map& m, const std::string& desc, bool is_static = false)
         {
             m.insert( V(i) );
         }
-        AssertCheck((int)m.size(), LOAD_CAPACITY, desc + ": error");
+        ASSERT_TEST_EQ((int)m.size(), LOAD_CAPACITY, desc + ": error");
         PROF_START_COUNTER(cost);
         for (int i = 0; i < LOAD_CAPACITY; i++)
         {
             m.erase(V(i));
         }
         PROF_OUTPUT_MULTI_COUNT_CPU((ss.str() + "revert erase key (capacity)").c_str(), LOAD_CAPACITY, cost.stop_and_save().cycles());
-        AssertCheck((int)m.size(), 0, desc + ":has error");
+        ASSERT_TEST_EQ((int)m.size(), 0, desc + ":has error");
         for (int i = 0; i < LOAD_CAPACITY; i++)
         {
             m.erase(V(i));
@@ -570,14 +570,14 @@ s32 SetStress(Map& m, const std::string& desc, bool is_static = false)
         {
             m.insert(V(i));
         }
-        AssertCheck((int)m.size(), LOAD_CAPACITY, desc + ": error");
+        ASSERT_TEST_EQ((int)m.size(), LOAD_CAPACITY, desc + ": error");
         PROF_START_COUNTER(cost);
         for (int i = 0; i < LOAD_CAPACITY; i++)
         {
             m.erase(m.begin());
         }
         PROF_OUTPUT_MULTI_COUNT_CPU((ss.str() + "erase begin (capacity)").c_str(), LOAD_CAPACITY, cost.stop_and_save().cycles());
-        AssertCheck((int)m.size(), 0, desc + ":has error");
+        ASSERT_TEST_EQ((int)m.size(), 0, desc + ":has error");
     }
 
 
@@ -588,7 +588,7 @@ s32 SetStress(Map& m, const std::string& desc, bool is_static = false)
         {
             m.insert(V(i));
         }
-        AssertCheck((int)m.size(), LOAD_CAPACITY, desc + ": error");
+        ASSERT_TEST_EQ((int)m.size(), LOAD_CAPACITY, desc + ": error");
         PROF_START_COUNTER(cost);
         for (int i = 0; i < 1000 * 10000; i++)
         {
@@ -610,17 +610,18 @@ s32 SetStress(Map& m, const std::string& desc, bool is_static = false)
 #define LinerStressWrap(T, V, is_static, out_prof) \
 do\
 {\
-RAIIVal<>::reset(); \
-T* c = new T; \
-LinerStress<T,V>(*c, #T, is_static, out_prof); \
-delete c; \
-CheckRAIIValByType(T);\
+    RAIIVal<>::reset(); \
+    T* c = new T; \
+    s32 ret = LinerStress<T,V>(*c, #T, is_static, out_prof); \
+    delete c; \
+    if (ret != 0) {LogError() <<"error."; return 1;} \
+    CheckRAIIValByType(T);\
 }\
 while(0)
 
 
 template<class T, class V = RAIIVal<>, bool IS_STATIC = false>
-void LinerDestroyWrap()
+s32 LinerDestroyWrap()
 {
     RAIIVal<>::reset();
     T* c = new T;
@@ -630,6 +631,7 @@ void LinerDestroyWrap()
     }
     delete c;
     CheckRAIIValByType(T);
+    return 0;
 }
 
 #define MapStressWrap(T, V, is_static) \
@@ -666,7 +668,7 @@ CheckRAIIValByType(T);\
 while(0)
 
 template<class T, class V = RAIIVal<>, bool IS_STATIC = false>
-void MapDestroyWrap()
+s32 MapDestroyWrap()
 {
     RAIIVal<>::reset();
     T* c = new T;
@@ -676,10 +678,11 @@ void MapDestroyWrap()
     }
     delete c;
     CheckRAIIValByType(T);
+    return 0;
 }
 
 template<int M, int F>
-void TestDynSpaceMemoryLeak()
+s32 TestDynSpaceMemoryLeak()
 {
     for (int i = 0; i < M; i++)
     {
@@ -689,10 +692,11 @@ void TestDynSpaceMemoryLeak()
             z.push_back(RAIIVal<>(i * 10000 + j)); 
         }
     }
+    return 0;
 }
 
 template<int M>
-void TestStaticSpaceMemoryLeak()
+s32 TestStaticSpaceMemoryLeak()
 {
     for (int i = 0; i < M; i++)
     {
@@ -702,6 +706,7 @@ void TestStaticSpaceMemoryLeak()
             z.push_back(RAIIVal<>(i * 10000 + j));
         }
     }
+    return 0;
 }
 
 
@@ -740,7 +745,7 @@ s32 contiainer_stress_test()
 
     if (true)
     {
-        CheckRAIIVal("empty  memory over test");
+        ASSERT_RAII_VAL("empty  memory over test");
         for (int i = 0; i < 1008; i++)
         {
             zlist_ext<RAIIVal<>, 1000, 200>  z;
@@ -749,7 +754,7 @@ s32 contiainer_stress_test()
                 z.push_back(RAIIVal<>(i * 10000 + j));
             }
         }
-        CheckRAIIVal("zlist_ext  memory over test");
+        ASSERT_RAII_VAL("zlist_ext  memory over test");
         for (int i = 0; i < 1008; i++)
         {
             zlist<RAIIVal<>, 1000>  z;
@@ -758,7 +763,7 @@ s32 contiainer_stress_test()
                 z.push_back(RAIIVal<>(i * 10000 + j));
             }
         }
-        CheckRAIIVal("zlist  memory over test");
+        ASSERT_RAII_VAL("zlist  memory over test");
         for (int i = 0; i < 1008; i++)
         {
             zarray<RAIIVal<>, 1000>  z;
@@ -767,7 +772,7 @@ s32 contiainer_stress_test()
                 z.push_back(RAIIVal<>(i * 10000 + j));
             }
         }
-        CheckRAIIVal("zlist  memory over test");
+        ASSERT_RAII_VAL("zlist  memory over test");
     }
 
 
@@ -893,9 +898,9 @@ s32 contiainer_stress_test()
             sys_map.insert(std::make_pair(i, i));
             z_hashmap.insert(std::make_pair(i, i));
         }
-        AssertTest(sys_map.size(), (u32)LOAD_CAPACITY / 3, "");
-        AssertTest(sys_hashmap.size(), (u32)LOAD_CAPACITY / 3, "");
-        AssertTest(z_hashmap.size(), (u32)LOAD_CAPACITY / 3, "");
+        ASSERT_TEST_EQ(sys_map.size(), (u32)LOAD_CAPACITY / 3, "");
+        ASSERT_TEST_EQ(sys_hashmap.size(), (u32)LOAD_CAPACITY / 3, "");
+        ASSERT_TEST_EQ(z_hashmap.size(), (u32)LOAD_CAPACITY / 3, "");
 
         int sys_count = 0;
         int z_count = 0;
@@ -936,8 +941,8 @@ s32 contiainer_stress_test()
                 }
             }
         }
-        AssertTest(sys_count, z_count, "");
-        AssertTest(sys_map_count, z_count, "");
+        ASSERT_TEST_EQ(sys_count, z_count, "");
+        ASSERT_TEST_EQ(sys_map_count, z_count, "");
     }
 
     return 0;
