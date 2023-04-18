@@ -50,9 +50,9 @@ int main(int argc, char *argv[])
     LogDebug() << " main begin test. ";
     volatile double cycles = 0.0f;
 
-    sort_test();
-    contiainer_base_test();
-    contiainer_stress_test();
+    ASSERT_TEST(sort_test() == 0);
+    ASSERT_TEST(contiainer_base_test() == 0);
+    ASSERT_TEST(contiainer_stress_test() == 0);
     
 
     PROF_UPDATE_MERGE();

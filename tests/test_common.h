@@ -97,40 +97,56 @@ using f64 = double;
 #define ZCONTAIN_H
 
 
-#define AssertCheck(val1, val2, desc)   \
+
+
+
+template<typename ... Args>
+FNLog::LogStream& ASSERT_ARGS_LOG(FNLog::LogStream&& ls, const std::string& head, Args&& ... args)
+{
+    ls << head << " ";
+    std::initializer_list<int>{ (ls << args, '\0') ... };
+    return ls;
+}
+
+#define ASSERT_TEST(expr, ...)  \
+do \
+{\
+    if(expr) \
+    { \
+        LogDebug() << #expr <<" ok.";\
+    }\
+    else \
+    {\
+        std::string expr_str = #expr; \
+        ASSERT_ARGS_LOG(LogError(), expr_str, ##__VA_ARGS__); \
+        return -1; \
+    }\
+}\
+while(0)
+
+#define ASSERT_TEST_NOLOG(expr, ...)  \
+do \
+{\
+    if(!(expr)) \
+    {\
+        std::string expr_str = #expr; \
+        ASSERT_ARGS_LOG(LogError(), expr_str, ##__VA_ARGS__); \
+        return -1; \
+    }\
+}\
+while(0)
+
+
+
+#define ASSERT_TEST_EQ(val1, val2, ...)   \
 {\
     auto v1 = (val1); \
-    auto v2 = (val2); \
-    if ((v1)!=(v2)) \
-    { \
-        LogError() << (v1) << " " << (v2) <<" " << desc << " failed.";  \
-    } \
+    auto v_tmp = (val2); \
+    auto v2 = static_cast<decltype(v1)>(v_tmp); \
+    ASSERT_TEST_NOLOG((v1)==(v2), (v1) , " ",  (v2), ##__VA_ARGS__);\
 }
 
 
-#define AssertTest(val1, val2, desc)   \
-{\
-    auto v1 = (val1); \
-    auto v2 = (val2); \
-    if ((v1)==(v2)) \
-    { \
-        /*LogDebug() << (v1) << " " << (v2) <<" " << desc << " pass.";  */ \
-    } \
-    else  \
-    { \
-        LogError() << (v1) << " " << (v2) <<" " << desc << " failed.";  \
-        return 1U;  \
-    } \
-}
-
-#define AssertBoolTest(expr, desc)   \
-{\
-    if (!(expr)) \
-    { \
-        LogError() <<" " << desc << " failed.";  \
-        return 1U;  \
-    } \
-}
 
 
 template<int CLASS = 0>
@@ -144,7 +160,8 @@ public:
     int val_;
     unsigned long long hold_1_;
     unsigned long long hold_2_;
-    operator int() { return val_; }
+
+    operator int() const  { return val_; }
 public:
     static void reset()
     {
@@ -175,6 +192,7 @@ public:
         destroy_count_++;
         now_live_count_--;
     }
+
 
     RAIIVal<CLASS>& operator=(const RAIIVal<CLASS>& v)
     {
@@ -216,12 +234,21 @@ inline std::string TypeName()
 
 
 
-#define CheckRAIIVal(name)   do {\
-if(RAIIVal<>::construct_count_  != RAIIVal<>::destroy_count_ ){LogError() << name << ": CheckRAIIVal has error.  destroy / construct:" << RAIIVal<>::destroy_count_ << "/" << RAIIVal<>::construct_count_;} \
-else {LogInfo() << name << ": CheckRAIIVal.  destroy / construct:" << RAIIVal<>::destroy_count_ << "/" << RAIIVal<>::construct_count_; }\
+#define ASSERT_RAII_VAL(name)   \
+do \
+{\
+    if(RAIIVal<>::construct_count_  != RAIIVal<>::destroy_count_ )\
+    {\
+        LogError() << name << ": ASSERT_RAII_VAL has error.  destroy / construct:" << RAIIVal<>::destroy_count_ << "/" << RAIIVal<>::construct_count_;\
+        return -2; \
+    } \
+    else \
+    {\
+        LogInfo() << name << ": ASSERT_RAII_VAL.  destroy / construct:" << RAIIVal<>::destroy_count_ << "/" << RAIIVal<>::construct_count_; \
+    }\
 } while(0)
-//#define CheckRAIIValByType(t)   CheckRAIIVal(TypeName<decltype(t)>());
-#define CheckRAIIValByType(t)   CheckRAIIVal(TypeName<t>());
+//#define CheckRAIIValByType(t)   ASSERT_RAII_VAL(TypeName<decltype(t)>());
+#define CheckRAIIValByType(t)   ASSERT_RAII_VAL(TypeName<t>());
 
 
 

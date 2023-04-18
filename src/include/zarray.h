@@ -57,17 +57,55 @@ public:
     using reference = _Ty&;
     using const_reference = const _Ty&;
 
-    using iterator = pointer;
-    using const_iterator = const_pointer;
+public:
+    class iterator : public std::iterator<std::random_access_iterator_tag, value_type>
+    {
+    public:
+        iterator() { p_ = NULL; }
+        iterator(const pointer p) { p_ = p; }
+        iterator(const iterator& iter) { p_ = iter.p_; }
 
+        iterator& operator++() { ++p_; return *this; }
+        iterator operator++(int) { iterator tmp(*this); ++p_; return tmp; }
+        iterator& operator--() { --p_; return *this; }
+        iterator operator--(int) { iterator tmp(*this); --p_; return tmp; }
+
+        iterator operator+(int c) const { return iterator(p_ + c); }
+        iterator operator-(int c) const { return iterator(p_ - c); }
+
+        iterator& operator+=(int c)  { p_ += c; return *this; }
+        iterator& operator-=(int c) { p_ -= c; return *this; }
+
+        size_t operator-(const iterator& iter) const { return (p_ - iter.p_); }
+
+        bool operator<(const iterator& iter) const { return p_ < iter.p_; }
+        bool operator<=(const iterator& iter) const { return p_ <= iter.p_; }
+        bool operator>(const iterator& iter) const { return p_ > iter.p_; }
+        bool operator>=(const iterator& iter) const { return p_ >= iter.p_; }
+        bool operator==(const iterator& iter) const { return p_ == iter.p_; }
+        bool operator!=(const iterator& iter) const { return p_ != iter.p_; }
+
+        reference operator*() const { return *p_; }
+        pointer operator ->() const { return p_; }
+
+
+        
+    private:
+        pointer p_;
+    };
+
+    using const_iterator = iterator;
     using reverse_iterator = std::reverse_iterator<iterator>;
     using const_reverse_iterator = std::reverse_iterator<const_iterator>;
+
+
     using inner_space_type = typename std::aligned_storage<sizeof(_Ty), alignof(_Ty)>::type;
     using space_type = typename std::conditional<std::is_trivial<_Ty>::value, _Ty, inner_space_type>::type;
 private:
     pointer MAY_ALIAS ptr(size_type i) const noexcept { return reinterpret_cast<pointer>(const_cast<space_type*>(&data_[i])); }
+
     reference ref(size_type i) const noexcept { return *ptr(i); }
-    size_type distance(const_pointer l, const_pointer r) const noexcept { return (size_type)(r - l); }
+    size_type distance(const_iterator l, const_iterator r) const noexcept { return (size_type)(r - l); }
 public:
     zarray() { count_ = 0; }
     ~zarray() { clear(); }
@@ -197,34 +235,32 @@ public:
     template<class T = _Ty>
     iterator inject(const_iterator in_pos, size_type count, const typename std::enable_if<std::is_trivial<T>::value>::type* = 0)
     {
-        static_assert(std::is_same<iterator, pointer>::value, "");
         iterator pos = (iterator)in_pos;
         iterator old_end = end();
         count_ += count;
         if (pos == old_end)
         {
 #ifdef ZDEBUG_UNINIT_MEMORY
-            memset(pos, 0xfd, count * sizeof(_Ty));
+            memset(&*pos, 0xfd, count * sizeof(_Ty));
 #endif // ZDEBUG_UNINIT_MEMORY
             return pos;
         }
-        memmove((space_type*)in_pos + count, (space_type*)in_pos, sizeof(space_type) * ((space_type*)old_end - (space_type*)in_pos));
+        memmove((space_type*)&*in_pos + count, (space_type*)&*in_pos, sizeof(space_type) * (old_end - in_pos));
 #ifdef ZDEBUG_UNINIT_MEMORY
-        memset(pos, 0xfd, count * sizeof(_Ty));
+        memset(&*pos, 0xfd, count * sizeof(_Ty));
 #endif // ZDEBUG_UNINIT_MEMORY
         return pos;
     }
     template<class T = _Ty>
     iterator inject(const_iterator in_pos, size_type count, const typename std::enable_if<!std::is_trivial<T>::value>::type* = 0)
     {
-        static_assert(std::is_same<iterator, pointer>::value, "");
         iterator pos = (iterator)in_pos;
         iterator old_end = end();
         count_ += count;
         if (pos == old_end)
         {
 #ifdef ZDEBUG_UNINIT_MEMORY
-            memset(pos, 0xfd, count * sizeof(_Ty));
+            memset(&*pos, 0xfd, count * sizeof(_Ty));
 #endif // ZDEBUG_UNINIT_MEMORY
             return pos;
         }
@@ -233,7 +269,7 @@ public:
         iterator target = new_end;
         while (src != pos && target != old_end)
         {
-            new (--target) _Ty(*(--src));
+            new (&*(--target)) _Ty(*(--src));
         }
 
         while (src != pos)
@@ -248,7 +284,7 @@ public:
             src++->~_Ty();
         }
 #ifdef ZDEBUG_UNINIT_MEMORY
-        memset(pos, 0xfd, count * sizeof(_Ty));
+        memset(&*pos, 0xfd, count * sizeof(_Ty));
 #endif // ZDEBUG_UNINIT_MEMORY
         return pos;
     }
@@ -268,10 +304,10 @@ public:
             return end();
         }
         size_type island_count = distance(last, end());
-        memmove((space_type*)first, (space_type*)last, island_count * sizeof(space_type));
+        memmove((space_type*)&*first, (space_type*)&*last, island_count * sizeof(space_type));
         iterator new_end = (iterator)(first + island_count);
 #ifdef ZDEBUG_DEATH_MEMORY
-        memset(new_end, 0xfd, distance(new_end, end()) * sizeof(_Ty));
+        memset(&*new_end, 0xfd, distance(new_end, end()) * sizeof(_Ty));
 #endif // ZDEBUG_DEATH_MEMORY
         count_ -= distance(new_end, end());
         return end();
@@ -298,7 +334,7 @@ public:
             ++erase_first;
         }
 #ifdef ZDEBUG_DEATH_MEMORY
-        memset(cp_first, 0xfd, distance(cp_first, end()) * sizeof(_Ty));
+        memset(&*cp_first, 0xfd, distance(cp_first, end()) * sizeof(_Ty));
 #endif // ZDEBUG_DEATH_MEMORY
 
         count_ -= distance(cp_first, end());
@@ -360,7 +396,7 @@ public:
             return end();
         }
         iterator new_iter = inject(pos, 1);
-        new (pos++) _Ty(value);
+        new (&* (pos++)) _Ty(value);
         return new_iter;
     }
 
@@ -373,7 +409,7 @@ public:
         {
             while (first != last && count_ < max_size())
             {
-                new (pos++) _Ty(*first++);
+                new (&*(pos++)) _Ty(*first++);
                 count_++;
             }
         }
@@ -402,7 +438,7 @@ public:
             return end();
         }
         iterator iter = inject(pos, 1);
-        new (iter) _Ty(args...);
+        new (&*iter) _Ty(args...);
         return iter;
     }
 
