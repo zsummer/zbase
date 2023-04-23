@@ -341,6 +341,7 @@ public:
 
 
 
+
 #ifdef __GNUC__
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Winvalid-offsetof"
@@ -697,6 +698,12 @@ zmalloc::free_chunk_type* zmalloc::exploit_new_chunk(free_chunk_type* devide_chu
     return new_chunk;
 }
 
+#ifdef _WIN32
+#pragma warning( push ) 
+#pragma warning( disable : 4146 )  
+#endif // _WIN32
+
+
 template<u16 COLOR>
 void* zmalloc::alloc_memory(u64 req_bytes)
 {
@@ -918,6 +925,10 @@ void* zmalloc::alloc_memory(u64 req_bytes)
     zmalloc_check_align((void*)(zmalloc_u64_cast(chunk) + CHUNK_PADDING_SIZE));
     return (void*)(zmalloc_u64_cast(chunk) + CHUNK_PADDING_SIZE);
 }
+
+#ifdef _WIN32
+#pragma warning( pop ) 
+#endif // _WIN32
 
 u64 zmalloc::free_memory(void* addr)
 {
@@ -1434,5 +1445,7 @@ void zmalloc::check_align(void* addr)
 }
 
   
+
+
 
 #endif

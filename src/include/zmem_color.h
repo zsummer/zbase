@@ -63,8 +63,8 @@ using shm_unordered_map = std::unordered_map< K, T, std::hash<K>, std::equal_to<
 
 template<class K, class P = std::less<K>>
 using shm_set = std::set<K, P, zallocator<K, MEM_COLOR_SET> >;
-template<class K>
-using shm_unordered_set = std::unordered_set< K, std::hash<K>, std::equal_to<K>, zallocator<const K, MEM_COLOR_SET> >;
+template<class K, class H = std::hash<K>, class E = std::equal_to<K>>
+using shm_unordered_set = std::unordered_set< K, H, E, zallocator<const K, MEM_COLOR_SET> >;
 
 
 template<class _Ty>
