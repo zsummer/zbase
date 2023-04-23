@@ -34,7 +34,7 @@ template<class V>
 s32 SortArrayTest(V& v, bool is_test, const char* desc)
 {
     double now = Now();
-    for (size_t i = 0; i < 10000; i++)
+    for (u32 loop_i = 0; loop_i < 10000; loop_i++)
     {
         v.clear();
         for (u32 i = 0; i < list_size; i++)
@@ -64,7 +64,7 @@ s32 SortArrayTest(V& v, bool is_test, const char* desc)
     }
     LogInfo() << desc << " lower_bound test used:" << (Now() - now)/10000 *1000*1000  << "us.";
     now = Now();
-    for (size_t i = 0; i < 10000; i++)
+    for (u32 loop_i = 0; loop_i < 10000; loop_i++)
     {
         v.clear();
         for (u32 i = 0; i < list_size; i++)
@@ -103,7 +103,7 @@ template<class V>
 s32 SortListTest(V& v, bool is_test, const char* desc)
 {
     double now = Now();
-    for (size_t i = 0; i < 10000; i++)
+    for (u32 loop_i = 0; loop_i < 10000; loop_i++)
     {
         v.clear();
         for (u32 i = 0; i < list_size; i++)
@@ -151,7 +151,7 @@ s32 likely_test()
     if (true)
     {
         PROF_DEFINE_AUTO_MULTI_ANON_RECORD(prof_cost, 1, "nolikey");
-        for (size_t i = 0; i < 10000; i++)
+        for (u32 loop_i = 0; loop_i < 10000; loop_i++)
         {
             for (size_t i = 0; i < rand_size; i++)
             {
@@ -165,7 +165,7 @@ s32 likely_test()
     if (true)
     {
         PROF_DEFINE_AUTO_MULTI_ANON_RECORD(prof_cost, 1, "likey");
-        for (size_t i = 0; i < 10000; i++)
+        for (u32 loop_i = 0; loop_i < 10000; loop_i++)
         {
             for (size_t i = 0; i < rand_size; i++)
             {

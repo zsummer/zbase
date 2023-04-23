@@ -44,6 +44,43 @@ using f64 = double;
 #define MAY_ALIAS
 #endif
 
+
+template<class pointer, class reference, class value_type>
+class zarray_iterator : public std::iterator<std::random_access_iterator_tag, value_type>
+{
+public:
+    zarray_iterator() { p_ = NULL; }
+    zarray_iterator(const pointer p) { p_ = p; }
+    zarray_iterator(const zarray_iterator& iter) { p_ = iter.p_; }
+
+    zarray_iterator& operator++() { ++p_; return *this; }
+    zarray_iterator operator++(int) { zarray_iterator tmp(*this); ++p_; return tmp; }
+    zarray_iterator& operator--() { --p_; return *this; }
+    zarray_iterator operator--(int) { zarray_iterator tmp(*this); --p_; return tmp; }
+
+    zarray_iterator operator+(int c) const { return zarray_iterator(p_ + c); }
+    zarray_iterator operator-(int c) const { return zarray_iterator(p_ - c); }
+
+    zarray_iterator& operator+=(int c) { p_ += c; return *this; }
+    zarray_iterator& operator-=(int c) { p_ -= c; return *this; }
+
+    size_t operator-(const zarray_iterator& iter) const { return (p_ - iter.p_); }
+
+    bool operator<(const zarray_iterator& iter) const { return p_ < iter.p_; }
+    bool operator<=(const zarray_iterator& iter) const { return p_ <= iter.p_; }
+    bool operator>(const zarray_iterator& iter) const { return p_ > iter.p_; }
+    bool operator>=(const zarray_iterator& iter) const { return p_ >= iter.p_; }
+    bool operator==(const zarray_iterator& iter) const { return p_ == iter.p_; }
+    bool operator!=(const zarray_iterator& iter) const { return p_ != iter.p_; }
+
+    reference operator*() const { return *p_; }
+    pointer operator ->() const { return p_; }
+
+private:
+    pointer p_;
+};
+
+
 template<class _Ty, u32 _Size>
 class zarray
 {
@@ -58,43 +95,13 @@ public:
     using const_reference = const _Ty&;
 
 public:
-    class iterator : public std::iterator<std::random_access_iterator_tag, value_type>
-    {
-    public:
-        iterator() { p_ = NULL; }
-        iterator(const pointer p) { p_ = p; }
-        iterator(const iterator& iter) { p_ = iter.p_; }
-
-        iterator& operator++() { ++p_; return *this; }
-        iterator operator++(int) { iterator tmp(*this); ++p_; return tmp; }
-        iterator& operator--() { --p_; return *this; }
-        iterator operator--(int) { iterator tmp(*this); --p_; return tmp; }
-
-        iterator operator+(int c) const { return iterator(p_ + c); }
-        iterator operator-(int c) const { return iterator(p_ - c); }
-
-        iterator& operator+=(int c)  { p_ += c; return *this; }
-        iterator& operator-=(int c) { p_ -= c; return *this; }
-
-        size_t operator-(const iterator& iter) const { return (p_ - iter.p_); }
-
-        bool operator<(const iterator& iter) const { return p_ < iter.p_; }
-        bool operator<=(const iterator& iter) const { return p_ <= iter.p_; }
-        bool operator>(const iterator& iter) const { return p_ > iter.p_; }
-        bool operator>=(const iterator& iter) const { return p_ >= iter.p_; }
-        bool operator==(const iterator& iter) const { return p_ == iter.p_; }
-        bool operator!=(const iterator& iter) const { return p_ != iter.p_; }
-
-        reference operator*() const { return *p_; }
-        pointer operator ->() const { return p_; }
 
 
-        
-    private:
-        pointer p_;
-    };
+    //using iterator = zarray_iterator<pointer, reference, value_type>;
+    //using const_iterator = zarray_iterator<const_pointer, const_reference, value_type>;
 
-    using const_iterator = iterator;
+    using iterator = _Ty*;
+    using const_iterator = const _Ty*;
     using reverse_iterator = std::reverse_iterator<iterator>;
     using const_reverse_iterator = std::reverse_iterator<const_iterator>;
 
@@ -103,9 +110,8 @@ public:
     using space_type = typename std::conditional<std::is_trivial<_Ty>::value, _Ty, inner_space_type>::type;
 private:
     pointer MAY_ALIAS ptr(size_type i) const noexcept { return reinterpret_cast<pointer>(const_cast<space_type*>(&data_[i])); }
-
     reference ref(size_type i) const noexcept { return *ptr(i); }
-    size_type distance(const_iterator l, const_iterator r) const noexcept { return (size_type)(r - l); }
+    size_type distance(iterator l, iterator r) const noexcept { return (size_type)(r - l); }
 public:
     zarray() { count_ = 0; }
     ~zarray() { clear(); }
@@ -129,12 +135,12 @@ public:
     const_iterator cend() const noexcept { return ptr(0) + count_; }
 
     reverse_iterator rbegin() noexcept { return reverse_iterator(end()); }
-    const_reverse_iterator rbegin() const noexcept { return reverse_iterator(end()); }
-    const_reverse_iterator crbegin() const noexcept { return reverse_iterator(end()); }
+    const_reverse_iterator rbegin() const noexcept { return const_reverse_iterator(end()); }
+    const_reverse_iterator crbegin() const noexcept { return const_reverse_iterator(end()); }
 
     reverse_iterator rend() noexcept { return reverse_iterator(begin()); }
-    const_reverse_iterator rend() const noexcept { return reverse_iterator(begin()); }
-    const_reverse_iterator crend() const noexcept { return reverse_iterator(begin()); }
+    const_reverse_iterator rend() const noexcept { return const_reverse_iterator(begin()); }
+    const_reverse_iterator crend() const noexcept { return const_reverse_iterator(begin()); }
 
     reference at(size_type pos) { return ref(pos); }
     const_reference at(size_type pos) const { return ref(pos); }
@@ -146,8 +152,8 @@ public:
     reference back() { return *ptr(count_ - 1); }
     const_reference back() const { return *ptr(count_ - 1);}
 
-    value_type* data() noexcept { return ptr(0); }
-    const value_type* data() const noexcept { return ptr(0); }
+    pointer data() noexcept { return ptr(0); }
+    const_pointer data() const noexcept { return ptr(0); }
 
     constexpr size_type capacity() const { return _Size; }
     constexpr size_type max_size()  const noexcept { return _Size; }
@@ -233,9 +239,9 @@ public:
     }
 
     template<class T = _Ty>
-    iterator inject(const_iterator in_pos, size_type count, const typename std::enable_if<std::is_trivial<T>::value>::type* = 0)
+    iterator inject(iterator in_pos, size_type count, const typename std::enable_if<std::is_trivial<T>::value>::type* = 0)
     {
-        iterator pos = (iterator)in_pos;
+        iterator pos = in_pos;
         iterator old_end = end();
         count_ += count;
         if (pos == old_end)
@@ -252,9 +258,9 @@ public:
         return pos;
     }
     template<class T = _Ty>
-    iterator inject(const_iterator in_pos, size_type count, const typename std::enable_if<!std::is_trivial<T>::value>::type* = 0)
+    iterator inject(iterator in_pos, size_type count, const typename std::enable_if<!std::is_trivial<T>::value>::type* = 0)
     {
-        iterator pos = (iterator)in_pos;
+        iterator pos = in_pos;
         iterator old_end = end();
         count_ += count;
         if (pos == old_end)
@@ -291,7 +297,7 @@ public:
 
     //[first,last)
     template<class T = _Ty>
-    iterator erase(const_iterator first, const_iterator last, const typename std::enable_if<std::is_trivial<T>::value>::type* = 0)
+    iterator erase(iterator first, iterator last, const typename std::enable_if<std::is_trivial<T>::value>::type* = 0)
     {
         if (first >= end() || first < begin())
         {
@@ -313,7 +319,7 @@ public:
         return end();
     }
     template<class T = _Ty>
-    iterator erase(const_iterator first, const_iterator last, const typename std::enable_if<!std::is_trivial<T>::value>::type* = 0)
+    iterator erase(iterator first, iterator last, const typename std::enable_if<!std::is_trivial<T>::value>::type* = 0)
     {
         if (first >= end() || first < begin())
         {
@@ -321,8 +327,8 @@ public:
         }
 
         size_type island_count = distance(last, end());
-        iterator cp_first = (iterator)first;
-        iterator cp_last = (iterator)last;
+        iterator cp_first = first;
+        iterator cp_last = last;
         for (size_type i = 0; i < island_count; i++)
         {
             *cp_first++ = *cp_last++;
@@ -431,7 +437,7 @@ public:
     }
 
     template< class... Args >
-    iterator emplace(const_iterator pos, Args&&... args)
+    iterator emplace(iterator pos, Args&&... args)
     {
         if (pos < begin() || pos > end() || count_ + 1 > max_size() || 1 == 0)
         {
