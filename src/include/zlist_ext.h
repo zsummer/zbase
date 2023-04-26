@@ -177,7 +177,8 @@ public:
         init();
         assign(init_list.begin(), init_list.end());
     }
-    zlist_ext(const zlist_ext<_Ty, _Size, _FixedSize>& other)
+
+    zlist_ext(const zlist_ext<_Ty, _Size, _FixedSize, _Alloc>& other)
     {
         if (data() == other.data())
         {
@@ -186,13 +187,58 @@ public:
         init();
         assign(other.begin(), other.end());
     }
-    zlist_ext<_Ty, _Size, _FixedSize>& operator = (const zlist_ext<_Ty, _Size, _FixedSize>& other)
+
+    zlist_ext(zlist_ext<_Ty, _Size, _FixedSize, _Alloc>&& other)
+    {
+        if (data() == other.data())
+        {
+            return;
+        }
+        if (std::is_trivial<_Ty>::value)
+        {
+            init(std::move(other));
+        }
+        else
+        {
+            init();
+            assign(other.begin(), other.end());
+        }
+    }
+
+    zlist_ext<_Ty, _Size, _FixedSize, _Alloc>& operator = (const zlist_ext<_Ty, _Size, _FixedSize, _Alloc>& other)
     {
         if (data() == other.data())
         {
             return *this;
         }
-        assign(other.begin(), other.end());
+        if (std::is_trivial<_Ty>::value)
+        {
+            clear();
+            init(other);
+        }
+        else
+        {
+            clear();
+            assign(other.begin(), other.end());
+        }
+        return *this;
+    }
+    zlist_ext<_Ty, _Size, _FixedSize, _Alloc>& operator = (zlist_ext<_Ty, _Size, _FixedSize, _Alloc>&& other)
+    {
+        if (data() == other.data())
+        {
+            return *this;
+        }
+        if (std::is_trivial<_Ty>::value)
+        {
+            clear();
+            init(std::move(other));
+        }
+        else
+        {
+            clear();
+            assign(other.begin(), other.end());
+        }
         return *this;
     }
 
@@ -287,6 +333,66 @@ private:
         used_head_id_ = END_ID;
         dync_space_ = NULL;
     }
+    void init(const zlist_ext<_Ty, _Size, _FixedSize, _Alloc>& temp)
+    {
+        used_count_ = temp.used_count_;
+        free_id_ = temp.free_id_;
+        exploit_offset_ = temp.exploit_offset_;
+        used_head_id_ = temp.used_head_id_;
+        
+        data_[END_ID] = temp.data_[END_ID];
+        memcpy(data_, temp.data_, temp.exploit_offset_ * sizeof(node_type));
+
+        u32 copy_size = exploit_offset_ < _FixedSize ? exploit_offset_ : _FixedSize;
+        memcpy(fixed_space_, temp.fixed_space_, copy_size * sizeof(space_type));
+        for (u32 i = 0; i < copy_size; i++)
+        {
+            data_[i].space = &fixed_space_[i];
+        }
+
+        dync_space_ = NULL;
+        if (temp.dync_space_ && temp.exploit_offset_ > _FixedSize)
+        {
+            dync_space_ = alloc_.allocate(_Size - _FixedSize);
+            memcpy(dync_space_, temp.dync_space_, (temp.exploit_offset_ - _FixedSize) * sizeof(space_type));
+            for (u32 i = _FixedSize; i < (temp.exploit_offset_ - _FixedSize); i++)
+            {
+                data_[i].space = &dync_space_[i - _FixedSize];
+            }
+        }
+
+    }
+
+    void init(zlist_ext<_Ty, _Size, _FixedSize, _Alloc>&& temp)
+    {
+        used_count_ = temp.used_count_;
+        free_id_ = temp.free_id_;
+        exploit_offset_ = temp.exploit_offset_;
+        used_head_id_ = temp.used_head_id_;
+        dync_space_ = temp.dync_space_;
+        data_[END_ID] = temp.data_[END_ID];
+        memcpy(data_, temp.data_, temp.exploit_offset_ * sizeof(node_type));
+        
+
+        u32 copy_size = exploit_offset_ < _FixedSize ? exploit_offset_ : _FixedSize;
+        memcpy(fixed_space_, temp.fixed_space_, copy_size * sizeof(space_type));
+        for (u32 i = 0; i < copy_size; i++)
+        {
+            data_[i].space = &fixed_space_[i];
+        }
+        /*
+        if (temp.dync_space_ && temp.exploit_offset_ > _FixedSize)
+        {
+            for (u32 i = _FixedSize; i < (temp.exploit_offset_ - _FixedSize); i++)
+            {
+                data_[i].space = &dync_space_[i - _FixedSize];
+            }
+        }
+        */
+        temp.init();
+    }
+
+
     bool push_free_node(u32 id)
     {
         node_type& node = data_[id];
@@ -550,8 +656,8 @@ private:
     space_type* dync_space_;// space_type dync_space_[Size - _FixedSize];_
 };
 
-template<class _Ty, size_t _Size, size_t _FixedSize>
-bool operator==(const zlist_ext<_Ty, _Size, _FixedSize>& a1, const zlist_ext<_Ty, _Size, _FixedSize>& a2)
+template<class _Ty, size_t _Size, size_t _FixedSize, class _Alloc>
+bool operator==(const zlist_ext<_Ty, _Size, _FixedSize, _Alloc>& a1, const zlist_ext<_Ty, _Size, _FixedSize, _Alloc>& a2)
 {
     return a1.data() == a2.data();
 }

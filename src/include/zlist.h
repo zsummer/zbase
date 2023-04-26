@@ -164,16 +164,43 @@ public:
         init();
         assign(init_list.begin(), init_list.end());
     }
+
+    zlist(const zlist<_Ty, _Size>& other)
+    {
+        if (data() == other.data())
+        {
+            return;
+        }
+        if (std::is_trivial<_Ty>::value)
+        {
+            init(other);
+        }
+        else
+        {
+            init();
+            assign(other.begin(), other.end());
+        }
+    }
+
     zlist<_Ty, _Size>& operator = (const zlist<_Ty, _Size>& other)
     {
         if (data() == other.data())
         {
             return *this;
         }
-        assign(other.begin(), other.end());
+        if (std::is_trivial<_Ty>::value)
+        {
+            init(other);
+        }
+        else
+        {
+            clear();
+            assign(other.begin(), other.end());
+        }
         return *this;
     }
-
+    
+    
 
 
     //std::array api
@@ -253,6 +280,20 @@ private:
 #endif
         used_head_id_ = END_ID;
     }
+
+    void init(const zlist<_Ty, _Size>& other)
+    {
+        used_count_ = other.used_count_;
+        free_id_ = other.free_id_;
+        exploit_offset_ = other.exploit_offset_;
+        used_head_id_ = other.used_head_id_;
+        data_[END_ID] = other.data_[END_ID];
+        memcpy(data_, other.data_, other.exploit_offset_ * sizeof(node_type));
+    }
+
+
+
+
     bool push_free_node(u32 id)
     {
         node_type& node = data_[id];

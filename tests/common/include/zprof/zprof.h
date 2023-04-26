@@ -719,6 +719,10 @@ private:
 
 ProfSerializeBuffer& ProfSerializeBuffer::push_human_count(long long count)
 {
+    if (buff_len_ <= offset_ + 35)
+    {
+        return *this;
+    }
     if (count > 1000 * 1000)
     {
         push_number((unsigned long long)(count / 1000 / 1000));
@@ -769,9 +773,10 @@ ProfSerializeBuffer& ProfSerializeBuffer::push_human_time(long long ns)
         fc = 'u';
         lc = 's';
     }
-    else
+    else if (ns < 0) //cost may be over  when long long time  elapse . 
     {
-        push_string("invalid time");
+        //ns = 0;
+        push_string("invalid");
         return *this;
     }
     push_number((long long)(ns/ fr));
@@ -785,6 +790,10 @@ ProfSerializeBuffer& ProfSerializeBuffer::push_human_time(long long ns)
 
 ProfSerializeBuffer& ProfSerializeBuffer::push_human_mem(long long bytes)
 {
+    if (buff_len_ <= offset_ + 35)
+    {
+        return *this;
+    }
     if (bytes > 1024 * 1024 * 1024)
     {
         push_number((unsigned long long)(bytes / 1024 / 1024 / 1024));
@@ -1013,11 +1022,11 @@ struct ProfCPU
     long long c; 
     long long sum;  
     long long dv; 
-    int sm;
-    int h_sm;
-    int l_sm;
-    int max_u;
-    int min_u;
+    long long sm;
+    long long h_sm;
+    long long l_sm;
+    long long max_u;
+    long long min_u;
     long long t_u;
 };
 
@@ -1177,7 +1186,7 @@ public:
     {
         ProfNode& node = nodes_[idx];
         memset(&node.cpu, 0, sizeof(node.cpu));
-        node.cpu.min_u = INT_MAX;
+        node.cpu.min_u = LLONG_MAX;
     }
     PROF_ALWAYS_INLINE void reset_mem(int idx)
     {
@@ -1714,7 +1723,7 @@ int ProfRecord<INST, RESERVE, DECLARE>::regist_node(int idx, const char* desc, u
     node_descs_[idx].counter_type = counter_type;
     node_descs_[idx].resident = resident;
     node.active = true;
-    node.cpu.min_u = INT_MAX;
+    node.cpu.min_u = LLONG_MAX;
 
     if (idx >= node_declare_begin_id() && idx < node_declare_end_id() && idx + 1 > declare_reg_end_id_)
     {
