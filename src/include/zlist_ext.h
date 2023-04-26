@@ -184,8 +184,15 @@ public:
         {
             return;
         }
-        init();
-        assign(other.begin(), other.end());
+        if (std::is_trivial<_Ty>::value && other.size() * 4 >= other.exploit_offset_)
+        {
+            init(other);
+        }
+        else
+        {
+            init();
+            assign(other.begin(), other.end());
+        }
     }
 
     zlist_ext(zlist_ext<_Ty, _Size, _FixedSize, _Alloc>&& other)
@@ -194,7 +201,7 @@ public:
         {
             return;
         }
-        if (std::is_trivial<_Ty>::value)
+        if (std::is_trivial<_Ty>::value && other.size() * 4 >= other.exploit_offset_)
         {
             init(std::move(other));
         }
@@ -211,7 +218,7 @@ public:
         {
             return *this;
         }
-        if (std::is_trivial<_Ty>::value)
+        if (std::is_trivial<_Ty>::value && other.size() * 4 >= other.exploit_offset_)
         {
             clear();
             init(other);
@@ -229,7 +236,7 @@ public:
         {
             return *this;
         }
-        if (std::is_trivial<_Ty>::value)
+        if (std::is_trivial<_Ty>::value && other.size() * 4 >= other.exploit_offset_)
         {
             clear();
             init(std::move(other));
@@ -355,7 +362,7 @@ private:
         {
             dync_space_ = alloc_.allocate(_Size - _FixedSize);
             memcpy(dync_space_, temp.dync_space_, (temp.exploit_offset_ - _FixedSize) * sizeof(space_type));
-            for (u32 i = _FixedSize; i < (temp.exploit_offset_ - _FixedSize); i++)
+            for (u32 i = _FixedSize; i < temp.exploit_offset_ ; i++)
             {
                 data_[i].space = &dync_space_[i - _FixedSize];
             }
@@ -383,7 +390,7 @@ private:
         /*
         if (temp.dync_space_ && temp.exploit_offset_ > _FixedSize)
         {
-            for (u32 i = _FixedSize; i < (temp.exploit_offset_ - _FixedSize); i++)
+            for (u32 i = _FixedSize; i < temp.exploit_offset_; i++)
             {
                 data_[i].space = &dync_space_[i - _FixedSize];
             }

@@ -171,7 +171,7 @@ public:
         {
             return;
         }
-        if (std::is_trivial<_Ty>::value)
+        if (std::is_trivial<_Ty>::value && other.size() * 4 >= other.exploit_offset_) //todo check real size 
         {
             init(other);
         }
@@ -188,7 +188,7 @@ public:
         {
             return *this;
         }
-        if (std::is_trivial<_Ty>::value)
+        if (std::is_trivial<_Ty>::value && other.size() * 4 >= other.exploit_offset_)
         {
             init(other);
         }
