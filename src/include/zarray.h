@@ -117,14 +117,15 @@ public:
     ~zarray() { clear(); }
     zarray(std::initializer_list<_Ty> init_list)
     {
-        count_ = 0;
-        assign(init_list.begin(), init_list.end());
+        count_ = (size_type)init_list.size();
+        std::uninitialized_copy_n(init_list.begin(), count_, ptr(0));
     }
     zarray(const zarray< _Ty, _Size>& other)
     {
-        count_ = 0;
-        assign(other.begin(), other.end());
+        count_ = other.size();
+        std::uninitialized_copy_n(other.begin(), count_, ptr(0));
     }
+
     //std::array api
     iterator begin() noexcept { return ptr(0); }
     const_iterator begin() const noexcept { return ptr(0); }
@@ -460,7 +461,19 @@ public:
         {
             return *this;
         }
-        this->assign(other.begin(), other.end());
+        if (size() <= other.size())
+        {
+            std::copy_n(other.begin(), count_, ptr(0));
+            std::uninitialized_copy_n(other.begin() + count_, other.size() - count_, ptr(count_));
+            count_ = other.count_;
+            return *this;
+        }
+        std::copy_n(other.begin(), other.size(), ptr(0));
+        for (size_type i = other.size(); i < count_; i++)
+        {
+            ptr(i)->~_Ty();
+        }
+        count_ = other.size();
         return *this;
     }
 

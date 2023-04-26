@@ -238,6 +238,145 @@ s32 LinerStress(List& l, const std::string& desc,  bool is_static, bool out_prof
 
     }
 
+
+    if (true)
+    {
+        l.clear();
+        for (int i = 0; i < LOAD_CAPACITY; i++)
+        {
+            l.push_back(V(i));
+        }
+        auto p = std::make_unique<List>();
+        List& other = *p.get();
+        PROF_START_COUNTER(cost);
+        for (int j = 0; j < 1000; j++)
+        {
+            other = l;
+            l = other;
+        }
+
+        if (out_prof)
+        {
+            PROF_OUTPUT_MULTI_COUNT_CPU((ss.str() + "full list copy from other(other =l):size" + std::to_string(LOAD_CAPACITY) ).c_str(), 1000, cost.stop_and_save().cycles());
+        }
+        ASSERT_TEST_EQ((int)l.size(), LOAD_CAPACITY, desc + ": error");
+        l.clear();
+    }
+
+    if (true)
+    {
+        l.clear();
+        for (int i = 0; i < LOAD_CAPACITY/2; i++)
+        {
+            l.push_back(V(i));
+        }
+        auto p = std::make_unique<List>();
+        List& other = *p.get();
+        PROF_START_COUNTER(cost);
+        for (int j = 0; j < 1000; j++)
+        {
+            other = l;
+            l = other;
+        }
+
+        if (out_prof)
+        {
+            PROF_OUTPUT_MULTI_COUNT_CPU((ss.str() + "half list copy from other(other =l):size" + std::to_string(LOAD_CAPACITY/2)).c_str(), 1000, cost.stop_and_save().cycles());
+        }
+        ASSERT_TEST_EQ((int)l.size(), LOAD_CAPACITY/2, desc + ": error");
+        l.clear();
+    }
+
+    if (true)
+    {
+        l.clear();
+        auto p = std::make_unique<List>();
+        List& other = *p.get();
+        PROF_START_COUNTER(cost);
+        for (int j = 0; j < 1000; j++)
+        {
+            other = l;
+            l = other;
+        }
+
+        if (out_prof)
+        {
+            PROF_OUTPUT_MULTI_COUNT_CPU((ss.str() + "empty list copy from other(other =l):size" + std::to_string(0)).c_str(), 1000, cost.stop_and_save().cycles());
+        }
+        ASSERT_TEST_EQ((int)l.size(), 0, desc + ": error");
+        l.clear();
+    }
+
+
+    if (true)
+    {
+        l.clear();
+        for (int i = 0; i < LOAD_CAPACITY; i++)
+        {
+            l.push_back(V(i));
+        }
+        auto p = std::make_unique<List>();
+        List& other = *p.get();
+        PROF_START_COUNTER(cost);
+        for (int j = 0; j < 1000; j++)
+        {
+            other = std::move(l);
+            l = std::move(other);
+        }
+
+        if (out_prof)
+        {
+            PROF_OUTPUT_MULTI_COUNT_CPU((ss.str() + "full list std::move() from other(other =l):size" + std::to_string(LOAD_CAPACITY)).c_str(), 1000, cost.stop_and_save().cycles());
+        }
+        ASSERT_TEST_EQ((int)l.size(), LOAD_CAPACITY, desc + ": error");
+        l.clear();
+    }
+
+    if (true)
+    {
+        l.clear();
+        for (int i = 0; i < LOAD_CAPACITY / 2; i++)
+        {
+            l.push_back(V(i));
+        }
+        auto p = std::make_unique<List>();
+        List& other = *p.get();
+        PROF_START_COUNTER(cost);
+        for (int j = 0; j < 1000; j++)
+        {
+            other = std::move(l);
+            l = std::move(other);
+        }
+
+        if (out_prof)
+        {
+            PROF_OUTPUT_MULTI_COUNT_CPU((ss.str() + "half list std::move() from other(other =l):size" + std::to_string(LOAD_CAPACITY / 2)).c_str(), 1000, cost.stop_and_save().cycles());
+        }
+        ASSERT_TEST_EQ((int)l.size(), LOAD_CAPACITY / 2, desc + ": error");
+        l.clear();
+    }
+
+    if (true)
+    {
+        l.clear();
+        auto p = std::make_unique<List>();
+        List& other = *p.get();
+        PROF_START_COUNTER(cost);
+        for (int j = 0; j < 1000; j++)
+        {
+            other = std::move(l);
+            l = std::move(other);
+        }
+
+        if (out_prof)
+        {
+            PROF_OUTPUT_MULTI_COUNT_CPU((ss.str() + "empty list std::move() from other(other =l):size" + std::to_string(0)).c_str(), 1000, cost.stop_and_save().cycles());
+        }
+        ASSERT_TEST_EQ((int)l.size(), 0, desc + ": error");
+        l.clear();
+    }
+
+
     return 0;
 }
 
@@ -605,16 +744,33 @@ s32 SetStress(Map& m, const std::string& desc, bool is_static = false)
 }
 
 
+template<class T>
+T* InstT(T* = nullptr)
+{
+    T* p = new T;
+    if (p == NULL)
+    {
+        return NULL;
+    }
+    (void)*p;
+    return p;
+}
+
+template<class T>
+void DestroyT(T*p)
+{
+    delete p;
+}
 
 
 #define LinerStressWrap(T, V, is_static, out_prof) \
 do\
 {\
     RAIIVal<>::reset(); \
-    T* c = new T; \
+    T* c = InstT<T>(); \
     s32 ret = LinerStress<T,V>(*c, #T, is_static, out_prof); \
-    delete c; \
-    if (ret != 0) {LogError() <<"error."; return 1;} \
+    DestroyT<T>(c); \
+    if (ret != 0) {LogError() <<"error."; return 1;} else {LogDebug() << #T <<"tested.";  std::this_thread::sleep_for(std::chrono::milliseconds(100));}\
     CheckRAIIValByType(T);\
 }\
 while(0)

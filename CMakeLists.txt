@@ -130,6 +130,11 @@ endif(OPEN_CHECK)
 
 
 include_directories(${CMAKE_SOURCE_DIR}/tests)
+include_directories(${CMAKE_SOURCE_DIR}/tests/common)
+include_directories(${CMAKE_SOURCE_DIR}/tests/common/include)
+include_directories(${CMAKE_SOURCE_DIR}/tests/common/include/fn-log)
+include_directories(${CMAKE_SOURCE_DIR}/tests/common/include/zprof)
+
 macro(SUB_DIR_LIST result curdir)
     file(GLOB children RELATIVE ${curdir} ${curdir}/*)
     set(dirlist "")
@@ -149,6 +154,7 @@ FOREACH(SUB_DIR ${SUB_DIRS})
     #FILE(GLOB_RECURSE EXAMPLE_SOURCE
     FILE(GLOB EXAMPLE_SOURCE
     ${CMAKE_SOURCE_DIR}/tests/*.h 
+    ${CMAKE_SOURCE_DIR}/tests/common/*.h 
     ${CMAKE_SOURCE_DIR}/tests/${SUB_DIR}/*.h 
     ${CMAKE_SOURCE_DIR}/tests/${SUB_DIR}/*.c 
     ${CMAKE_SOURCE_DIR}/tests/${SUB_DIR}/*.cc 
