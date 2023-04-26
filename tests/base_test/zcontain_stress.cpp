@@ -257,9 +257,11 @@ s32 LinerStress(List& l, const std::string& desc,  bool is_static, bool out_prof
 
         if (out_prof)
         {
-            PROF_OUTPUT_MULTI_COUNT_CPU((ss.str() + "full list copy from other(other =l):size" + std::to_string(LOAD_CAPACITY) ).c_str(), 1000, cost.stop_and_save().cycles());
+            PROF_OUTPUT_MULTI_COUNT_CPU((ss.str() + "full cap copy from other(other =l):size" + std::to_string(LOAD_CAPACITY) ).c_str(), 1000, cost.stop_and_save().cycles());
         }
         ASSERT_TEST_EQ((int)l.size(), LOAD_CAPACITY, desc + ": error");
+        ASSERT_TEST_EQ(*l.begin(), *other.begin(), "");
+        ASSERT_TEST_EQ(*l.rbegin(), *other.rbegin(), "");
         l.clear();
     }
 
@@ -281,11 +283,66 @@ s32 LinerStress(List& l, const std::string& desc,  bool is_static, bool out_prof
 
         if (out_prof)
         {
-            PROF_OUTPUT_MULTI_COUNT_CPU((ss.str() + "half list copy from other(other =l):size" + std::to_string(LOAD_CAPACITY/2)).c_str(), 1000, cost.stop_and_save().cycles());
+            PROF_OUTPUT_MULTI_COUNT_CPU((ss.str() + "half cap copy from other(other =l):size" + std::to_string(LOAD_CAPACITY/2)).c_str(), 1000, cost.stop_and_save().cycles());
         }
         ASSERT_TEST_EQ((int)l.size(), LOAD_CAPACITY/2, desc + ": error");
+        ASSERT_TEST_EQ(*l.begin(), *other.begin(), "");
+        ASSERT_TEST_EQ(*l.rbegin(), *other.rbegin(), "");
         l.clear();
     }
+
+    if (true)
+    {
+        l.clear();
+        for (int i = 0; i < LOAD_CAPACITY / 3; i++)
+        {
+            l.push_back(V(i));
+        }
+        auto p = std::make_unique<List>();
+        List& other = *p.get();
+        PROF_START_COUNTER(cost);
+        for (int j = 0; j < 1000; j++)
+        {
+            other = l;
+            l = other;
+        }
+
+        if (out_prof)
+        {
+            PROF_OUTPUT_MULTI_COUNT_CPU((ss.str() + " 1/3 cap copy from other(other =l):size" + std::to_string(LOAD_CAPACITY / 2)).c_str(), 1000, cost.stop_and_save().cycles());
+        }
+        ASSERT_TEST_EQ((int)l.size(), LOAD_CAPACITY / 3, desc + ": error");
+        ASSERT_TEST_EQ(*l.begin(), *other.begin(), "");
+        ASSERT_TEST_EQ(*l.rbegin(), *other.rbegin(), "");
+        l.clear();
+    }
+
+    if (true)
+    {
+        l.clear();
+        for (int i = 0; i < LOAD_CAPACITY / 5; i++)
+        {
+            l.push_back(V(i));
+        }
+        auto p = std::make_unique<List>();
+        List& other = *p.get();
+        PROF_START_COUNTER(cost);
+        for (int j = 0; j < 1000; j++)
+        {
+            other = l;
+            l = other;
+        }
+
+        if (out_prof)
+        {
+            PROF_OUTPUT_MULTI_COUNT_CPU((ss.str() + " 1/5 cap copy from other(other =l):size" + std::to_string(LOAD_CAPACITY / 2)).c_str(), 1000, cost.stop_and_save().cycles());
+        }
+        ASSERT_TEST_EQ((int)l.size(), LOAD_CAPACITY / 5, desc + ": error");
+        ASSERT_TEST_EQ(*l.begin(), *other.begin(), "");
+        ASSERT_TEST_EQ(*l.rbegin(), *other.rbegin(), "");
+        l.clear();
+    }
+
 
     if (true)
     {
@@ -301,7 +358,7 @@ s32 LinerStress(List& l, const std::string& desc,  bool is_static, bool out_prof
 
         if (out_prof)
         {
-            PROF_OUTPUT_MULTI_COUNT_CPU((ss.str() + "empty list copy from other(other =l):size" + std::to_string(0)).c_str(), 1000, cost.stop_and_save().cycles());
+            PROF_OUTPUT_MULTI_COUNT_CPU((ss.str() + "empty cap copy from other(other =l):size" + std::to_string(0)).c_str(), 1000, cost.stop_and_save().cycles());
         }
         ASSERT_TEST_EQ((int)l.size(), 0, desc + ": error");
         l.clear();
@@ -326,7 +383,7 @@ s32 LinerStress(List& l, const std::string& desc,  bool is_static, bool out_prof
 
         if (out_prof)
         {
-            PROF_OUTPUT_MULTI_COUNT_CPU((ss.str() + "full list std::move() from other(other =l):size" + std::to_string(LOAD_CAPACITY)).c_str(), 1000, cost.stop_and_save().cycles());
+            PROF_OUTPUT_MULTI_COUNT_CPU((ss.str() + "full cap std::move() from other(other =l):size" + std::to_string(LOAD_CAPACITY)).c_str(), 1000, cost.stop_and_save().cycles());
         }
         ASSERT_TEST_EQ((int)l.size(), LOAD_CAPACITY, desc + ": error");
         l.clear();
@@ -350,9 +407,61 @@ s32 LinerStress(List& l, const std::string& desc,  bool is_static, bool out_prof
 
         if (out_prof)
         {
-            PROF_OUTPUT_MULTI_COUNT_CPU((ss.str() + "half list std::move() from other(other =l):size" + std::to_string(LOAD_CAPACITY / 2)).c_str(), 1000, cost.stop_and_save().cycles());
+            PROF_OUTPUT_MULTI_COUNT_CPU((ss.str() + "half cap std::move() from other(other =l):size" + std::to_string(LOAD_CAPACITY / 2)).c_str(), 1000, cost.stop_and_save().cycles());
         }
         ASSERT_TEST_EQ((int)l.size(), LOAD_CAPACITY / 2, desc + ": error");
+        //ASSERT_TEST_EQ(*l.begin(), *other.begin(), "");
+        //ASSERT_TEST_EQ(*l.rbegin(), *other.rbegin(), "");
+        l.clear();
+    }
+
+    if (true)
+    {
+        l.clear();
+        for (int i = 0; i < LOAD_CAPACITY / 3; i++)
+        {
+            l.push_back(V(i));
+        }
+        auto p = std::make_unique<List>();
+        List& other = *p.get();
+        PROF_START_COUNTER(cost);
+        for (int j = 0; j < 1000; j++)
+        {
+            other = std::move(l);
+            l = std::move(other);
+        }
+
+        if (out_prof)
+        {
+            PROF_OUTPUT_MULTI_COUNT_CPU((ss.str() + " 1/3 cap std::move() from other(other =l):size" + std::to_string(LOAD_CAPACITY / 2)).c_str(), 1000, cost.stop_and_save().cycles());
+        }
+        ASSERT_TEST_EQ((int)l.size(), LOAD_CAPACITY / 3, desc + ": error");
+        //ASSERT_TEST_EQ(*l.begin(), *other.begin(), "");
+        //ASSERT_TEST_EQ(*l.rbegin(), *other.rbegin(), "");
+        l.clear();
+    }
+
+    if (true)
+    {
+        l.clear();
+        for (int i = 0; i < LOAD_CAPACITY / 5; i++)
+        {
+            l.push_back(V(i));
+        }
+        auto p = std::make_unique<List>();
+        List& other = *p.get();
+        PROF_START_COUNTER(cost);
+        for (int j = 0; j < 1000; j++)
+        {
+            other = std::move(l);
+            l = std::move(other);
+        }
+
+        if (out_prof)
+        {
+            PROF_OUTPUT_MULTI_COUNT_CPU((ss.str() + " 1/5 cap std::move() from other(other =l):size" + std::to_string(LOAD_CAPACITY / 2)).c_str(), 1000, cost.stop_and_save().cycles());
+        }
+        ASSERT_TEST_EQ((int)l.size(), LOAD_CAPACITY / 5, desc + ": error");
         l.clear();
     }
 
