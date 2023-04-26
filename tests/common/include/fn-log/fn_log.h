@@ -102,6 +102,7 @@
 #include <sys/syscall.h>
 #include <sys/ipc.h>
 #include <sys/shm.h>
+#include <stdlib.h>
 #
 #endif
 
@@ -668,7 +669,8 @@ namespace FNLog
         DEVICE_CFG_IDENTIFY_EXTEND,
         DEVICE_CFG_IDENTIFY_FILTER,
         DEVICE_CFG_FILE_LIMIT_SIZE, 
-        DEVICE_CFG_FILE_ROLLBACK, 
+        DEVICE_CFG_FILE_ROLLBACK,
+        DEVICE_CFG_FILE_STUFF_UP,
         DEVICE_CFG_UDP_IP,
         DEVICE_CFG_UDP_PORT,
         DEVICE_CFG_MAX_ID
@@ -740,6 +742,8 @@ namespace FNLog
     {
         CHANNEL_LOG_HOLD,
         CHANNEL_LOG_PUSH,
+        CHANNEL_LOG_PRIORITY, //== PRIORITY_TRACE
+        CHANNEL_LOG_PRIORITY_MAX = CHANNEL_LOG_PRIORITY + PRIORITY_MAX,
         CHANNEL_LOG_PROCESSED = CHANNEL_LOG_PUSH + 8,
         CHANNEL_LOG_MAX_ID
     };
@@ -792,6 +796,7 @@ namespace FNLog
         time_t last_hot_check_;
 
         int chunk_;
+        int virtual_device_id_;
         int device_size_;
         Device devices_[MAX_DEVICE_SIZE];
         ConfigFields config_fields_;
@@ -1052,6 +1057,7 @@ namespace FNLog
         RK_PATH,
         RK_LIMIT_SIZE,
         RK_ROLLBACK,
+        RK_FILE_STUFF_UP,
         RK_UDP_ADDR,
     };
 
@@ -1145,6 +1151,10 @@ namespace FNLog
             if (*(begin+1) == 'y')
             {
                 return RK_SYNC;
+            }
+            else if (*(begin + 1) == 't')
+            {
+                return RK_FILE_STUFF_UP;
             }
             return RK_SHM_KEY;
         case 'u':
@@ -1481,7 +1491,7 @@ namespace FNLog
                 if ((ch >= 'a' && ch <= 'z')
                     || (ch >= 'A' && ch <= 'Z')
                     || (ch >= '0' && ch <= '9')
-                    || ch == '_' || ch == '-' || ch == ':' || ch == '/' || ch == '.' || ch == ',' || ch == '$' || ch == '~')
+                    || ch == '_' || ch == '-' || ch == ':' || ch == '/' || ch == '.' || ch == ',' || ch == '$' || ch == '~' || ch =='%')
                 {
                     switch (ls.line_.block_type_)
                     {
@@ -1575,6 +1585,9 @@ namespace FNLog
                 break;
             case RK_ROLLBACK:
                 device.config_fields_[DEVICE_CFG_FILE_ROLLBACK] = atoll(ls.line_.val_begin_);
+                break;
+            case RK_FILE_STUFF_UP:
+                device.config_fields_[DEVICE_CFG_FILE_STUFF_UP] = ParseBool(ls.line_.val_begin_, ls.line_.val_end_);  
                 break;
             case RK_PATH:
                 if (ls.line_.val_end_ - ls.line_.val_begin_ < Device::MAX_PATH_LEN - 1
@@ -1692,6 +1705,10 @@ namespace FNLog
                     memset(&device, 0, sizeof(device));
                     device.device_id_ = device_id;
                     ret = ParseDevice(ls, device, ls.line_.blank_);
+                    if (device.out_type_ == DEVICE_OUT_VIRTUAL)
+                    {
+                        channel.virtual_device_id_ = device.device_id_;
+                    }
                     if (ret != PEC_NONE || ls.line_.line_type_ == LINE_EOF)
                     {
                         return ret;
@@ -2672,17 +2689,58 @@ namespace FNLog
 {
 
     //support
-    //[$PNAME $PID $YEAR $MON $DAY $HOUR $MIN $SEC]
-    inline std::string MakeFileName(const std::string& fmt_name, int channel_id, int device_id, const struct tm& t)
+    inline std::string PreFmtName(const std::string& fmt_name)
     {
-        std::string name = fmt_name;
-        if (name.empty())
+        if (fmt_name.empty())
         {
-            name = "$PNAME_$YEAR$MON$DAY_$PID.";
-            name += std::to_string(channel_id);
-            name += std::to_string(device_id);
+            return fmt_name;
         }
-        name += ".log";
+        std::string name = fmt_name;
+        size_t pos = 0;
+        do
+        {
+            bool has_error = false;
+            pos = name.find('%', pos);
+            if (pos == std::string::npos)
+            {
+                break;
+            }
+            if (name.length() - pos < 2)//min(escape) 
+            {
+                break;
+            }
+
+            switch (name[pos + 1])
+            {
+            case 'F':
+                if (true)
+                {
+                    name.replace(pos, 2, "$YEAR-$MON-$DAY");
+                    break;
+                }
+                has_error = true;
+                break;
+            default:
+                has_error = true;
+                break;
+            }
+            if (has_error)
+            {
+                pos++;
+            }
+        } while (true);
+        return name;
+    }
+    // 
+    inline std::string FmtName(const std::string& fmt_name, int channel_id, int device_id, const struct tm& t)
+    {
+        if (fmt_name.empty())
+        {
+            return fmt_name;
+        }
+
+        std::string name = PreFmtName(fmt_name);
+
         size_t pos = 0;
         do
         {
@@ -2692,7 +2750,7 @@ namespace FNLog
             {
                 break;
             }
-            if (name.length() - pos < 8)//min(escape) + ".log"
+            if (name.length() - pos <2)//min(escape) 
             {
                 break;
             }
@@ -2782,6 +2840,31 @@ namespace FNLog
         return name;
     }
 
+
+    //[$PNAME $PID $YEAR $MON $DAY $HOUR $MIN $SEC]
+    inline std::string MakeFileName(const std::string& fmt_name, int channel_id, int device_id, const struct tm& t)
+    {
+        std::string name = fmt_name;
+        if (name.empty())
+        {
+            name = "$PNAME_$YEAR$MON$DAY_$PID.";
+            name += std::to_string(channel_id);
+            name += std::to_string(device_id);
+        }
+        name += ".log";
+        return FmtName(name, channel_id, device_id, t);
+    }
+    //[$PNAME $PID $YEAR $MON $DAY $HOUR $MIN $SEC]
+    inline std::string MakePathName(const std::string& fmt_name, int channel_id, int device_id, const struct tm& t)
+    {
+        if (fmt_name.empty())
+        {
+            return "./log/";
+        }
+        return FmtName(fmt_name, channel_id, device_id, t);
+    }
+
+
     inline void OpenFileDevice(Logger & logger, Channel & channel, Device & device, FileHandler & writer, LogData & log)
     {
         bool sameday = true;
@@ -2798,7 +2881,9 @@ namespace FNLog
             file_over = true;
         }
 
-        if (!sameday || file_over)
+        bool stuff_up = (bool)AtomicLoadC(device, DEVICE_CFG_FILE_STUFF_UP);
+
+        if (file_over  || (!sameday && !stuff_up))
         {
             AtomicStoreL(device, DEVICE_LOG_CUR_FILE_SIZE, 0);
             if (writer.is_open())
@@ -2824,8 +2909,7 @@ namespace FNLog
         }
 
         std::string name = MakeFileName(device.out_file_, channel.channel_id_, device.device_id_, t);
-
-        std::string path = device.out_path_;
+        std::string path = MakePathName(device.out_path_, channel.channel_id_, device.device_id_, t);
         if (!path.empty())
         {
             std::for_each(path.begin(), path.end(), [](char& ch) {if (ch == '\\') { ch = '/'; } });
@@ -2848,10 +2932,13 @@ namespace FNLog
 
         if (AtomicLoadC(device, DEVICE_CFG_FILE_ROLLBACK) > 0 || AtomicLoadC(device, DEVICE_CFG_FILE_LIMIT_SIZE) > 0)
         {
-            //when no rollback but has limit size. need try rollback once.
-            long long limit_roll = device.config_fields_[DEVICE_CFG_FILE_ROLLBACK];
-            limit_roll = limit_roll > 0 ? limit_roll : 1;
-            FileHandler::rollback(path, 1, (int)limit_roll);
+            if (!stuff_up || file_over)
+            {
+                //when no rollback but has limit size. need try rollback once.
+                long long limit_roll = device.config_fields_[DEVICE_CFG_FILE_ROLLBACK];
+                limit_roll = limit_roll > 0 ? limit_roll : 1;
+                FileHandler::rollback(path, 1, (int)limit_roll);
+            }
         }
 
         struct stat file_stat;
@@ -3121,10 +3208,42 @@ namespace FNLog
         RefVirtualDevice() = vdp;
     }
 
+    //the virtual device like log hook;  this virtual device call at the log create time(thread) not at log write thread .    
+    //can used translate log  
     inline void EnterProcOutVirtualDevice(Logger& logger, int channel_id, int device_id, LogData& log)
     {
         if (RefVirtualDevice())
         {
+            Channel& channel = logger.shm_->channels_[channel_id];
+            Device::ConfigFields& fields = channel.devices_[device_id].config_fields_;
+            long long field_begin_category = fields[FNLog::DEVICE_CFG_CATEGORY];
+            long long field_category_count = fields[FNLog::DEVICE_CFG_CATEGORY_EXTEND];
+            unsigned long long field_category_filter = (unsigned long long)fields[FNLog::DEVICE_CFG_CATEGORY_FILTER];
+            long long field_begin_identify = fields[FNLog::DEVICE_CFG_IDENTIFY];
+            long long field_identify_count = fields[FNLog::DEVICE_CFG_IDENTIFY_EXTEND];
+            unsigned long long field_identify_filter = (unsigned long long)fields[FNLog::DEVICE_CFG_IDENTIFY_FILTER];
+
+            if (field_category_count > 0 && (log.category_ < field_begin_category || log.category_ >= field_begin_category + field_category_count))
+            {
+                return;
+            }
+
+            if (field_identify_count > 0 && (log.identify_ < field_begin_identify || log.identify_ >= field_begin_identify + field_identify_count))
+            {
+                return;
+            }
+            if (field_category_filter && (field_category_filter & ((1ULL) << (unsigned int)log.category_)) == 0)
+            {
+                return;
+            }
+            if (field_identify_filter && (field_identify_filter & ((1ULL) << (unsigned int)log.identify_)) == 0)
+            {
+                return;
+            }
+
+            int content_len_ = FN_MIN(log.content_len_, LogData::LOG_SIZE - 1);
+            log.content_[content_len_] = '\0'; //virtual device hook maybe direct used content like c-string 
+
             Device& device = logger.shm_->channels_[channel_id].devices_[device_id];
             AtomicAddL(device, DEVICE_LOG_TOTAL_WRITE_LINE);
             AtomicAddLV(device, DEVICE_LOG_TOTAL_WRITE_BYTE, log.content_len_);
@@ -3200,7 +3319,7 @@ namespace FNLog
             EnterProcOutUDPDevice(logger, channel_id, device_id, log);
             break;
         case DEVICE_OUT_VIRTUAL:
-            EnterProcOutVirtualDevice(logger, channel_id, device_id, log);
+            //EnterProcOutVirtualDevice(logger, channel_id, device_id, log);
             break;        
         default:
             break;
@@ -3414,6 +3533,12 @@ namespace FNLog
         {
             return true;
         }
+        if (priority >= PRIORITY_MAX)
+        {
+            static_assert(PRIORITY_MAX == PRIORITY_FATAL + 1, "safety priority to record channel log CHANNEL_LOG_PRIORITY");
+            priority = PRIORITY_FATAL;
+        }
+
         long long begin_category = AtomicLoadC(channel, CHANNEL_CFG_CATEGORY);
         long long category_count = AtomicLoadC(channel, CHANNEL_CFG_CATEGORY_EXTEND);
         unsigned long long category_filter = (unsigned long long)AtomicLoadC(channel, CHANNEL_CFG_CATEGORY_FILTER);
@@ -3553,7 +3678,7 @@ namespace FNLog
         log.content_[log.content_len_] = '\0';
 
         log.data_mark_ = 2;
-
+        AtomicAddL(channel, CHANNEL_LOG_PRIORITY + log.priority_);
 
         do
         {
@@ -3580,7 +3705,7 @@ namespace FNLog
         return 0;
     }
 
-
+    //combine virtual device  can transmit log to other channel 
     inline int TransmitChannel(Logger& logger, int channel_id, const LogData& log)
     {
         if (log.channel_id_ == channel_id)
@@ -3606,7 +3731,7 @@ namespace FNLog
         trans_log.precise_ = log.precise_;
         trans_log.thread_ = log.thread_;
         trans_log.prefix_len_ = log.prefix_len_;
-        trans_log.content_len_ = log.content_len_ > 0 ? log.content_len_ - 1: log.content_len_;
+        trans_log.content_len_ = log.content_len_;
         memcpy(trans_log.content_, log.content_, log.content_len_);
         return PushChannel(logger, channel_id, hold_idx);
     }
@@ -4158,6 +4283,7 @@ namespace FNLog
         float v_;
     };
 
+
     class LogStream
     {
     public:
@@ -4270,6 +4396,21 @@ namespace FNLog
         {
             if (log_data_) 
             {
+                if (RefVirtualDevice() != NULL)
+                {
+                    Channel& channel = logger_->shm_->channels_[log_data_->channel_id_];
+                    if (channel.virtual_device_id_ >= 0)
+                    {
+                        Device& device = channel.devices_[channel.virtual_device_id_];
+                        if (log_data_->priority_ >= device.config_fields_[DEVICE_CFG_PRIORITY])
+                        {
+                            //more block check in the proc 
+                            EnterProcOutVirtualDevice(*logger_, log_data_->channel_id_, channel.virtual_device_id_, *log_data_);
+                            //(*RefVirtualDevice())(*log_data_);
+                        }
+                        
+                    }
+                }
                 PushLog(*logger_, log_data_->channel_id_, hold_idx_);
                 hold_idx_ = -1;
                 log_data_ = nullptr;
@@ -4531,6 +4672,9 @@ namespace FNLog
         Logger* logger_ = nullptr;
         int hold_idx_ = -1;//ring buffer  
     };
+
+
+
 }
 
 
