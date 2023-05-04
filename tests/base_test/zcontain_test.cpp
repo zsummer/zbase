@@ -3,6 +3,7 @@
 #include "fn_log.h"
 #include <string>
 #include "zarray.h"
+#include "zvector.h"
 #include "zlist.h"
 #include "zlist_ext.h"
 #include "zhash_map.h"
@@ -385,7 +386,23 @@ s32 array_test()
         ASSERT_TEST(ArrayBaseTest(target, rand_array) == 0);
     }
 
+    if (true)
+    {
+        zvector<int, MAX_SIZE, 0> target;
+        ASSERT_TEST(ArrayBaseTest(target, rand_array) == 0, "0 fixed zvector");
+    }
 
+    if (true)
+    {
+        zvector<int, MAX_SIZE, MAX_SIZE / 2> target;
+        ASSERT_TEST(ArrayBaseTest(target, rand_array) == 0, "half zvector");
+    }
+
+    if (true)
+    {
+        zvector<int, MAX_SIZE, MAX_SIZE> target;
+        ASSERT_TEST(ArrayBaseTest(target, rand_array) == 0, "fixed zvector");
+    }
 
     if (true)
     {
@@ -413,7 +430,41 @@ s32 array_test()
 
     }
 
+    if (true)
+    {
+        RAIIVal<>::reset();
+        zvector<RAIIVal<>, MAX_SIZE, 0> target;
+        ASSERT_TEST(ArrayBaseTest(target, rand_array) == 0, "zvector");
 
+        if (true)
+        {
+            volatile u32 i = MAX_SIZE - 1;
+            const auto& const_target = target;
+            for (auto iter = const_target.rbegin(); iter != const_target.rend(); iter++)
+            {
+                i--;
+            }
+        }
+
+    }
+
+    if (true)
+    {
+        RAIIVal<>::reset();
+        zvector<RAIIVal<>, MAX_SIZE, MAX_SIZE> target;
+        ASSERT_TEST(ArrayBaseTest(target, rand_array) == 0, "zvector");
+
+        if (true)
+        {
+            volatile u32 i = MAX_SIZE - 1;
+            const auto& const_target = target;
+            for (auto iter = const_target.rbegin(); iter != const_target.rend(); iter++)
+            {
+                i--;
+            }
+        }
+
+    }
 
 
     if (true)
@@ -450,29 +501,83 @@ s32 array_test()
         ASSERT_TEST(ListBaseTest(target, rand_array) == 0);
     }
 
+    if (true)
+    {
+        zarray<std::string, 100> strings = { "123", "2" };
+        zarray<std::string, 50> strings2;
+        strings2.assign(strings.begin(), strings.end());
+        ASSERT_TEST_EQ(strings2.size(), 2ULL, "");
+        strings2.emplace_back("888");
 
-    zarray<std::string, 100> strings = { "123", "2" };
-    zarray<std::string, 50> strings2;
-    strings2.assign(strings.begin(), strings.end());
-    ASSERT_TEST_EQ(strings2.size(), 2ULL, "");
-    strings2.emplace_back("888");
+        if (true)
+        {
+            RAIIVal<>& rv = sort_obj_array[0];
+            zarray<RAIIVal<>, 100> raii_array;
+            ASSERT_TEST_EQ(RAIIVal<>::now_live_count_, 0U, "");
+            raii_array.push_back(rv);
+            ASSERT_TEST_EQ(RAIIVal<>::now_live_count_, 1U, "");
+            raii_array.insert(raii_array.begin(), rv);
+            ASSERT_TEST_EQ(RAIIVal<>::now_live_count_, 2U, "");
+            ASSERT_TEST_EQ(RAIIVal<>::construct_count_, RAIIVal<>::destroy_count_ + 2, "");
+            raii_array.clear();
+            ASSERT_TEST_EQ(RAIIVal<>::now_live_count_, 0U, "");
+            ASSERT_TEST_EQ(RAIIVal<>::construct_count_, RAIIVal<>::destroy_count_, "");
+        }
+
+    }
+
 
     if (true)
     {
-        RAIIVal<>& rv = sort_obj_array[0];
-        zarray<RAIIVal<>, 100> raii_array;
-        ASSERT_TEST_EQ(RAIIVal<>::now_live_count_, 0U, "");
-        raii_array.push_back(rv);
-        ASSERT_TEST_EQ(RAIIVal<>::now_live_count_, 1U, "");
-        raii_array.insert(raii_array.begin(), rv);
-        ASSERT_TEST_EQ(RAIIVal<>::now_live_count_, 2U, "");
-        ASSERT_TEST_EQ(RAIIVal<>::construct_count_, RAIIVal<>::destroy_count_ + 2, "");
-        raii_array.clear();
-        ASSERT_TEST_EQ(RAIIVal<>::now_live_count_, 0U, "");
-        ASSERT_TEST_EQ(RAIIVal<>::construct_count_, RAIIVal<>::destroy_count_, "");
+        zvector<std::string, 100, 0> strings = { "123", "2" };
+        zvector<std::string, 50, 0> strings2;
+        strings2.assign(strings.begin(), strings.end());
+        ASSERT_TEST_EQ(strings2.size(), 2ULL, "");
+        strings2.emplace_back("888");
 
+        if (true)
+        {
+            RAIIVal<>& rv = sort_obj_array[0];
+            zvector<RAIIVal<>, 100, 0> raii_array;
+            ASSERT_TEST_EQ(RAIIVal<>::now_live_count_, 0U, "");
+            raii_array.push_back(rv);
+            ASSERT_TEST_EQ(RAIIVal<>::now_live_count_, 1U, "");
+            raii_array.insert(raii_array.begin(), rv);
+            ASSERT_TEST_EQ(RAIIVal<>::now_live_count_, 2U, "");
+            ASSERT_TEST_EQ(RAIIVal<>::construct_count_, RAIIVal<>::destroy_count_ + 2, "");
+            raii_array.clear();
+            ASSERT_TEST_EQ(RAIIVal<>::now_live_count_, 0U, "");
+            ASSERT_TEST_EQ(RAIIVal<>::construct_count_, RAIIVal<>::destroy_count_, "");
+        }
 
     }
+
+    if (true)
+    {
+        zvector<std::string, 100, 100> strings = { "123", "2" };
+        zvector<std::string, 50, 50> strings2;
+        strings2.assign(strings.begin(), strings.end());
+        ASSERT_TEST_EQ(strings2.size(), 2ULL, "");
+        strings2.emplace_back("888");
+
+        if (true)
+        {
+            RAIIVal<>& rv = sort_obj_array[0];
+            zvector<RAIIVal<>, 100, 100> raii_array;
+            ASSERT_TEST_EQ(RAIIVal<>::now_live_count_, 0U, "");
+            raii_array.push_back(rv);
+            ASSERT_TEST_EQ(RAIIVal<>::now_live_count_, 1U, "");
+            raii_array.insert(raii_array.begin(), rv);
+            ASSERT_TEST_EQ(RAIIVal<>::now_live_count_, 2U, "");
+            ASSERT_TEST_EQ(RAIIVal<>::construct_count_, RAIIVal<>::destroy_count_ + 2, "");
+            raii_array.clear();
+            ASSERT_TEST_EQ(RAIIVal<>::now_live_count_, 0U, "");
+            ASSERT_TEST_EQ(RAIIVal<>::construct_count_, RAIIVal<>::destroy_count_, "");
+        }
+
+    }
+
+
 
     return 0;
 }
