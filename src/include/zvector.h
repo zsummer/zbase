@@ -258,7 +258,11 @@ public:
             }
         }
 #ifdef ZDEBUG_UNINIT_MEMORY
-        memset(ptr(0), 0xfd, max_size() * sizeof(_Ty));
+        memset(data_, 0xfd, _FixedSize * sizeof(_Ty));
+        if (real_ptr_ != &data_[0])
+        {
+            memset(ptr(0), 0xfd, max_size() * sizeof(_Ty));
+        }
 #endif // ZDEBUG_UNINIT_MEMORY
         count_ = 0;
     }

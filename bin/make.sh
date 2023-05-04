@@ -1,3 +1,3 @@
 #!/bin/bash
 cd ..
-sh make.sh
+sh make.sh $@
