@@ -481,7 +481,7 @@ public:
     iterator assign(Iter first, Iter last)
     {
         clear();
-        check_realloc(std::distance(first, last));
+        check_realloc((size_type)std::distance(first, last));
         iterator pos = begin();
         if (!std::is_trivial< _Ty>::value)
         {
