@@ -3,6 +3,7 @@
 
 #include "fn_log.h"
 #include "zarray.h"
+#include "zvector.h"
 #include <string>
 #include "zlist.h"
 #include "zlist_ext.h"
@@ -1037,7 +1038,26 @@ s32 contiainer_stress_test()
                 z.push_back(RAIIVal<>(i * 10000 + j));
             }
         }
-        ASSERT_RAII_VAL("zlist  memory over test");
+        ASSERT_RAII_VAL("zarray  memory over test");
+
+        for (int i = 0; i < 1008; i++)
+        {
+            zvector<RAIIVal<>, 1000, 1000>  z;
+            for (int j = 0; j < i; j++)
+            {
+                z.push_back(RAIIVal<>(i * 10000 + j));
+            }
+        }
+        ASSERT_RAII_VAL("zvector  memory over test");
+        for (int i = 0; i < 1008; i++)
+        {
+            zvector<RAIIVal<>, 1000, 0>  z;
+            for (int j = 0; j < i; j++)
+            {
+                z.push_back(RAIIVal<>(i * 10000 + j));
+            }
+        }
+        ASSERT_RAII_VAL("zvector  memory over test");
     }
 
 
@@ -1046,31 +1066,56 @@ s32 contiainer_stress_test()
 
     using int_zarray = zarray<int, LOAD_CAPACITY>;
     using raii_zarray = zarray<RAIIVal<>, LOAD_CAPACITY>;
+    using int_zvector_0_fixed = zvector<int, LOAD_CAPACITY, 0>;
+    using raii_zvector_0_fixed = zvector<RAIIVal<>, LOAD_CAPACITY, 0>;
+    using int_zvector_half_fixed = zvector<int, LOAD_CAPACITY, LOAD_CAPACITY/2>;
+    using raii_zvector_half_fixed = zvector<RAIIVal<>, LOAD_CAPACITY, LOAD_CAPACITY/2>;
+    using int_zvector_full_fixed = zvector<int, LOAD_CAPACITY, LOAD_CAPACITY>;
+    using raii_zvector_full_fixed = zvector<RAIIVal<>, LOAD_CAPACITY, LOAD_CAPACITY>;
+
     using raii_svector = StaticVector<RAIIVal<>, LOAD_CAPACITY>;
     using int_svector = StaticVector<int, LOAD_CAPACITY>;
 
     LinerStressWrap(std::vector<int>, int, false, true);
     LinerStressWrap(int_zarray, int, true, true);
+    LinerStressWrap(int_zvector_0_fixed, int, true, true);
+    LinerStressWrap(int_zvector_half_fixed, int, true, true);
+    LinerStressWrap(int_zvector_full_fixed, int, true, true);
     LinerStressWrap(int_svector, int, false, true);
 
 
     LinerStressWrap(std::vector<int>, RAIIVal<>, false, false);
     LinerStressWrap(int_zarray, RAIIVal<>, true, false);
+    LinerStressWrap(int_zvector_0_fixed, RAIIVal<>, true, false);
+    LinerStressWrap(int_zvector_half_fixed, RAIIVal<>, true, false);
+    LinerStressWrap(int_zvector_full_fixed, RAIIVal<>, true, false);
 
     LinerDestroyWrap<std::vector<int>, RAIIVal<>>();
-    LinerDestroyWrap<zarray<int, LOAD_CAPACITY>, RAIIVal<>, true>();
+    LinerDestroyWrap<int_zarray, RAIIVal<>, true>();
+    LinerDestroyWrap<int_zvector_0_fixed, RAIIVal<>, true>();
+    LinerDestroyWrap<int_zvector_half_fixed, RAIIVal<>, true>();
+    LinerDestroyWrap<int_zvector_full_fixed, RAIIVal<>, true>();
 
     LinerStressWrap(std::vector<RAIIVal<>>, RAIIVal<>, false, true);
     LinerStressWrap(raii_zarray, RAIIVal<>, true, true);
+    LinerStressWrap(raii_zvector_0_fixed, RAIIVal<>, true, true);
+    LinerStressWrap(raii_zvector_half_fixed, RAIIVal<>, true, true);
+    LinerStressWrap(raii_zvector_full_fixed, RAIIVal<>, true, true);
     LinerStressWrap(raii_svector, int, false, true);
 
 
     LinerStressWrap(std::vector<RAIIVal<>>, int, false, false);
     LinerStressWrap(raii_zarray, int, true, false);
+    LinerStressWrap(raii_zvector_0_fixed, int, true, false);
+    LinerStressWrap(raii_zvector_half_fixed, int, true, false);
+    LinerStressWrap(raii_zvector_full_fixed, int, true, false);
 
     LinerDestroyWrap<std::vector<RAIIVal<>>, RAIIVal<>>();
-    LinerDestroyWrap<zarray<RAIIVal<>, LOAD_CAPACITY>, RAIIVal<>, true>();
-    
+    LinerDestroyWrap<raii_zarray, RAIIVal<>, true>();
+    LinerDestroyWrap<raii_zvector_0_fixed, RAIIVal<>, true>();
+    LinerDestroyWrap<raii_zvector_half_fixed, RAIIVal<>, true>();
+    LinerDestroyWrap<raii_zvector_full_fixed, RAIIVal<>, true>();
+
 
     LogDebug() << "================";
     using int_zlist = zlist<int, LOAD_CAPACITY>;

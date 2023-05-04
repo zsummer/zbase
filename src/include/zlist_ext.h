@@ -659,7 +659,7 @@ private:
     u32 used_head_id_;
     allocator_type alloc_;
     node_type data_[LIST_SIZE];
-    space_type fixed_space_[_FixedSize];
+    space_type fixed_space_[_FixedSize > 0? _FixedSize : 1];
     space_type* dync_space_;// space_type dync_space_[Size - _FixedSize];_
 };
 
