@@ -203,7 +203,7 @@ public:
         }
         if (std::is_trivial<_Ty>::value && other.size() * 4 >= other.exploit_offset_)
         {
-            init(std::move(other));
+            plat_init(std::move(other));
         }
         else
         {
@@ -221,7 +221,7 @@ public:
         if (std::is_trivial<_Ty>::value && other.size() * 4 >= other.exploit_offset_)
         {
             clear();
-            init(other);
+            plat_init(other);
         }
         else
         {
@@ -239,7 +239,7 @@ public:
         if (std::is_trivial<_Ty>::value && other.size() * 4 >= other.exploit_offset_)
         {
             clear();
-            init(std::move(other));
+            plat_init(std::move(other));
         }
         else
         {
@@ -340,7 +340,7 @@ private:
         used_head_id_ = END_ID;
         dync_space_ = NULL;
     }
-    void init(const zlist_ext<_Ty, _Size, _FixedSize, _Alloc>& temp)
+    void plat_init(const zlist_ext<_Ty, _Size, _FixedSize, _Alloc>& temp)
     {
         used_count_ = temp.used_count_;
         free_id_ = temp.free_id_;
@@ -370,7 +370,7 @@ private:
 
     }
 
-    void init(zlist_ext<_Ty, _Size, _FixedSize, _Alloc>&& temp)
+    void plat_init(zlist_ext<_Ty, _Size, _FixedSize, _Alloc>&& temp)
     {
         used_count_ = temp.used_count_;
         free_id_ = temp.free_id_;
