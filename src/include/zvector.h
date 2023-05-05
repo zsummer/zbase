@@ -208,7 +208,7 @@ public:
         }
         size_type idx = (size_type)(iter_pos - ptr(0));
         space_type_ptr tmp_ptr = (space_type_ptr)alloc_.allocate(_Size);
-        std::uninitialized_copy_n(ptr(0), count_, reinterpret_cast<pointer>(tmp_ptr)); // todo
+        std::uninitialized_copy_n(ptr(0), count_, reinterpret_cast<pointer>(tmp_ptr));  
         if (!std::is_trivial<_Ty>::value)
         {
             _Ty* pbegin = ptr(0);

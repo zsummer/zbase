@@ -171,9 +171,9 @@ public:
         {
             return;
         }
-        if (std::is_trivial<_Ty>::value && other.size() * 4 >= other.exploit_offset_) //todo check real size 
+        if (std::is_trivial<_Ty>::value && other.size() * 4 >= other.exploit_offset_) 
         {
-            init(other);
+            plat_init(other);
         }
         else
         {
@@ -190,7 +190,7 @@ public:
         }
         if (std::is_trivial<_Ty>::value && other.size() * 4 >= other.exploit_offset_)
         {
-            init(other);
+            plat_init(other);
         }
         else
         {
@@ -281,7 +281,7 @@ private:
         used_head_id_ = END_ID;
     }
 
-    void init(const zlist<_Ty, _Size>& other)
+    void plat_init(const zlist<_Ty, _Size>& other)
     {
         used_count_ = other.used_count_;
         free_id_ = other.free_id_;
