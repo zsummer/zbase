@@ -180,8 +180,8 @@ public:
     using space_type = typename std::aligned_storage<sizeof(value_type), alignof(value_type)>::type;
     struct node_type
     {
-        u32 next;
-        u32 hash_id;
+        size_type next;
+        size_type hash_id;
         space_type val_space;
     };
     using iterator = zhash_map_iterator<node_type, value_type, INVALID_NODE_ID, HASH_COUNT>;
@@ -189,12 +189,12 @@ public:
     Hash hasher;
     GetKey get_key;
 protected:
-    u32 buckets_[HASH_COUNT];
+    size_type buckets_[HASH_COUNT];
     node_type node_pool_[INVALID_NODE_ID+1]; // dereference end() will panic;  it's user error.  
-    u32 first_valid_node_id_;
-    u32 exploit_offset_; //is the last valid node index(unexploit it the next index) & the value is the buckets used nodes num. 
-    u32 count_;
-    iterator mi(u32 node_id) { return iterator(node_pool_, node_id, exploit_offset_ + 1); }
+    size_type first_valid_node_id_;
+    size_type exploit_offset_; //is the last valid node index(unexploit it the next index) & the value is the buckets used nodes num. 
+    size_type count_;
+    iterator mi(size_type node_id) { return iterator(node_pool_, node_id, exploit_offset_ + 1); }
     static reference rf(node_type& b) { return *reinterpret_cast<value_type*>(&b.val_space); }
 
     void reset()
@@ -204,14 +204,14 @@ protected:
         first_valid_node_id_ = 0;
         node_pool_[FREE_POOL_SIZE].next = 0;
         node_pool_[FREE_POOL_SIZE].hash_id = HASH_COUNT;
-        memset(buckets_, 0, sizeof(u32) * HASH_COUNT);
+        memset(buckets_, 0, sizeof(size_type) * HASH_COUNT);
     }
 
-    u32 pop_free()
+    size_type pop_free()
     {
         if (node_pool_[FREE_POOL_SIZE].next != FREE_POOL_SIZE)
         {
-            u32 ret = node_pool_[FREE_POOL_SIZE].next;
+            size_type ret = node_pool_[FREE_POOL_SIZE].next;
             node_pool_[ret].hash_id = HASH_COUNT;
             node_pool_[FREE_POOL_SIZE].next = node_pool_[ret].next;
             count_++;
@@ -223,7 +223,7 @@ protected:
         }
         if (exploit_offset_ < NODE_COUNT)
         {
-            u32 ret = ++exploit_offset_;
+            size_type ret = ++exploit_offset_;
             node_pool_[ret].hash_id = HASH_COUNT;
             count_++;
             if (first_valid_node_id_ == FREE_POOL_SIZE || ret < first_valid_node_id_)
@@ -235,7 +235,7 @@ protected:
         return FREE_POOL_SIZE;
     }
 
-    void push_free(u32 node_id)
+    void push_free(size_type node_id)
     {
         node_pool_[node_id].hash_id = HASH_COUNT;
         node_pool_[node_id].next = node_pool_[FREE_POOL_SIZE].next;
@@ -250,10 +250,10 @@ protected:
 #endif // ZDEBUG_DEATH_MEMORY
     }
 
-    iterator next_b(u32 node_id)
+    iterator next_b(size_type node_id)
     {
-        u32 exploit_offset = exploit_offset_ > NODE_COUNT ? NODE_COUNT : exploit_offset_; //clear gcc warning. it's safe. 
-        for (u32 i = node_id; i <= exploit_offset; i++)
+        size_type exploit_offset = exploit_offset_ > NODE_COUNT ? NODE_COUNT : exploit_offset_; //clear gcc warning. it's safe. 
+        for (size_type i = node_id; i <= exploit_offset; i++)
         {
             if (node_pool_[i].hash_id != HASH_COUNT)
             {
@@ -277,17 +277,17 @@ protected:
             return { finder, false };
         }
 
-        u32 ukey = (u32)hasher(get_key(val));
-        u32 hash_id = ukey % HASH_COUNT;
+        auto ukey = hasher(get_key(val));
+        size_type hash_id = (size_type)(ukey % HASH_COUNT);
 
-        u32 new_node_id = pop_free();
+        size_type new_node_id = pop_free();
         if (new_node_id == FREE_POOL_SIZE)
         {
             return { end(), false };
         }
         node_type& node = node_pool_[new_node_id];
         node.next = FREE_POOL_SIZE;
-        node.hash_id = (u32)hash_id;
+        node.hash_id = (size_type)hash_id;
         if (!std::is_trivial<value_type>::value)
         {
             new (&node.val_space) value_type(val);
@@ -367,9 +367,9 @@ public:
 
     iterator find(const key_type& key)
     {
-        u32 ukey = (u32)hasher(key);
-        u32 hash_id = ukey % HASH_COUNT;
-        u32 node_id = buckets_[hash_id];
+        auto ukey = hasher(key);
+        size_type hash_id = (size_type)(ukey % HASH_COUNT);
+        size_type node_id = buckets_[hash_id];
         while (node_id != FREE_POOL_SIZE && get_key(rf(node_pool_[node_id])) != key)
         {
             node_id = node_pool_[node_id].next;
@@ -389,7 +389,7 @@ public:
 
     iterator erase(iterator iter)
     {
-        u32 node_id = iter.cur_node_id_;
+        size_type node_id = iter.cur_node_id_;
         if (node_id == FREE_POOL_SIZE || node_id > exploit_offset_)
         {
             return end();
@@ -397,7 +397,7 @@ public:
         node_type& node = node_pool_[node_id];
 
 
-        u32 hash_id = node.hash_id;
+        size_type hash_id = node.hash_id;
             
         if (hash_id >= HASH_COUNT)
         {
@@ -408,14 +408,14 @@ public:
             return end();
         }
             
-        u32 pre_node_id = buckets_[hash_id];
+        size_type pre_node_id = buckets_[hash_id];
         if (pre_node_id == node_id)
         {
             buckets_[hash_id] = node_pool_[node_id].next;
         }
         else
         {
-            u32 cur_node_id = pre_node_id;
+            size_type cur_node_id = pre_node_id;
             while (node_pool_[cur_node_id].next != FREE_POOL_SIZE && node_pool_[cur_node_id].next != node_id)
             {
                 cur_node_id = node_pool_[cur_node_id].next;
@@ -438,15 +438,15 @@ public:
 
     iterator erase(const key_type& key)
     {
-        u32 ukey = (u32)hasher(key);
-        u32 hash_id = ukey % HASH_COUNT;
-        u32 pre_node_id = buckets_[hash_id];
+        auto ukey = hasher(key);
+        size_type hash_id = (size_type)(ukey % HASH_COUNT);
+        size_type pre_node_id = buckets_[hash_id];
         if (pre_node_id == FREE_POOL_SIZE)
         {
             return end();
         }
 
-        u32 node_id = FREE_POOL_SIZE;
+        size_type node_id = FREE_POOL_SIZE;
         if (get_key(rf(node_pool_[pre_node_id])) == key)
         {
             node_id = pre_node_id;
@@ -454,7 +454,7 @@ public:
         }
         else
         {
-            u32 cur_node_id = pre_node_id;
+            size_type cur_node_id = pre_node_id;
             while (node_pool_[cur_node_id].next != FREE_POOL_SIZE)
             {
                 if (get_key(rf(node_pool_[node_pool_[cur_node_id].next])) != key)

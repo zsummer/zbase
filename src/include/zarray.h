@@ -81,7 +81,7 @@ private:
 };
 
 
-template<class _Ty, u32 _Size>
+template<class _Ty, size_t _Size>
 class zarray
 {
 public:
