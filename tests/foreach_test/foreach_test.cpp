@@ -213,10 +213,10 @@ int main(int argc, char *argv[])
     {
         g_pool.clear();
         obj_foreach fe[TT_MAX];
-        s32 ret = fe[TT_10MS].init((u64)&g_pool, trigger_check<TT_10MS, 10>, 0, g_pool.max_size(), 10, 10);
-        ret |= fe[TT_50_1MS].init((u64)&g_pool, trigger_check<TT_50_1MS, 50>, 0, g_pool.max_size(), 10, 50);
-        ret |= fe[TT_50_2MS].init((u64)&g_pool, trigger_check<TT_50_2MS, 50>, 0, g_pool.max_size(), 10, 50);
-        ret |= fe[TT_800MS].init((u64)&g_pool,  trigger_check<TT_800MS, 800>, 0, g_pool.max_size(), 10, 800);
+        s32 ret = fe[TT_10MS].init((u64)&g_pool, trigger_check<TT_10MS, 10>, 0, (u32)g_pool.max_size(), 10, 10);
+        ret |= fe[TT_50_1MS].init((u64)&g_pool, trigger_check<TT_50_1MS, 50>, 0, (u32)g_pool.max_size(), 10, 50);
+        ret |= fe[TT_50_2MS].init((u64)&g_pool, trigger_check<TT_50_2MS, 50>, 0, (u32)g_pool.max_size(), 10, 50);
+        ret |= fe[TT_800MS].init((u64)&g_pool,  trigger_check<TT_800MS, 800>, 0, (u32)g_pool.max_size(), 10, 800);
         if (ret != 0)
         {
             LogError() << "";
@@ -275,10 +275,10 @@ int main(int argc, char *argv[])
     {
         g_pool.clear();
         obj_foreach fe[TT_MAX];
-        s32 ret = fe[TT_10MS].init((u64)&g_pool, trigger_check<TT_10MS, 10>, 0, g_pool.max_size(), 10, 10);
-        ret |= fe[TT_50_1MS].init((u64)&g_pool, trigger_check<TT_50_1MS, 50>, 0, g_pool.max_size(), 10, 50);
-        ret |= fe[TT_50_2MS].init((u64)&g_pool, trigger_check<TT_50_2MS, 50>, 0, g_pool.max_size(), 10, 50);
-        ret |= fe[TT_800MS].init((u64)&g_pool, trigger_check<TT_800MS, 800>, 0, g_pool.max_size(), 10, 800);
+        s32 ret = fe[TT_10MS].init((u64)&g_pool, trigger_check<TT_10MS, 10>, 0, (u32)g_pool.max_size(), 10, 10);
+        ret |= fe[TT_50_1MS].init((u64)&g_pool, trigger_check<TT_50_1MS, 50>, 0, (u32)g_pool.max_size(), 10, 50);
+        ret |= fe[TT_50_2MS].init((u64)&g_pool, trigger_check<TT_50_2MS, 50>, 0, (u32)g_pool.max_size(), 10, 50);
+        ret |= fe[TT_800MS].init((u64)&g_pool, trigger_check<TT_800MS, 800>, 0, (u32)g_pool.max_size(), 10, 800);
         if (ret != 0)
         {
             LogError() << "";
@@ -321,7 +321,7 @@ int main(int argc, char *argv[])
             now_ms += 10;
             for (size_t tt = TT_50_1MS; tt < TT_50_1MS + 1; tt++)
             {
-                fe[tt].window_tick(0, g_pool.size(), now_ms);
+                fe[tt].window_tick(0, (u32)g_pool.size(), now_ms);
             }
             if (!g_pool.full() && rand() % 2 == 0)
             {

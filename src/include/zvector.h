@@ -84,12 +84,12 @@ private:
 //a plat vector; 
 //used small data optimization; 
 //merge high-frequency alloc small memory   
-template<class _Ty, s32 _Size, size_t _FixedSize, class _Alloc = std::allocator<typename std::aligned_storage<sizeof(_Ty), alignof(_Ty)>::type>>
+template<class _Ty, u32 _Size, u32 _FixedSize, class _Alloc = std::allocator<typename std::aligned_storage<sizeof(_Ty), alignof(_Ty)>::type>>
 class zvector
 {
 public:
     using value_type = _Ty;
-    using size_type = s32;
+    using size_type = u32;
     constexpr static size_type size_value = _Size;
     using difference_type = ptrdiff_t;
     using pointer = _Ty*;
@@ -599,7 +599,7 @@ private:
 };
 
 
-template<class _Ty, size_t _Size, size_t _FixedSize, class _Alloc>
+template<class _Ty, u32 _Size, u32 _FixedSize, class _Alloc>
 bool operator==(const zvector< _Ty, _Size, _FixedSize, _Alloc>& a1, const zvector< _Ty, _Size, _FixedSize, _Alloc>& a2)
 {
     return a1.data() == a2.data();
