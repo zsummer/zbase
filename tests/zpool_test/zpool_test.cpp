@@ -34,31 +34,9 @@ typedef float f32;
 #include "zlist.h"
 #include "zarray.h"
 #include "zpool.h"
+#include "test_common.h"
 
 
-//#define DEBUG_AT 
-#ifndef DEBUG_AT
-
-#define ASSERT_TEST_EQ(var, desc)   \
-{\
-    if (!(var)) \
-    { \
-        LogError() << desc << " error.";  \
-        return -1;  \
-    } \
-}
-
-#else
-void ASSERT_TEST_EQ(bool var, const char* desc)
-{
-    if (!(var)) 
-    { 
-        LogError() << desc << " error.";  
-        return;  
-    } 
-}
-
-#endif
 
 struct Node
 {
@@ -80,6 +58,8 @@ u64 Node::node_seq_id = 0;
 int main(int argc, char *argv[])
 {
     PROF_INIT("inner prof");
+    PROF_SET_OUTPUT(&FNLogFunc);
+
     PROF_DEFINE_AUTO_ANON_RECORD(delta, "self use mem in main func begin and exit");
     PROF_OUTPUT_SELF_MEM("self use mem in main func begin and exit");
     if (true)
@@ -99,31 +79,31 @@ int main(int argc, char *argv[])
         {
             for (int i = 0; i < 100; i++)
             {
-                ASSERT_TEST_EQ(Node::node_seq_id == (u64)loop*100 + i, "");
+                ASSERT_TEST(Node::node_seq_id == (u64)loop*100 + i, "");
                 Node* p = ds.create();
-                ASSERT_TEST_EQ(p != NULL, "");
+                ASSERT_TEST(p != NULL, "");
                 for (u32 j = 0; j < 5; j++)
                 {
                     p->seq[j] = (u64)loop * 100 + i;
                 }
-                ASSERT_TEST_EQ(Node::node_seq_id == (u64)loop * 100 + i + 1, "");
+                ASSERT_TEST(Node::node_seq_id == (u64)loop * 100 + i + 1, "");
                 store.push_back(p);
             }
             for (int i = 0; i < 100; i++)
             {
                 for (u32 j = 0; j < 5; j++)
                 {
-                    ASSERT_TEST_EQ(store[i]->seq[j] == (u64)loop * 100 + i, "");
+                    ASSERT_TEST(store[i]->seq[j] == (u64)loop * 100 + i, "");
                 }
             }
-            ASSERT_TEST_EQ(ds.full(), "");
-            ASSERT_TEST_EQ(ds.exploit() == NULL, "");
+            ASSERT_TEST(ds.full(), "");
+            ASSERT_TEST(ds.exploit() == NULL, "");
             for (auto p : store)
             {
                 ds.back(p);
             }
             store.clear();
-            ASSERT_TEST_EQ(ds.empty(), "");
+            ASSERT_TEST(ds.empty(), "");
         }
     }
 
@@ -137,31 +117,31 @@ int main(int argc, char *argv[])
         {
             for (int i = 0; i < 100; i++)
             {
-                ASSERT_TEST_EQ(Node::node_seq_id == (u64)loop * 100 * 5 + i * 5, "");
+                ASSERT_TEST(Node::node_seq_id == (u64)loop * 100 * 5 + i * 5, "");
                 Node* p = ds.create(5);
-                ASSERT_TEST_EQ(p != NULL, "");
+                ASSERT_TEST(p != NULL, "");
                 for (u32 j = 0; j < 5; j++)
                 {
                     p->seq[j] = (u64)loop * 100 * 5 + i * 5;
                 }
-                ASSERT_TEST_EQ(Node::node_seq_id == (u64)loop * 100*5 + i*5 + 5, "");
+                ASSERT_TEST(Node::node_seq_id == (u64)loop * 100*5 + i*5 + 5, "");
                 store.push_back(p);
             }
             for (int i = 0; i < 100; i++)
             {
                 for (u32 j = 0; j < 5; j++)
                 {
-                    ASSERT_TEST_EQ(store[i]->seq[j] == (u64)loop * 100 * 5 + i * 5, "");
+                    ASSERT_TEST(store[i]->seq[j] == (u64)loop * 100 * 5 + i * 5, "");
                 }
             }
-            ASSERT_TEST_EQ(ds.full(), "");
-            ASSERT_TEST_EQ(ds.exploit() == NULL, "");
+            ASSERT_TEST(ds.full(), "");
+            ASSERT_TEST(ds.exploit() == NULL, "");
             for (auto p : store)
             {
                 ds.back(p);
             }
             store.clear();
-            ASSERT_TEST_EQ(ds.empty(), "");
+            ASSERT_TEST(ds.empty(), "");
         }
     }
 
@@ -174,22 +154,22 @@ int main(int argc, char *argv[])
             for (int i = 0; i < 100; i++)
             {
                 int* p = ds.create();
-                ASSERT_TEST_EQ(p != NULL, "");
+                ASSERT_TEST(p != NULL, "");
                 *p = i;
                 store.push_back(p);
             }
             for (int i = 0; i < 100; i++)
             {
-                ASSERT_TEST_EQ(*store[i] == i, "");
+                ASSERT_TEST(*store[i] == i, "");
             }
-            ASSERT_TEST_EQ(ds.full(), "");
-            ASSERT_TEST_EQ(ds.exploit() == NULL, "");
+            ASSERT_TEST(ds.full(), "");
+            ASSERT_TEST(ds.exploit() == NULL, "");
             for (auto p : store)
             {
                 ds.back(p);
             }
             store.clear();
-            ASSERT_TEST_EQ(ds.empty(), "");
+            ASSERT_TEST(ds.empty(), "");
         }
     }
 
@@ -204,23 +184,23 @@ int main(int argc, char *argv[])
             for (int i = 0; i < 100; i++)
             {
                 int* p = ds.create(0);
-                ASSERT_TEST_EQ(p != NULL, "");
-                ASSERT_TEST_EQ(*p == 0, "");
+                ASSERT_TEST(p != NULL, "");
+                ASSERT_TEST(*p == 0, "");
                 *p = i;
                 store.push_back(p);
             }
             for (int i = 0; i < 100; i++)
             {
-                ASSERT_TEST_EQ(*store[i] == i, "");
+                ASSERT_TEST(*store[i] == i, "");
             }
-            ASSERT_TEST_EQ(ds.full(), "");
-            ASSERT_TEST_EQ(ds.exploit() == NULL, "");
+            ASSERT_TEST(ds.full(), "");
+            ASSERT_TEST(ds.exploit() == NULL, "");
             for (auto p : store)
             {
                 ds.back(p);
             }
             store.clear();
-            ASSERT_TEST_EQ(ds.empty(), "");
+            ASSERT_TEST(ds.empty(), "");
         }
     }
 

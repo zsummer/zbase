@@ -36,6 +36,8 @@ typedef float f32;
 int main(int argc, char *argv[])
 {
     PROF_INIT("inner prof");
+    PROF_SET_OUTPUT(&FNLogFunc);
+
     PROF_DEFINE_AUTO_ANON_RECORD(delta, "self use mem in main func begin and exit");
     PROF_OUTPUT_SELF_MEM("self use mem in main func begin and exit");
     if (true)
@@ -49,8 +51,8 @@ int main(int argc, char *argv[])
 
     ASSERT_TEST_EQ(zmalloc_test(), 0, "main error");
 
-    PROF_UPDATE_MERGE();
-    PROF_SERIALIZE_FN_LOG();
+    PROF_DO_MERGE();
+    PROF_OUTPUT_REPORT();
 
 
     LogInfo() << "all test finish .salt:" << cycles;

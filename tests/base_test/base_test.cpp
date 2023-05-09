@@ -33,12 +33,14 @@ typedef float f32;
 #include "zcontain_stress.h"
 #include "zlist_stress.h"
 #include "zcontain_test.h"
-
+#include "test_common.h"
 
 
 int main(int argc, char *argv[])
 {
     PROF_INIT("inner prof");
+    PROF_SET_OUTPUT(&FNLogFunc);
+
     PROF_DEFINE_AUTO_ANON_RECORD(delta, "self use mem in main func begin and exit");
     PROF_OUTPUT_SELF_MEM("self use mem in main func begin and exit");
     if (true)
@@ -55,8 +57,8 @@ int main(int argc, char *argv[])
     ASSERT_TEST(contiainer_stress_test() == 0);
     
 
-    PROF_UPDATE_MERGE();
-    PROF_SERIALIZE_FN_LOG();
+    PROF_DO_MERGE();
+    PROF_OUTPUT_REPORT();
 
 
 

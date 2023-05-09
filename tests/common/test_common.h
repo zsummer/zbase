@@ -113,7 +113,8 @@ do \
 {\
     if(expr) \
     { \
-        LogDebug() << #expr <<" ok.";\
+        std::string expr_str = #expr; \
+        ASSERT_ARGS_LOG(LogDebug(), expr_str, ##__VA_ARGS__, " ok."); \
     }\
     else \
     {\
@@ -250,6 +251,12 @@ do \
 //#define CheckRAIIValByType(t)   ASSERT_RAII_VAL(TypeName<decltype(t)>());
 #define CheckRAIIValByType(t)   ASSERT_RAII_VAL(TypeName<t>());
 
+
+
+static inline void FNLogFunc(const ProfSerializer& serializer)
+{
+    LOG_STREAM_DEFAULT_LOGGER(0, FNLog::PRIORITY_DEBUG, 0, 0, FNLog::LOG_PREFIX_NULL).write_buffer(serializer.buff(), (int)serializer.offset());
+}
 
 
 #if defined(__GCC__) && (OI)

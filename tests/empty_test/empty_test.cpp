@@ -31,6 +31,8 @@ typedef float f32;
 #include "fn_log.h"
 #include "zprof.h"
 #include "zarray.h"
+#include "test_common.h"
+
 
 struct MyStruct
 {
@@ -46,6 +48,8 @@ public:
 int main(int argc, char *argv[])
 {
     PROF_INIT("inner prof");
+    PROF_SET_OUTPUT(&FNLogFunc);
+
     PROF_DEFINE_AUTO_ANON_RECORD(delta, "self use mem in main func begin and exit");
     PROF_OUTPUT_SELF_MEM("self use mem in main func begin and exit");
     if (true)

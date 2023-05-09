@@ -33,6 +33,8 @@ typedef float f32;
 #include "zforeach.h"
 #include "zlist.h"
 #include "zarray.h"
+#include "test_common.h"
+
 
 s32 tick1000(u64 id, s64 now_ms)
 {
@@ -199,6 +201,8 @@ static inline s32 trigger_empty(u64 pid, s64 now_ms)
 int main(int argc, char *argv[])
 {
     PROF_INIT("inner prof");
+    PROF_SET_OUTPUT(&FNLogFunc);
+
     PROF_DEFINE_AUTO_ANON_RECORD(delta, "self use mem in main func begin and exit");
     PROF_OUTPUT_SELF_MEM("self use mem in main func begin and exit");
     if (true)
