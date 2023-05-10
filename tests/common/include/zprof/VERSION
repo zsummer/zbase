@@ -1,12 +1,11 @@
-release zprof version date:2023-05-09 15:11:19
+release zprof version date:2023-05-10 13:46:50
 
 git log:
-commit 0b140d763f431dd7171a1fa7e1e8264103d88f99
+commit 729ed7b3cd3cccff858ad891cdd3df49941a5fdd
 Author: zsummer <yawei.zhang@foxmail.com>
-Date:   Tue May 9 14:58:42 2023 +0800
+Date:   Tue May 9 21:50:45 2023 +0800
 
-    dist
+    clean comment
 
- dist/include/zprof/VERSION |  14 +-
- dist/include/zprof/zprof.h | 667 ++++++++++++++++++++++++++-------------------
- 2 files changed, 391 insertions(+), 290 deletions(-)
+ src/zprof.h | 3 ---
+ 1 file changed, 3 deletions(-)
