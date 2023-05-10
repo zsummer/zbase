@@ -291,7 +291,7 @@ s32 zmalloc_stress()
         if (true)
         {
             LogDebug() << "zmalloc state log:";
-            auto new_log = []() { return LOG_STREAM_DEFAULT_LOGGER(0, FNLog::PRIORITY_DEBUG, 0, 0, FNLog::LOG_PREFIX_NULL); };
+            auto new_log = []() { return std::move(LOG_STREAM_DEFAULT_LOGGER(0, FNLog::PRIORITY_DEBUG, 0, 0, FNLog::LOG_PREFIX_NULL)); };
             cost.start();
             zmalloc::instance().debug_state_log(new_log);
             zmalloc::instance().debug_color_log(new_log, 0, (zmalloc::CHUNK_COLOR_MASK_WITH_LEVEL + 1) / 2);
@@ -309,7 +309,7 @@ s32 zmalloc_stress()
         buffers->clear();
         buffers2->clear();
         LogDebug() << "zmalloc clear all buffers state log:";
-        auto new_log = []() { return LOG_STREAM_DEFAULT_LOGGER(0, FNLog::PRIORITY_DEBUG, 0, 0, FNLog::LOG_PREFIX_NULL); };
+        auto new_log = []() { return std::move(LOG_STREAM_DEFAULT_LOGGER(0, FNLog::PRIORITY_DEBUG, 0, 0, FNLog::LOG_PREFIX_NULL)); };
         zmalloc::instance().debug_state_log(new_log);
         zmalloc::instance().debug_color_log(new_log, 0, (zmalloc::CHUNK_COLOR_MASK_WITH_LEVEL + 1) / 2);
     }
@@ -634,7 +634,7 @@ s32 zmalloc_base_test()
                 l.push_back(i);
             }
         }
-        auto new_log = []() { return LOG_STREAM_DEFAULT_LOGGER(0, FNLog::PRIORITY_DEBUG, 0, 0, FNLog::LOG_PREFIX_NULL); };
+        auto new_log = []() { return std::move(LOG_STREAM_DEFAULT_LOGGER(0, FNLog::PRIORITY_DEBUG, 0, 0, FNLog::LOG_PREFIX_NULL)); };
         zmalloc::instance().debug_state_log(new_log);
         zmalloc::instance().debug_color_log(new_log, 0, (zmalloc::CHUNK_COLOR_MASK_WITH_LEVEL + 1) / 2);
         zstate->clear_cache();
@@ -653,7 +653,7 @@ s32 zmalloc_base_test()
             zmalloc_check_align(addr);
             global_zfree(addr);
         }
-        auto new_log = []() { return LOG_STREAM_DEFAULT_LOGGER(0, FNLog::PRIORITY_DEBUG, 0, 0, FNLog::LOG_PREFIX_NULL); };
+        auto new_log = []() { return std::move(LOG_STREAM_DEFAULT_LOGGER(0, FNLog::PRIORITY_DEBUG, 0, 0, FNLog::LOG_PREFIX_NULL)); };
         zmalloc::instance().debug_state_log(new_log);
         zmalloc::instance().debug_color_log(new_log, 0, (zmalloc::CHUNK_COLOR_MASK_WITH_LEVEL + 1) / 2);
         zstate->clear_cache();
@@ -677,7 +677,7 @@ s32 zmalloc_base_test()
             global_zfree(addr);
 
         }
-        auto new_log = []() { return LOG_STREAM_DEFAULT_LOGGER(0, FNLog::PRIORITY_DEBUG, 0, 0, FNLog::LOG_PREFIX_NULL); };
+        auto new_log = []() { return std::move(LOG_STREAM_DEFAULT_LOGGER(0, FNLog::PRIORITY_DEBUG, 0, 0, FNLog::LOG_PREFIX_NULL)); };
         zmalloc::instance().debug_state_log(new_log);
         zmalloc::instance().debug_color_log(new_log, 0, (zmalloc::CHUNK_COLOR_MASK_WITH_LEVEL + 1) / 2);
         zstate->clear_cache();
@@ -712,7 +712,7 @@ s32 zmalloc_base_test()
             global_zfree(a.back());
             a.pop_back();
         }
-        auto new_log = []() { return LOG_STREAM_DEFAULT_LOGGER(0, FNLog::PRIORITY_DEBUG, 0, 0, FNLog::LOG_PREFIX_NULL); };
+        auto new_log = []() { return std::move(LOG_STREAM_DEFAULT_LOGGER(0, FNLog::PRIORITY_DEBUG, 0, 0, FNLog::LOG_PREFIX_NULL)); };
         zmalloc::instance().debug_state_log(new_log);
         zmalloc::instance().debug_color_log(new_log, 0, (zmalloc::CHUNK_COLOR_MASK_WITH_LEVEL + 1) / 2);
         zstate->clear_cache();
