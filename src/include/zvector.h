@@ -27,6 +27,7 @@
 #include <iterator>
 #include <cstddef>
 #include <memory>
+#include <algorithm>
 
 using s8 = char;
 using u8 = unsigned char;
