@@ -114,12 +114,12 @@ do \
     if(expr) \
     { \
         std::string expr_str = #expr; \
-        ASSERT_ARGS_LOG(LogDebug(), expr_str, ##__VA_ARGS__, " ok."); \
+        ASSERT_ARGS_LOG(std::move(LogDebug()), expr_str, ##__VA_ARGS__, " ok."); \
     }\
     else \
     {\
         std::string expr_str = #expr; \
-        ASSERT_ARGS_LOG(LogError(), expr_str, ##__VA_ARGS__); \
+        ASSERT_ARGS_LOG(std::move(LogError()), expr_str, ##__VA_ARGS__); \
         return -1; \
     }\
 }\
@@ -131,7 +131,7 @@ do \
     if(!(expr)) \
     {\
         std::string expr_str = #expr; \
-        ASSERT_ARGS_LOG(LogError(), expr_str, ##__VA_ARGS__); \
+        ASSERT_ARGS_LOG(std::move(LogError()), expr_str, ##__VA_ARGS__); \
         return -1; \
     }\
 }\

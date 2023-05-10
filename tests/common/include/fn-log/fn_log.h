@@ -1322,7 +1322,7 @@ namespace FNLog
         char buff[50];
         memcpy(buff, port_begin, end - port_begin);
         buff[end - port_begin] = '\0';
-        port = htons(atoi(buff));
+        port = htons((unsigned short)atoi(buff));
         ip = result_ip.first;
         return;
     }
@@ -2734,6 +2734,8 @@ namespace FNLog
     // 
     inline std::string FmtName(const std::string& fmt_name, int channel_id, int device_id, const struct tm& t)
     {
+        (void)device_id;
+        (void)channel_id;
         if (fmt_name.empty())
         {
             return fmt_name;
@@ -2867,6 +2869,7 @@ namespace FNLog
 
     inline void OpenFileDevice(Logger & logger, Channel & channel, Device & device, FileHandler & writer, LogData & log)
     {
+        (void)logger;
         bool sameday = true;
         if (log.timestamp_ < AtomicLoadL(device, DEVICE_LOG_CUR_FILE_CREATE_DAY)
             || log.timestamp_ >= AtomicLoadL(device, DEVICE_LOG_CUR_FILE_CREATE_DAY) + 24 * 3600)
@@ -3463,6 +3466,8 @@ namespace FNLog
 
     inline void InitLogData(Logger& logger, LogData& log, int channel_id, int priority, int category, unsigned long long identify, unsigned int prefix)
     {
+        (void)logger;
+        (void)prefix;
         log.channel_id_ = channel_id;
         log.priority_ = priority;
         log.category_ = category;
@@ -3794,6 +3799,7 @@ namespace FNLog
 
     inline int PushLog(Logger& logger, int channel_id, int hold_idx, bool state_safly_env = false)
     {
+        (void)state_safly_env;
         return PushChannel(logger, channel_id, hold_idx);
     }
 
@@ -3816,6 +3822,7 @@ namespace FNLog
     //not thread-safe
     inline Device* NewDevice(Logger& logger, Channel& channel, int out_type)
     {
+        (void)logger;
         Device* device = nullptr;
         if (channel.device_size_ < Channel::MAX_DEVICE_SIZE) {
             int device_id = channel.device_size_;
@@ -4155,7 +4162,7 @@ namespace FNLog
             for (int j = 0; j < channel.device_size_; j++)
             {
                 auto& device = channel.devices_[j];
-                if (device.out_type_ == out_type || out_type == DEVICE_OUT_NULL)
+                if (device.out_type_ == (unsigned int)out_type || out_type == DEVICE_OUT_NULL)
                 {
                     device.config_fields_[dce] = v;
                 }
@@ -4417,7 +4424,9 @@ namespace FNLog
                 logger_ = nullptr;
             }
         }
-        
+        //trans LogStream (temporary values) to  LogStream& (left values) 
+        //all user's LogStream operator  only care about LogStream& without temporary.   
+        LogStream& self() { return *this; }
         LogStream& set_category(int category) { if (log_data_) log_data_->category_ = category;  return *this; }
         LogStream& write_char_unsafe(char ch)
         {
@@ -4826,13 +4835,18 @@ namespace FNLog
 
 //--------------------BASE STREAM MACRO ---------------------------
 
+//temporary LogStream  
 #define LOG_STREAM_ORIGIN(logger, channel, priority, category, identify, prefix) \
 FNLog::LogStream(logger, channel, priority, category, identify,\
 __FILE__, sizeof(__FILE__) - 1, \
 __LINE__, __FUNCTION__, sizeof(__FUNCTION__) -1, prefix)
 
+//
+#define LOG_STREAM_ORIGIN_REF(logger, channel, priority, category, identify, prefix) \
+    LOG_STREAM_ORIGIN(logger, channel, priority, category, identify, prefix).self()
+
 #define LOG_STREAM_DEFAULT_LOGGER(channel, priority, category, identify, prefix) \
-    LOG_STREAM_ORIGIN(FNLog::GetDefaultLogger(), channel, priority, category, identify, prefix)
+    LOG_STREAM_ORIGIN_REF(FNLog::GetDefaultLogger(), channel, priority, category, identify, prefix)
 
 #define LOG_STREAM_DEFAULT_LOGGER_WITH_PREFIX(channel, priority, category, identify) \
     LOG_STREAM_DEFAULT_LOGGER(channel, priority, category, identify, FNLog::LOG_PREFIX_DEFAULT)
@@ -4857,12 +4871,12 @@ __LINE__, __FUNCTION__, sizeof(__FUNCTION__) -1, prefix)
 
 
 //--------------------CPP TEMPLATE STYLE FORMAT ---------------------------
-inline FNLog::LogStream& LogTemplatePack(FNLog::LogStream&& ls)
+inline FNLog::LogStream& LogTemplatePack(FNLog::LogStream& ls)
 {
     return ls;
 }
 template<typename ... Args>
-FNLog::LogStream& LogTemplatePack(FNLog::LogStream&& ls, Args&& ... args)
+FNLog::LogStream& LogTemplatePack(FNLog::LogStream& ls, Args&& ... args)
 {
     char buff[] = { (ls << args, '\0') ... };
     (void)buff;
@@ -4913,7 +4927,7 @@ do{ \
     { \
         break;   \
     } \
-    FNLog::LogStream __log_stream(LOG_STREAM_DEFAULT_LOGGER(channel_id, priority, category, identify, prefix));\
+    FNLog::LogStream __log_stream(LOG_STREAM_ORIGIN(FNLog::GetDefaultLogger(), channel_id, priority, category, identify, prefix));\
     if (__log_stream.log_data_)\
     {\
         int __log_len = _snprintf_s(__log_stream.log_data_ ->content_ + __log_stream.log_data_ ->content_len_, FNLog::LogData::LOG_SIZE - __log_stream.log_data_ ->content_len_, _TRUNCATE, logformat, ##__VA_ARGS__); \
@@ -4929,7 +4943,7 @@ do{ \
     { \
         break;   \
     } \
-    FNLog::LogStream __log_stream(LOG_STREAM_DEFAULT_LOGGER(channel_id, priority, category, identify, prefix));\
+    FNLog::LogStream __log_stream(LOG_STREAM_ORIGIN(FNLog::GetDefaultLogger(), channel_id, priority, category, identify, prefix));\
     if (__log_stream.log_data_)\
     {\
         int __log_len = snprintf(__log_stream.log_data_ ->content_ + __log_stream.log_data_ ->content_len_, FNLog::LogData::LOG_SIZE - __log_stream.log_data_ ->content_len_, logformat, ##__VA_ARGS__); \
