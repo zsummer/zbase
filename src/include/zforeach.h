@@ -19,6 +19,8 @@
 #include <memory>
 #include <cstddef>
 
+
+
 #ifndef ZFOREACH_H
 #define ZFOREACH_H
 
@@ -26,6 +28,7 @@
 #pragma warning( push )
 #pragma warning(disable : 4200)
 #endif // WIN32
+
 
 using s8 = char;
 using u8 = unsigned char;

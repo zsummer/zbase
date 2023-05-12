@@ -124,136 +124,182 @@ using f64 = double;
 
 
 
-
-class zmapping
+class zfilemapping_win32
 {
-private:
-#ifdef WIN32
-	HANDLE mapping_fd_;
-	HANDLE mapping_obj_;
-#else
-	int mapping_fd_;
-#endif // WIN32
-	char* file_data_;
-	u64   file_size_;
-
 public:
-	zmapping()
+	zfilemapping_win32()
 	{
 #ifdef WIN32
-		mapping_obj_ = NULL;
-		mapping_fd_ = NULL;
-#else
-		mapping_fd_ = -1;
-#endif 
-
+		mapping_hd_ = NULL;
+		file_hd_ = NULL;
+#endif
 		file_data_ = NULL;
 		file_size_ = 0;
 	}
-	~zmapping()
+	~zfilemapping_win32()
 	{
 		unmap_res();
 	}
-	const char* data() { return file_data_; }
-	u64 data_len() { return file_size_; }
-	u64 file_size() { return file_size_; }
 
 	s32 mapping_res(const char* file_path, bool remapping = false)
 	{
+#ifdef WIN32
 		s32 ret = 0;
+
 		if (remapping)
 		{
 			unmap_res();
 		}
-		ret = mapping_res_default(file_path, remapping);
-		ret |= mapping_res_win32(file_path, remapping);
-		return ret;
-	}
 
-	s32 mapping_res_default(const char* file_path, bool remapping)
-	{
-#ifndef WIN32	
-		if (mapping_fd_ != -1)
-		{
-			return 1;
-		}
-		struct stat sb;
-		mapping_fd_ = open(file_path, O_RDONLY);
-		if (mapping_fd_ == -1)
-		{
-			return 10;
-		}
-
-		if (fstat(mapping_fd_, &sb) == -1)
-		{
-			close(mapping_fd_);
-			mapping_fd_ = -1;
-			return 11;
-		}
-		file_data_ = (char*)mmap(NULL, sb.st_size, PROT_READ, MAP_SHARED, mapping_fd_, 0);
-		file_size_ = sb.st_size;
-#endif 
-		return 0;
-	}
-
-
-	s32 mapping_res_win32(const char* file_path, bool remapping)
-	{
-#ifdef WIN32	
-		if (mapping_fd_ != NULL)
+		if (file_hd_ != NULL)
 		{
 			return 1;
 		}
 
-		mapping_fd_ = ::CreateFile(file_path, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
-		if (mapping_fd_ == INVALID_HANDLE_VALUE)
+		file_hd_ = ::CreateFile(file_path, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+		if (file_hd_ == INVALID_HANDLE_VALUE)
 		{
 			return 1;
 		}
 		LARGE_INTEGER file_size;
-		if (!GetFileSizeEx(mapping_fd_, &file_size))
+		if (!GetFileSizeEx(file_hd_, &file_size))
 		{
-			::CloseHandle(mapping_fd_);
-			mapping_fd_ = NULL;
+			::CloseHandle(file_hd_);
+			file_hd_ = NULL;
 			return 2;
 		}
 
-		mapping_obj_ = CreateFileMapping(mapping_fd_, NULL, PAGE_READONLY, 0, 0, NULL);
-		if (mapping_obj_ == NULL)
+		mapping_hd_ = CreateFileMapping(file_hd_, NULL, PAGE_READONLY, 0, 0, NULL);
+		if (mapping_hd_ == NULL)
 		{
-			::CloseHandle(mapping_fd_);
-			mapping_fd_ = NULL;
+			::CloseHandle(file_hd_);
+			file_hd_ = NULL;
 			return 2;
 		}
-		file_data_ = (char*)::MapViewOfFile(mapping_obj_, FILE_MAP_READ, 0, 0, 0);
+		file_data_ = (char*)::MapViewOfFile(mapping_hd_, FILE_MAP_READ, 0, 0, 0);
 		if (file_data_)
 		{
-			file_size_ = (u64)file_size.QuadPart;
+			file_size_ = (s64)file_size.QuadPart;
 		}
 		else
 		{
-			::CloseHandle(mapping_fd_);
-			::CloseHandle(mapping_obj_);
-			mapping_fd_ = NULL;
-			mapping_obj_ = NULL;
+			::CloseHandle(file_hd_);
+			::CloseHandle(mapping_hd_);
+			file_hd_ = NULL;
+			mapping_hd_ = NULL;
 			return 3;
 		}
-#endif 
+#endif
 		return 0;
 	}
 
 	s32 is_mapped()
 	{
 #ifdef WIN32
-		return mapping_fd_ != NULL;
+		return file_hd_ != NULL;
 #else
-		return mapping_fd_ != -1;
-#endif 
+		return 0;
+#endif
 	}
 
 	s32 unmap_res()
 	{
-		if (mapping_fd_ == 0)
+#ifdef WIN32
+		if (file_hd_ == 0)
+		{
+			return 1;
+		}
+
+		if (file_data_)
+		{
+			::UnmapViewOfFile(file_data_);
+		}
+		::CloseHandle(mapping_hd_);
+		::CloseHandle(file_hd_);
+		file_data_ = NULL;
+		file_size_ = 0;
+		mapping_hd_ = NULL;
+		file_hd_ = NULL;
+#endif
+		return 0;
+	}
+	s32 trim_cache()
+	{
+		return 0;
+	}
+public:
+	const char* file_data() { return file_data_; }
+	s64 file_size() { return file_size_; }
+private:
+#ifdef WIN32
+	HANDLE file_hd_;
+	HANDLE mapping_hd_;
+#endif
+	char* file_data_;
+	s64   file_size_;
+};
+
+
+
+
+
+class zfilemapping_unix
+{
+
+public:
+	zfilemapping_unix()
+	{
+		file_fd_ = -1;
+		file_data_ = NULL;
+		file_size_ = 0;
+	}
+	~zfilemapping_unix()
+	{
+		unmap_res();
+	}
+
+
+	s32 mapping_res(const char* file_path, bool remapping = false)
+	{
+#ifndef WIN32	
+		if (remapping)
+		{
+			unmap_res();
+		}
+		if (file_fd_ != -1)
+		{
+			return 1;
+		}
+
+		struct stat sb;
+		file_fd_ = open(file_path, O_RDONLY);
+		if (file_fd_ == -1)
+		{
+			return 10;
+		}
+
+		if (fstat(file_fd_, &sb) == -1)
+		{
+			close(file_fd_);
+			file_fd_ = -1;
+			return 11;
+		}
+		file_data_ = (char*)mmap(NULL, sb.st_size, PROT_READ, MAP_SHARED, file_fd_, 0);
+		file_size_ = sb.st_size;
+#endif 
+		return 0;
+	}
+
+
+
+	s32 is_mapped()
+	{
+		return file_fd_ != -1;
+	}
+
+	s32 unmap_res()
+	{
+		if (file_fd_ == 0)
 		{
 			return 1;
 		}
@@ -262,25 +308,76 @@ public:
 		{
 			munmap(file_data_, file_size_);
 		}
-		close(mapping_fd_);
+		close(file_fd_);
 		file_data_ = NULL;
 		file_size_ = 0;
-		mapping_fd_ = -1;
-#else
-		if (file_data_)
-		{
-			::UnmapViewOfFile(file_data_);
-		}
-		::CloseHandle(mapping_obj_);
-		::CloseHandle(mapping_fd_);
-		file_data_ = NULL;
-		file_size_ = 0;
-		mapping_obj_ = NULL;
-		mapping_fd_ = NULL;
+		file_fd_ = -1;
 #endif // 0
 		return 0;
 	}
+
+	s32 trim_cache()
+	{
+		if (!is_mapped())
+		{
+			return 1;
+		}
+#if !defined(__APPLE__) && !defined(WIN32) 
+		fsync(file_fd_);
+		posix_fadvise(file_fd_, 0, 0, POSIX_FADV_DONTNEED);
+		fsync(file_fd_);
+#endif
+		return 0;
+	}
+public:
+	const char* file_data() { return file_data_; }
+	s64 file_size() { return file_size_; }
+private:
+	int file_fd_;
+	char* file_data_;
+	s64   file_size_;
 };
+
+
+class zfilemapping
+{
+#ifdef WIN32
+	zfilemapping_win32 mapping_;
+#else
+	zfilemapping_unix mapping_;
+#endif // WIN32
+
+public:
+	zfilemapping()
+	{
+	}
+	~zfilemapping()
+	{
+	}
+
+	const char* file_data() { return mapping_.file_data(); }
+	s64 file_size() { return mapping_.file_size(); }
+
+	s32 mapping_res(const char* file_path, bool remapping = false)
+	{
+		return mapping_.mapping_res(file_path, remapping);
+	}
+
+	s32 is_mapped()
+	{
+		return mapping_.is_mapped();
+	}
+
+	s32 unmap_res()
+	{
+		return mapping_.unmap_res();
+	}
+	s32 trim_cache()
+	{
+		return mapping_.trim_cache();
+	}
+};
+
 
 
 
