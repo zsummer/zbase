@@ -30,9 +30,9 @@ typedef float f32;
 #include <unordered_set>
 #include "fn_log.h"
 #include "zprof.h"
-#include "zmapping.h"
+#include "zfilemapping.h"
 #include "test_common.h"
-
+#include "zfile.h"
 
 
 int main(int argc, char *argv[])
@@ -53,36 +53,34 @@ int main(int argc, char *argv[])
 
     if (true)
     {
-        zmapping res;
-        res.mapping_res("./make.sh");
-        if (!res.is_mapped())
+        const char* test_file_name = "./make.sh";
+        zfilemapping res;
+        res.mapping_res(test_file_name);
+        ASSERT_TEST(res.is_mapped());
+
+
+        ASSERT_TEST(res.file_size() == zfile::file_size(test_file_name));
+        ASSERT_TEST(res.file_size() > 0, res.file_size());
+
+        zfile file;
+        struct stat s;
+        file.open(test_file_name, "rb", s);
+        ASSERT_TEST(file.is_open());
+        std::string content = file.read_content();
+        ASSERT_TEST((long long)content.size() == res.file_size(), content.size());
+
+        for (long long i = 0; i < res.file_size(); i++)
         {
-            LogError() << "not mapped!";
-            return 1;
+            ASSERT_TEST_NOLOG(res.file_data()[i] == content[i]);
         }
-        if (!res.is_mapped())
-        {
-            LogError() << "mapping [" << argv[1] << "] has error";
-            return 3;
-        }
-        if (res.file_size() == 0 || res.data() == NULL)
-        {
-            LogError() << "mapping [" << argv[1] << "] has error";
-            return 4;
-        }
-        int a = 0;
-        for (size_t i = 0; i < res.data_len(); i++)
-        {
-            a += (unsigned char)res.data()[i];
-        }
-        LogInfo() << " auto test ./make.sh.  mapping file size:" << res.file_size() << ", char sum:" << a;
-        LogInfo() << " auto test ./make.sh success";
+
+        LogInfo() << " base test ./make.sh success";
     }
 
 
     if (argc > 1)
     {
-        zmapping res;
+        zfilemapping res;
         s32 ret = res.mapping_res(argv[1]);
         if (ret != 0)
         {
@@ -94,7 +92,7 @@ int main(int argc, char *argv[])
             LogError() << "mapping [" << argv[1] << "] has error";
             return 3;
         }
-        if (res.file_size() == 0 || res.data() == NULL)
+        if (res.file_size() == 0 || res.file_data() == NULL)
         {
             LogError() << "mapping [" << argv[1] << "] has error";
             return 4;
@@ -103,13 +101,13 @@ int main(int argc, char *argv[])
 
         volatile int a = 0;
         u64 read_bytes = 0;
-        for (size_t i = 0; i < res.data_len(); i++)
+        for (long long i = 0; i < res.file_size(); i++)
         {
-            a += (unsigned char)res.data()[i];
+            a += (unsigned char)res.file_data()[i];
             read_bytes++;
             if (read_bytes % (500*1024*1024) == 0)
             {
-                LogInfo() << "now read bytes:" << read_bytes / 1024.0 / 1024.0 << "M. all:" << res.data_len()/1024.0/1024.0 <<"M please putchar to continue...";
+                LogInfo() << "now read bytes:" << read_bytes / 1024.0 / 1024.0 << "M. all:" << res.file_size()/1024.0/1024.0 <<"M please putchar to continue...";
                 //getchar();
             }
         }
