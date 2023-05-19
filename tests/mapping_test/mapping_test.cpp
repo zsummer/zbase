@@ -30,7 +30,7 @@ typedef float f32;
 #include <unordered_set>
 #include "fn_log.h"
 #include "zprof.h"
-#include "zfilemapping.h"
+#include "zfile_mapping.h"
 #include "test_common.h"
 #include "zfile.h"
 
@@ -54,7 +54,7 @@ int main(int argc, char *argv[])
     if (true)
     {
         const char* test_file_name = "./make.sh";
-        zfilemapping res;
+        zfile_mapping res;
         res.mapping_res(test_file_name);
         ASSERT_TEST(res.is_mapped());
 
@@ -80,7 +80,7 @@ int main(int argc, char *argv[])
 
     if (argc > 1)
     {
-        zfilemapping res;
+        zfile_mapping res;
         s32 ret = res.mapping_res(argv[1]);
         if (ret != 0)
         {
