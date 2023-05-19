@@ -124,10 +124,10 @@ using f64 = double;
 
 
 
-class zfilemapping_win32
+class zfile_mapping_win32
 {
 public:
-	zfilemapping_win32()
+	zfile_mapping_win32()
 	{
 #ifdef WIN32
 		mapping_hd_ = NULL;
@@ -136,7 +136,7 @@ public:
 		file_data_ = NULL;
 		file_size_ = 0;
 	}
-	~zfilemapping_win32()
+	~zfile_mapping_win32()
 	{
 		unmap_res();
 	}
@@ -243,17 +243,17 @@ private:
 
 
 
-class zfilemapping_unix
+class zfile_mapping_unix
 {
 
 public:
-	zfilemapping_unix()
+	zfile_mapping_unix()
 	{
 		file_fd_ = -1;
 		file_data_ = NULL;
 		file_size_ = 0;
 	}
-	~zfilemapping_unix()
+	~zfile_mapping_unix()
 	{
 		unmap_res();
 	}
@@ -339,19 +339,19 @@ private:
 };
 
 
-class zfilemapping
+class zfile_mapping
 {
 #ifdef WIN32
-	zfilemapping_win32 mapping_;
+	zfile_mapping_win32 mapping_;
 #else
-	zfilemapping_unix mapping_;
+	zfile_mapping_unix mapping_;
 #endif // WIN32
 
 public:
-	zfilemapping()
+	zfile_mapping()
 	{
 	}
-	~zfilemapping()
+	~zfile_mapping()
 	{
 	}
 

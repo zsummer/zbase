@@ -205,7 +205,6 @@ public:
     inline _Ty* create(Args&&... args) { return zsuper::template create<_Ty, Args ...>(std::forward<Args>(args) ...); }
 
     inline void destroy(const _Ty* obj) { zsuper::destory(obj); }
-
 };
 
 
