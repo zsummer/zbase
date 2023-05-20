@@ -30,6 +30,8 @@
 #endif // WIN32
 
 
+#ifndef ZBASE_SHORT_TYPE
+#define ZBASE_SHORT_TYPE
 using s8 = char;
 using u8 = unsigned char;
 using s16 = short int;
@@ -40,6 +42,15 @@ using s64 = long long;
 using u64 = unsigned long long;
 using f32 = float;
 using f64 = double;
+#endif
+
+#if __GNUG__
+#define ZBASE_ALIAS __attribute__((__may_alias__))
+#else
+#define ZBASE_ALIAS
+#endif
+
+
 
 //分帧分段驱动大间隔轮询 削峰  
 //note: 不保证间隔绝对精准, 特别是首次触发,  在频繁发生软窗口变化时, 不保证间隔精准, 但保证每次触发的触发窗口边界内.  
