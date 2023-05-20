@@ -24,6 +24,8 @@
 #include <cstddef>
 
 
+#ifndef ZBASE_SHORT_TYPE
+#define ZBASE_SHORT_TYPE
 using s8 = char;
 using u8 = unsigned char;
 using s16 = short int;
@@ -34,6 +36,13 @@ using s64 = long long;
 using u64 = unsigned long long;
 using f32 = float;
 using f64 = double;
+#endif
+
+#if __GNUG__
+#define ZBASE_ALIAS __attribute__((__may_alias__))
+#else
+#define ZBASE_ALIAS
+#endif
 
 
 

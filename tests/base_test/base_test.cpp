@@ -35,7 +35,7 @@ typedef float f32;
 #include "zcontain_test.h"
 #include "test_common.h"
 
-
+s32 zbitset_test();
 int main(int argc, char *argv[])
 {
     PROF_INIT("inner prof");
@@ -51,7 +51,8 @@ int main(int argc, char *argv[])
 
     LogDebug() << " main begin test. ";
     volatile double cycles = 0.0f;
-
+    ASSERT_TEST(zbitset_test()== 0, " zbitset_test()");
+    ASSERT_TEST(sort_test() == 0);
     ASSERT_TEST(sort_test() == 0);
     ASSERT_TEST(contiainer_base_test() == 0);
     ASSERT_TEST(contiainer_stress_test() == 0);
