@@ -78,14 +78,19 @@ private:
     u32  array_size_;
     u32  bit_count_;
     u32 has_error_;
+    u32 dirty_count_;
     u32 win_min_;
     u32 win_max_;
+
 public:
     u64* array_data() const { return array_data_; }
     u32 array_size() const { return array_size_; }
     u32 bit_count() const { return bit_count_; }
     u32 has_error() const { return has_error_; }
     u32 first_bit() const { return win_min_ < bit_count_ ? win_min_ * kBitWide : 0; }
+    u32 win_size() const { return win_max_ > win_min_ ? win_max_ - win_min_ : 0; }
+    u32 dirty_count() const { return dirty_count_; }
+    bool empty() const { return dirty_count_ == 0; }
 private:
     u32 win_min() const { return win_min_; }
     u32 win_max() const { return win_max_; }
@@ -103,7 +108,7 @@ public:
     { 
     }
 
-    // mem的地址要求8字节对齐  否则会有性能问题, 非u64数组的定义可以用 alignas(sizeof(u64))  
+    // mem的地址要求8字节对齐  否则会有性能和兼容性问题, 非u64数组的定义可以用 alignas(sizeof(u64))  
     void attach(u64* u64_array, u32 array_size, bool with_clean)
     {
         array_data_ = u64_array;
@@ -125,6 +130,7 @@ public:
         has_error_ = 0;
         win_min_ = bit_count_;
         win_max_ = 0;
+        dirty_count_ = 0;
     }
 
     void clear()
@@ -136,6 +142,7 @@ public:
         has_error_ = 0;
         win_min_ = bit_count_;
         win_max_ = 0;
+        dirty_count_ = 0;
         memset(array_data_, 0, array_size_ * sizeof(u64));
     }
     
@@ -151,6 +158,7 @@ public:
             return;
         }
         array_data_[index / kBitWide] |= 1ULL << (index % kBitWide) ;
+        dirty_count_++;
     }
 
 
@@ -184,6 +192,7 @@ public:
             return;
         }
         array_data_[index / kBitWide] &= ~(1ULL << (index % kBitWide));
+        dirty_count_++;
     }
 
     void unset_with_win(u32 index)
@@ -208,7 +217,7 @@ public:
     }
 
 
-    bool has(u32 index)
+    bool has(u32 index) const
     {
         if (index >= bit_count_)
         {
