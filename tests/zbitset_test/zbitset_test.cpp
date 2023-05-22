@@ -33,29 +33,56 @@ s32 zbitset_test()
     u64 array_data[100];
     zbitset bs;
     bs.attach(array_data, 100, true);
+    ASSERT_TEST(bs.win_size() == 0);
+    ASSERT_TEST(!bs.has(1));
+    ASSERT_TEST(bs.win_size() == 0);
+    ASSERT_TEST(bs.dirty_count() == 0);
+    ASSERT_TEST(bs.empty());
+
+
+
     bs.set_with_win(1);
     ASSERT_TEST(bs.has(1));
+    ASSERT_TEST(bs.win_size() == 1);
+    ASSERT_TEST(bs.dirty_count() == 1);
+    ASSERT_TEST(!bs.empty());
+
     bs.set_with_win(3);
     ASSERT_TEST(bs.has(3));
+    ASSERT_TEST(bs.dirty_count() == 2);
+
     bs.set_with_win(700);
     ASSERT_TEST(bs.has(700));
+    ASSERT_TEST(bs.dirty_count() == 3);
+
+
     bs.set_with_win(6399);
     ASSERT_TEST(bs.has(6399));
     ASSERT_TEST(bs.has_error() == 0);
+
+
     bs.set_with_win(6400);
     ASSERT_TEST(bs.has_error() == 1);
     ASSERT_TEST(!bs.has(6400));
 
+
     u32 bit_id = bs.first_bit();
     ASSERT_TEST((bit_id = bs.pick_next_with_win(bit_id)) == 1);
     ASSERT_TEST(!bs.has(1));
+
+
     ASSERT_TEST((bit_id = bs.pick_next_with_win(bit_id)) == 3);
     ASSERT_TEST(!bs.has(3));
+
+
+
     ASSERT_TEST((bit_id = bs.pick_next_with_win(bit_id)) == 700);
     ASSERT_TEST(!bs.has(700));
+
+
+
     ASSERT_TEST((bit_id = bs.pick_next_with_win(bit_id)) == 6399);
     ASSERT_TEST(!bs.has(6399));
-
     ASSERT_TEST(bs.has_error() == 1);
 
     ASSERT_TEST((bit_id = bs.pick_next_with_win(bit_id)) == bs.bit_count());
@@ -68,6 +95,10 @@ s32 zbitset_test()
 
     bs.light_clear();
     ASSERT_TEST(bs.has_error() == 0);
+    ASSERT_TEST(bs.win_size() == 0);
+    ASSERT_TEST(bs.dirty_count() == 0);
+    ASSERT_TEST(bs.empty());
+
 
     ASSERT_TEST(!bs.has(0));
     bs.set_with_win(0);
@@ -142,6 +173,35 @@ s32 zbitset_bench()
     return 0;
 }
 
+
+s32 zbitset_bench_static()
+{
+    constexpr u32 bit_count = zbitset::max_bit_count(100);
+    zbitset_static<bit_count> bs;
+    if (true)
+    {
+        PROF_DEFINE_AUTO_MULTI_ANON_RECORD(cost, bit_count / 2, "set * 3200");
+        for (u32 i = 0; i < bit_count / 2; i++)
+        {
+            bs.set(rand() % bit_count);
+        }
+    }
+
+    if (true)
+    {
+        PROF_DEFINE_AUTO_ANON_RECORD(cost, "pick_next");
+        volatile u32 add = 0;
+        u32 bit_id = 0;
+        while ((bit_id = bs.pick_next(bit_id)) < bs.bit_count())
+        {
+            add++;
+        }
+    }
+
+    bs.light_clear();
+    return 0;
+}
+
 int main(int argc, char *argv[])
 {
     FNLog::FastStartDebugLogger();
@@ -156,6 +216,7 @@ int main(int argc, char *argv[])
     ASSERT_TEST(zbitset_test() == 0);
     ASSERT_TEST(zbitset_bench_win() == 0);
     ASSERT_TEST(zbitset_bench() == 0);
+    ASSERT_TEST(zbitset_bench_static() == 0);
 
     LogInfo() << "all test finish .";
     return 0;
