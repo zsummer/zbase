@@ -269,6 +269,19 @@ public:
 
 };
 
+template<u32 BIT_COUNT>
+class zbitset_static : public zbitset
+{
+public:
+    static constexpr u32 ARRAY_COUNT = zbitset::ceil_array_size(BIT_COUNT);
+    zbitset_static()
+    {
+        attach(bitmap_, ARRAY_COUNT, true);
+    }
+
+private:
+    u64 bitmap_[ARRAY_COUNT];
+};
 
 
 
