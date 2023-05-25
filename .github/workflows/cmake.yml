@@ -44,4 +44,7 @@ jobs:
         ./malloc_test
         ./foreach_test
         ./zpool_test
+        ./zbitset_test
+        ./mapping_test
+        ./empty_test
       
