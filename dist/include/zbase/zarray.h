@@ -26,7 +26,11 @@
 #include <type_traits>
 #include <iterator>
 #include <cstddef>
+#include <memory>
+#include <algorithm>
 
+#ifndef ZBASE_SHORT_TYPE
+#define ZBASE_SHORT_TYPE
 using s8 = char;
 using u8 = unsigned char;
 using s16 = short int;
@@ -37,11 +41,12 @@ using s64 = long long;
 using u64 = unsigned long long;
 using f32 = float;
 using f64 = double;
+#endif
 
 #if __GNUG__
-#define MAY_ALIAS __attribute__((__may_alias__))
+#define ZBASE_ALIAS __attribute__((__may_alias__))
 #else
-#define MAY_ALIAS
+#define ZBASE_ALIAS
 #endif
 
 
@@ -109,7 +114,7 @@ public:
     using inner_space_type = typename std::aligned_storage<sizeof(_Ty), alignof(_Ty)>::type;
     using space_type = typename std::conditional<std::is_trivial<_Ty>::value, _Ty, inner_space_type>::type;
 private:
-    pointer MAY_ALIAS ptr(size_type i) const noexcept { return reinterpret_cast<pointer>(const_cast<space_type*>(&data_[i])); }
+    pointer ZBASE_ALIAS ptr(size_type i) const noexcept { return reinterpret_cast<pointer>(const_cast<space_type*>(&data_[i])); }
     reference ref(size_type i) const noexcept { return *ptr(i); }
     size_type distance(iterator l, iterator r) const noexcept { return (size_type)(r - l); }
 public:

@@ -25,6 +25,9 @@
 #include <cstddef>
 
 
+
+#ifndef ZBASE_SHORT_TYPE
+#define ZBASE_SHORT_TYPE
 using s8 = char;
 using u8 = unsigned char;
 using s16 = short int;
@@ -35,13 +38,23 @@ using s64 = long long;
 using u64 = unsigned long long;
 using f32 = float;
 using f64 = double;
+#endif
+
+#if __GNUG__
+#define ZBASE_ALIAS __attribute__((__may_alias__))
+#else
+#define ZBASE_ALIAS
+#endif
+
+
+
 
 //#define ZLIST_EXT_USED_FENCE
 
 #if __GNUG__
-#define MAY_ALIAS __attribute__((__may_alias__))
+#define ZBASE_ALIAS __attribute__((__may_alias__))
 #else
-#define MAY_ALIAS
+#define ZBASE_ALIAS
 #endif
 
 template<class list_type>
@@ -109,7 +122,7 @@ bool operator != (const zlist_ext_iterator<list_type>& n1, const zlist_ext_itera
 }
 
 
-//分段双向链表; 第一段为固定内存, 第二段为动态内存, 均为定长.  
+//分段双向链表, 使用两块平坦连续内存, 第一块为静态, 第二块为动态.  
 //_Size == _FixedSize 大小相等时为全静态, 此时与zlist的区别在于, zlist的node和value绑在一起, value小时 zlist因不需要取指针性能更好,  value大时 zlist_ext因分离数据性能会更好一些.  
 //_FixedSize == 0 时为全动态   
 //这里使用了指针, 用在共享内存时候需要保证指针地址固定, 以及修改动态内存分配接口,.   
@@ -152,7 +165,7 @@ public:
         u32 next;
         space_type *space;
     };
-    static _Ty* MAY_ALIAS node_cast(node_type& node) { return reinterpret_cast<_Ty*>(node.space); }
+    static _Ty* ZBASE_ALIAS node_cast(node_type& node) { return reinterpret_cast<_Ty*>(node.space); }
 public:
 
     zlist_ext()
