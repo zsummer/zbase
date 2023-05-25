@@ -111,6 +111,71 @@ s32 zbitset_test()
     return 0;
 }
 
+
+
+s32 zbitset_test_clone_test()
+{
+    u64 array_data[100];
+    u64 clone_data[100];
+    
+    zbitset bs;
+    bs.attach(array_data, 100, true);
+    bs.set_with_win(1);
+    bs.set_with_win(3);
+    bs.set_with_win(700);
+    bs.set_with_win(6399);
+    bs.set_with_win(6400);
+
+    zbitset clone_bs;
+    clone_bs.attach(clone_data, 100, false);
+    clone_bs.clone_from(bs);
+
+    u32 bit_id = clone_bs.first_bit();
+    ASSERT_TEST((bit_id = clone_bs.pick_next_with_win(bit_id)) == 1);
+    ASSERT_TEST(!clone_bs.has(1));
+
+
+    ASSERT_TEST((bit_id = clone_bs.pick_next_with_win(bit_id)) == 3);
+    ASSERT_TEST(!clone_bs.has(3));
+
+
+
+    ASSERT_TEST((bit_id = clone_bs.pick_next_with_win(bit_id)) == 700);
+    ASSERT_TEST(!clone_bs.has(700));
+
+
+
+    ASSERT_TEST((bit_id = clone_bs.pick_next_with_win(bit_id)) == 6399);
+    ASSERT_TEST(!clone_bs.has(6399));
+    ASSERT_TEST(clone_bs.has_error() == 1);
+
+    ASSERT_TEST((bit_id = clone_bs.pick_next_with_win(bit_id)) == clone_bs.bit_count());
+
+
+    for (u32 i = 0; i < 100; i++)
+    {
+        ASSERT_TEST_NOLOG(clone_bs.array_data()[i] == 0, i);
+    }
+
+    clone_bs.light_clear();
+    ASSERT_TEST(clone_bs.has_error() == 0);
+    ASSERT_TEST(clone_bs.win_size() == 0);
+    ASSERT_TEST(clone_bs.dirty_count() == 0);
+    ASSERT_TEST(clone_bs.empty());
+
+
+    ASSERT_TEST(!clone_bs.has(0));
+    clone_bs.set_with_win(0);
+    ASSERT_TEST(clone_bs.has(0));
+    bit_id = clone_bs.first_bit();
+    ASSERT_TEST((bit_id = clone_bs.pick_next_with_win(bit_id)) == 0);
+    ASSERT_TEST((bit_id = clone_bs.pick_next_with_win(bit_id)) == clone_bs.bit_count());
+
+
+    return 0;
+}
+
+
 s32 zbitset_bench_win()
 {
     u64 array_[100];
@@ -214,6 +279,7 @@ int main(int argc, char *argv[])
     LogDebug() << " main begin test. ";
 
     ASSERT_TEST(zbitset_test() == 0);
+    ASSERT_TEST(zbitset_test_clone_test() == 0);
     ASSERT_TEST(zbitset_bench_win() == 0);
     ASSERT_TEST(zbitset_bench() == 0);
     ASSERT_TEST(zbitset_bench_static() == 0);

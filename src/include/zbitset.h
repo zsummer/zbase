@@ -121,6 +121,29 @@ public:
         }
     }
 
+    s32 clone_from(const zbitset& bmap)
+    {
+        if (array_size_ != bmap.array_size())
+        {
+            return 1;
+        }
+        if (bit_count_ != bmap.bit_count())
+        {
+            return 2;
+        }
+
+        if (array_size_ == 0)
+        {
+            return 3;
+        }
+
+        memcpy(array_data_, bmap.array_data(), bmap.array_size() *sizeof(u64));
+        has_error_ = bmap.has_error();
+        win_min_ = bmap.win_min();
+        win_max_ = bmap.win_max();
+        return 0;
+    }
+
     void light_clear()
     {
         if (array_size_ == 0)
@@ -278,18 +301,18 @@ public:
 
 };
 
-template<u32 BIT_COUNT>
+template<u32 _BitCount>
 class zbitset_static : public zbitset
 {
 public:
-    static constexpr u32 ARRAY_COUNT = zbitset::ceil_array_size(BIT_COUNT);
+    static constexpr u32 kArraySize = zbitset::ceil_array_size(_BitCount);
     zbitset_static()
     {
-        attach(bitmap_, ARRAY_COUNT, true);
+        attach(bitmap_, kArraySize, true);
     }
 
 private:
-    u64 bitmap_[ARRAY_COUNT];
+    u64 bitmap_[kArraySize];
 };
 
 
