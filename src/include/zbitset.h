@@ -162,10 +162,7 @@ public:
         {
             return;
         }
-        has_error_ = 0;
-        win_min_ = bit_count_;
-        win_max_ = 0;
-        dirty_count_ = 0;
+        light_clear();
         memset(array_data_, 0, array_size_ * sizeof(u64));
     }
     
