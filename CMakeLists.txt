@@ -1,5 +1,5 @@
-cmake_minimum_required(VERSION 3.8)
-project(zbase)
+#cmake_minimum_required(VERSION 3.8)
+#project(zbase)
 #enable_language(ASM)
 
 #from github.com/zsummer
@@ -41,6 +41,10 @@ project(zbase)
 
 # 
 # execute_process
+
+
+cmake_minimum_required(VERSION 3.8)
+project(zbase)
 
 include (${PROJECT_SOURCE_DIR}/cmake/macro.cmake)
 include (${PROJECT_SOURCE_DIR}/cmake/option.cmake)
