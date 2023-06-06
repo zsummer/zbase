@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.0)
+cmake_minimum_required(VERSION 3.8)
 project(zbase)
 #enable_language(ASM)
 
@@ -41,6 +41,10 @@ project(zbase)
 
 # 
 # execute_process
+
+include (${PROJECT_SOURCE_DIR}/cmake/macro.cmake)
+
+
 set(CMAKE_VERBOSE_MAKEFILEON ON)
 if( NOT CMAKE_CONFIGURATION_TYPES )
     set( CMAKE_CONFIGURATION_TYPES Debug Release )
@@ -49,45 +53,16 @@ endif( NOT CMAKE_CONFIGURATION_TYPES )
 set(CMAKE_BUILD_TYPE Release CACHE STRING "cache debug release "  )
 set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS ${CMAKE_CONFIGURATION_TYPES} )
 
-#分组添加到IDE
-MACRO(GROUP_SRC_BY_DIR FILES)
-    FOREACH(PATH_NAME ${${FILES}})
-        STRING(REGEX REPLACE ${CMAKE_CURRENT_SOURCE_DIR}/\(.*\) \\1 RELATIVE_PATH ${PATH_NAME})
-        STRING(REGEX MATCH "(.+)/.*" HAS_GROUP ${RELATIVE_PATH})
-        IF(HAS_GROUP)
-                STRING(REGEX REPLACE "(.+)/.*" \\1 GROUP_NAME ${RELATIVE_PATH})
-                STRING(REPLACE "/" "\\" GROUP_NAME ${GROUP_NAME})
-                MESSAGE(${PATH_NAME} " into " ${GROUP_NAME})
-                SOURCE_GROUP(${GROUP_NAME} FILES ${PATH_NAME})
-        ELSE()
-                SOURCE_GROUP("" FILES ${PATH_NAME})
-        ENDIF()
-    ENDFOREACH(PATH_NAME)
-ENDMACRO(GROUP_SRC_BY_DIR)
 
 
 FILE(GLOB_RECURSE SOURCES_H ${CMAKE_SOURCE_DIR}/src/include/*.h)
 # 自动INCLUDE所有头文件的目录  (可能会影响到include的优先级)
 # list(FILTER <list> <INCLUDE|EXCLUDE> REGEX <regular_expression>)  
 
-GROUP_SRC_BY_DIR(SOURCES_H)
+auto_group_source(SOURCES_H)
+auto_include_from_source(SOURCES_H)
 ADD_CUSTOM_TARGET(${PROJECT_NAME} SOURCES  ${SOURCES_H} )
 
-FOREACH(FILE_NAME ${SOURCES_H})
-        STRING( REGEX REPLACE "[^/\\\\]+$" " " DIR_NAME ${FILE_NAME} )
-        MESSAGE(${FILE_NAME})
-	MESSAGE(${DIR_NAME})
-        LIST(APPEND DIR_NAME_LIST ${DIR_NAME})
-ENDFOREACH()
-
-IF(DIR_NAME_LIST)
-    LIST(REMOVE_DUPLICATES DIR_NAME_LIST)
-ENDIF()
-
-FOREACH(DIR_NAME ${DIR_NAME_LIST})
-        MESSAGE("auto include " ${DIR_NAME} )
-        INCLUDE_DIRECTORIES(${DIR_NAME})
-ENDFOREACH()
 #通用设置部分 包括启用分组 设置 启动项目  
 if(WIN32)
     ADD_DEFINITIONS(-DWIN32 -W3 )
@@ -131,38 +106,28 @@ endif(OPEN_CHECK)
 
 include_directories(${CMAKE_SOURCE_DIR}/tests)
 include_directories(${CMAKE_SOURCE_DIR}/tests/common)
-include_directories(${CMAKE_SOURCE_DIR}/tests/common/include)
-include_directories(${CMAKE_SOURCE_DIR}/tests/common/include/fn-log)
-include_directories(${CMAKE_SOURCE_DIR}/tests/common/include/zprof)
+auto_include_sub_hpp_dir(${CMAKE_SOURCE_DIR}/tests/common)
+auto_group_sub_cpp_dir(${CMAKE_SOURCE_DIR}/tests/common)
 
-macro(SUB_DIR_LIST result curdir)
-    file(GLOB children RELATIVE ${curdir} ${curdir}/*)
-    set(dirlist "")
-    foreach(child ${children})
-        if(IS_DIRECTORY ${curdir}/${child})
-            LIST(APPEND dirlist ${child})
-        endif()
-    endforeach()
-    set(${result} ${dirlist})
-endmacro()
-SUB_DIR_LIST(SUB_DIRS ${CMAKE_SOURCE_DIR}/tests/)
-FOREACH(SUB_DIR ${SUB_DIRS}) 
+
+get_sub_dir(sub_dirs ${CMAKE_SOURCE_DIR}/tests/)
+
+
+FOREACH(SUB_DIR ${sub_dirs}) 
     set(EXAMPLE_SOURCE "")
     if (${SUB_DIR} STREQUAL "common") 
         continue()
     endif()
-    #FILE(GLOB_RECURSE EXAMPLE_SOURCE
-    FILE(GLOB EXAMPLE_SOURCE
-    ${CMAKE_SOURCE_DIR}/tests/*.h 
+    FILE(GLOB_RECURSE EXAMPLE_SOURCE
     ${CMAKE_SOURCE_DIR}/tests/common/*.h 
     ${CMAKE_SOURCE_DIR}/tests/${SUB_DIR}/*.h 
     ${CMAKE_SOURCE_DIR}/tests/${SUB_DIR}/*.c 
     ${CMAKE_SOURCE_DIR}/tests/${SUB_DIR}/*.cc 
     ${CMAKE_SOURCE_DIR}/tests/${SUB_DIR}/*.cpp)
 
-    Message(${EXAMPLE_SOURCE})
-    Message(${EXAMPLE_SOURCE})
-    GROUP_SRC_BY_DIR(EXAMPLE_SOURCE)
+
+    #Message(${EXAMPLE_SOURCE})
+    auto_group_source(EXAMPLE_SOURCE)
     ADD_EXECUTABLE(${SUB_DIR} ${ARENA_C} ${ARENA_H} ${EXAMPLE_SOURCE})
     if (UNIX)
             SET_TARGET_PROPERTIES(${SUB_DIR}
