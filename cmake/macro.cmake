@@ -4,15 +4,15 @@
 # source_group(TREE <root> [PREFIX <prefix>] [FILES <src>...])  
 # LIST作为参数传递过来时候不要解值(通过传递符号名传递) 否则LIST的内容只剩下第一个元素  
 
-function(auto_group_source sources)
-    source_group(TREE ${CMAKE_SOURCE_DIR} FILES ${${sources}})
+function(auto_group_source src_file_list)
+    source_group(TREE ${CMAKE_SOURCE_DIR} FILES ${${src_file_list}})
 endfunction()
 
 
 
 
 # 获得子目录列表  
-function(get_sub_dir result dir_path)
+function(get_sub_dir_name result_list dir_path)
     file(GLOB subs RELATIVE ${dir_path} ${dir_path}/*)
     set(dirlist "")
     foreach(sub ${subs})
@@ -20,14 +20,14 @@ function(get_sub_dir result dir_path)
             list(APPEND dirlist ${sub})
         endif()
     endforeach()
-    set(${result} ${dirlist} PARENT_SCOPE)
+    set(${result_list} ${dirlist} PARENT_SCOPE)
 endfunction()
 
 
 
 # 自动include 头文件所在目录  
-function(auto_include_from_source sources)
-    foreach(file_name ${${sources}})
+function(auto_include_from_source src_file_list)
+    foreach(file_name ${${src_file_list}})
         string(REGEX REPLACE "[^/\\]+$" " " dir_path ${file_name} )
         list(APPEND dir_paths ${dir_path})
     endforeach()
