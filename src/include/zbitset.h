@@ -307,7 +307,10 @@ public:
     {
         attach(bitmap_, kArraySize, true);
     }
-
+    zbitset_static(const zbitset_static<_BitCount>& other) :zbitset_static()
+    {
+        clone_from(other);
+    }
 private:
     u64 bitmap_[kArraySize];
 };
