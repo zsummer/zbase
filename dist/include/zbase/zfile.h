@@ -116,6 +116,9 @@ public:
     static inline bool remove_file(const std::string& path);
     static inline struct tm time_to_tm(time_t t);
     static inline s64 file_size(const std::string& path);
+    static inline std::string file_content(const std::string& path, const char* mod);
+    static inline std::string file_bin_content(const std::string& path) { return file_content(path, "rb"); }
+    static inline std::string file_text_content(const std::string& path) { return file_content(path, "r"); }
 public:
     FILE* file_;
 };
@@ -405,6 +408,14 @@ s64 zfile::file_size(const std::string& path)
     struct stat statbuf;
     stat(path.c_str(), &statbuf);
     return statbuf.st_size;
+}
+
+std::string zfile::file_content(const std::string& path, const char* mod)
+{
+    zfile f;
+    struct stat s;
+    f.open(path.c_str(), mod, s);
+    return f.read_content();
 }
 
 #endif
