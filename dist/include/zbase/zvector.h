@@ -86,7 +86,7 @@ private:
     pointer p_;
 };
 
-//a plat vector; 
+// sso optimize vector; 
 //used small data optimization; 
 //merge high-frequency alloc small memory   
 template<class _Ty, u32 _Size, u32 _FixedSize, class _Alloc = std::allocator<typename std::aligned_storage<sizeof(_Ty), alignof(_Ty)>::type>>
@@ -584,11 +584,6 @@ public:
             other.count_ = 0;
             return *this;
         }
-
-        //fixed memory copy;  
-        //no raii data   
-
-        
 
         //assert: other size is less than Fixed size. ref real_ptr   
         std::uninitialized_copy_n(other.begin(), other.size(), ptr(0));
