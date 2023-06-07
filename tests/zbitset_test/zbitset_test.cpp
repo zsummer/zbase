@@ -254,6 +254,26 @@ s32 zbitset_bench_static()
 
     if (true)
     {
+        s32 ret = memcmp(zbitset_static<bit_count>(bs).array_data(), bs.array_data(), bs.array_size());
+        ASSERT_TEST(ret == 0);
+    }
+
+    if (true)
+    {
+        PROF_DEFINE_AUTO_ANON_RECORD(cost, "pick copy next");
+        volatile u32 add = 0;
+        u32 bit_id = 0;
+        zbitset_static<bit_count> copy_bs(bs);
+        while ((bit_id = bs.pick_next(bit_id)) < copy_bs.bit_count())
+        {
+            add++;
+        }
+    }
+
+
+
+    if (true)
+    {
         PROF_DEFINE_AUTO_ANON_RECORD(cost, "pick_next");
         volatile u32 add = 0;
         u32 bit_id = 0;
@@ -262,6 +282,8 @@ s32 zbitset_bench_static()
             add++;
         }
     }
+
+
 
     bs.light_clear();
     return 0;
