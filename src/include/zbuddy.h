@@ -75,7 +75,7 @@ using f64 = double;
 
 /*  perfect binary true
 *                   0        -----------   : reserve
-*                    1        -----------   :  root : depth 0:  space order is max_order - depth
+*                   1        -----------   :  root : depth 0:  space order is max_order - depth
 *
 *          2                 3
 *
@@ -85,7 +85,7 @@ using f64 = double;
 *
 * ----------------------------------------
 *
-*   0   1   2    3    4    5   6     7     : page offset
+*   0   1   2    3    4    5    6    7     : page offset
 *
 * (max order)  is equal  (tree depth)   and is equal (root space order)
 */
@@ -123,7 +123,7 @@ inline Integer zbuddy_fill_right(Integer num)
 
 
 #define zbuddy_is_power_of_2(num)  (!(num & (num-1)))
-#define zbuddy_max(v1, v2)  max(v1, v2)
+#define zbuddy_max(v1, v2)  ((v1) > (v2) ? (v1) : (v2))
 
 
 #define zbuddy_shift_size(shift) (1U << (shift))
@@ -138,8 +138,9 @@ inline Integer zbuddy_fill_right(Integer num)
 #define zbuddy_right(index) (((index) << 1U) + 1)
 
 
-#define zbuddy_index_2_tree_depth(index)  zbuddy_first_bit_index(index)  //root depth is 0
-#define zbuddy_index_2_max_space(root_space_order, index)   ((root_space_order) - zbuddy_index_2_tree_depth(index) )
+#define zbuddy_tree_depth(index)  zbuddy_first_bit_index(index)  //root depth is 0  
+//root space order指的完整连续空间.  
+#define zbuddy_node_space_order(root_space_order, index)   ((root_space_order) - zbuddy_tree_depth(index) )
 
 #define zbuddy_node_array_size(root_space_order) (zbuddy_shift_size(root_space_order+1))
 
@@ -464,7 +465,7 @@ void zbuddy::dump() const
     {
         for (auto index : input)
         {
-            u32 depth = zbuddy_index_2_tree_depth(index);
+            u32 depth = zbuddy_tree_depth(index);
             u32 ability = space_order_ - depth + 1;
             if (zbuddy_node_space(this, index) == ability)
             {
