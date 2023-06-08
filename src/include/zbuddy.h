@@ -90,25 +90,34 @@ using f64 = double;
 * (max order)  is equal  (tree depth)   and is equal (root space order)
 */
 
+
+
+
+#ifdef WIN32
+/*
+* left to right scan  
+* num:<0>  ill 
+* num:<1>  return 0
+* num:<2>  return 1
+* num:<3>  return 1
+* num:<4>  return 2
+* num:<0>  return (u32)-1
+*/
+
 inline u32 zbuddy_first_bit_index(u64 num)
 {
     DWORD index = (DWORD)-1;
     _BitScanReverse64(&index, num);
     return (u32)index;
 }
-/*
-* right to left scan
-*/
 
-inline u32 zbuddy_last_bit_index(u64 num)
-{
-    DWORD index = -1;
-    _BitScanForward64(&index, num);
-    return (u32)index;
-}
+#else
+#define zbuddy_first_bit_index(num) ((u32)(sizeof(u64) * 8 - __builtin_clzll((u64)num) - 1))
+#endif
+
 
 template<class Integer>
-inline Integer zbuddy_fill_right(Integer num)
+inline Integer zbuddy_fill_right_u32(Integer num)
 {
     static_assert(std::is_same<Integer, u32>::value, "only support u32 type");
     num |= num >> 1U;
@@ -119,43 +128,44 @@ inline Integer zbuddy_fill_right(Integer num)
     return num;
 }
 
+//基本术语和抽象  
+// shift: bit位下标   
+// space: 地址空间   
+// order: 数的大小 order和shift都是2为底的的指数值 
+// node: 用于管理地址空间的buddy节点  
+// ability: -1为当前node空间下的最大连续空间; 0为无  
 
+#define zbuddy_used_left_first 1
 
-
-#define zbuddy_is_power_of_2(num)  (!(num & (num-1)))
+//基础位操作函数  
 #define zbuddy_max(v1, v2)  ((v1) > (v2) ? (v1) : (v2))
 
-
+#define zbuddy_is_power_of_2(num)  (!(num & (num-1)))
 #define zbuddy_shift_size(shift) (1U << (shift))
-#define zbuddy_shift_size64(shift) (1ULL << (shift))
+#define zbuddy_high_bit_index(num) zbuddy_first_bit_index(num) 
+#define zbuddy_fill_right(num) zbuddy_fill_right_u32(num)  //zbuddy管理的是page; 以page单位为4k推算 管理的连续空间约为:16 T   
 
-
-#define zbuddy_parent(index) ((index) >>  1U)
-#define zbuddy_is_left_node(index) (!((index) & 1U))
-#define zbuddy_is_right_node(index) ((index) & 1U)
-
+//伙伴结构算法  index 指的node序号;  
+#define zbuddy_root_index 1U
+#define zbuddy_parent(index) ((index) >> 1U)
 #define zbuddy_left(index) (((index) << 1U))
 #define zbuddy_right(index) (((index) << 1U) + 1)
+#define zbuddy_depth(index)  zbuddy_high_bit_index(index)  //root depth is 0  
+#define zbuddy_horizontal_offset(index) ((index) - zbuddy_shift_size(zbuddy_depth(index)))  //index在当前深度下的offset 
 
 
-#define zbuddy_tree_depth(index)  zbuddy_first_bit_index(index)  //root depth is 0  
-//root space order指的完整连续空间.  
-#define zbuddy_node_space_order(root_space_order, index)   ((root_space_order) - zbuddy_tree_depth(index) )
 
-#define zbuddy_node_array_size(root_space_order) (zbuddy_shift_size(root_space_order+1))
-
-
-#define zbuddy_index_2_level_offset_index(depth, index) ((index) - zbuddy_shift_size(depth) )
-
-static_assert(zbuddy_index_2_level_offset_index(1, 2) == 0, "");
-static_assert(zbuddy_index_2_level_offset_index(3, 8) == 0, "");
-static_assert(zbuddy_index_2_level_offset_index(3, 9) == 1, "");
+//fast use  
+#define zbuddy_get_node_ability(head, index)  ((head)->nodes_[index].space_ability)
+#define zbuddy_get_root_ability(head) zbuddy_get_node_ability(head, 1U)
 
 
-#define zbuddy_node_space(head, index)  ((head)->nodes_[index].space_ability)
-#define zbuddy_root_space(head) zbuddy_node_space(head, 1U)
-
-
+/*
+    char * mem = new char [zbuddy::get_zbuddy_state_size(16)];
+    zbuddy* buddy = build_zbuddy(mem, zbuddy::get_zbuddy_state_size(16), 16);
+    //todo used buddy  
+    delete mem;  
+*/
 
 class zbuddy
 {
@@ -165,29 +175,44 @@ public:
         u32 space_ability;
     };
 public:
-    inline static u32 buddy_state_size(u32 space_order);
+    inline static u32 get_zbuddy_state_size(u32 space_order);
     inline static zbuddy* build_zbuddy(void* addr, u64 bytes, u32 space_order);
     inline static zbuddy* rebuild_zbuddy(u64 addr, u64 bytes, u32 space_order);
 
-    inline u32 right_page_bound() const;
-    inline void summary() const;
-    inline void summary(u64 page_shift) const;
-    inline void dump() const;
     inline u32 alloc_page(u32 pages);
     inline u32 free_page(u32 page_index);
+
+    //status  
+    u32 get_max_space_order()  const { return space_order_; }
+    u32 get_max_space_pages()  const { return zbuddy_shift_size(space_order_); }
+    u32 get_max_space_nodes()  const { return zbuddy_shift_size(space_order_ + 1); }
+    u32 get_first_leaf_node_index() const { return zbuddy_shift_size(space_order_); }
+    u32 get_now_continuous_order()  const { return (nodes_[zbuddy_root_index].space_ability > 0 ? nodes_[zbuddy_root_index].space_ability - 1 : 0); }
+    u32 get_now_continuous_pages()  const { return  (nodes_[zbuddy_root_index].space_ability > 0 ? zbuddy_shift_size(nodes_[zbuddy_root_index].space_ability - 1) : 0); }
+    u32 get_now_free_pages() const { return free_pages_; }
+    inline u32 get_now_right_used_pages() const;
+
+    //check 
+    inline bool check_node_in_used(u32 index) const;
+
+    template<class StreamLog>
+    inline void debug_state_log(StreamLog logwrap) const;
+    template<class StreamLog>
+    inline void debug_fragment_log(StreamLog logwrap) const;
+
 protected:
     inline u32 alloc_ablility(u32 ability);
 public:
-    u32 space_order_;  //Key Parameter: max alloc order (tree size)  
-    u32 page_free_count_;  //alloc state counter   
-    buddy_node nodes_[0]; //the buddy tree  
+    u32 space_order_;  
+    u32 free_pages_;  //status 
+    buddy_node nodes_[1]; //buddy tree; zbuddy必须在已有足够大的内存上构建;   
 };
 
 
 
 u32 zbuddy::alloc_ablility(u32 ability)
 {
-    if (zbuddy_root_space(this) < ability)
+    if (zbuddy_get_root_ability(this) < ability)
     {
         LogError() << "no enough pages . ability:" << ability
             << ". buddy_state:" << this;
@@ -199,7 +224,7 @@ u32 zbuddy::alloc_ablility(u32 ability)
 
     for (u32 cur_ability = this->space_order_ + 1; cur_ability != ability; cur_ability--)
     {
-#if OPEN_BUDDY_FIRST_FIT
+#if zbuddy_used_left_first
         target_index = tree[zbuddy_left(target_index)].space_ability >= ability ? zbuddy_left(target_index) : zbuddy_right(target_index);
 #else
         u32 left_child_index = zbuddy_left(target_index);
@@ -215,9 +240,9 @@ u32 zbuddy::alloc_ablility(u32 ability)
 
     this->nodes_[target_index].space_ability = 0U; //hold, no page alloc ability
 
-    this->page_free_count_ -= 1U << (ability - 1);
+    this->free_pages_ -= 1U << (ability - 1);
 
-    u32 page_index = zbuddy_index_2_level_offset_index(this->space_order_, target_index << (ability - 1));
+    u32 page_index = zbuddy_horizontal_offset(target_index << (ability - 1));
 
     while (target_index = zbuddy_parent(target_index))
     {
@@ -229,7 +254,7 @@ u32 zbuddy::alloc_ablility(u32 ability)
 
 u32 zbuddy::alloc_page(u32 pages)
 {
-    u32 index = zbuddy_first_bit_index(pages);
+    u32 index = zbuddy_high_bit_index(pages);
     if (!zbuddy_is_power_of_2(pages))
     {
         index += 1;
@@ -268,7 +293,7 @@ u32 zbuddy::free_page(u32 page_index)
 
     u32 ability = free_order + 1;
     nodes[node_index].space_ability = ability;
-    page_free_count_ += zbuddy_shift_size(free_order);
+    free_pages_ += zbuddy_shift_size(free_order);
 
 #ifdef __GNUC__
 #pragma GCC diagnostic push
@@ -289,7 +314,7 @@ u32 zbuddy::free_page(u32 page_index)
     return zbuddy_shift_size(free_order);
 }
 
-u32 zbuddy::buddy_state_size(u32 space_order)
+u32 zbuddy::get_zbuddy_state_size(u32 space_order)
 {
     return sizeof(zbuddy) + (sizeof(zbuddy::buddy_node) << (space_order + 1));
 }
@@ -303,7 +328,7 @@ zbuddy* zbuddy::rebuild_zbuddy(u64 addr, u64 bytes, u32 space_order)
         return NULL;
     }
 
-    u32 buddy_tree_size = zbuddy::buddy_state_size(space_order);
+    u32 buddy_tree_size = zbuddy::get_zbuddy_state_size(space_order);
     if (bytes < buddy_tree_size)
     {
         LogError() << "addr:" << (void*)addr << " may be too small: "
@@ -328,10 +353,10 @@ zbuddy* zbuddy::rebuild_zbuddy(u64 addr, u64 bytes, u32 space_order)
         return NULL;
     }
 
-    if (buddy_state->page_free_count_ > zbuddy_shift_size(space_order))
+    if (buddy_state->free_pages_ > zbuddy_shift_size(space_order))
     {
         LogError() << "page_free_count over the tree manager size."
-            "max page is:" << zbuddy_shift_size(space_order) << ", target page_free_count :" << buddy_state->page_free_count_;
+            "max page is:" << zbuddy_shift_size(space_order) << ", target page_free_count :" << buddy_state->free_pages_;
         return NULL;
     }
 
@@ -349,9 +374,9 @@ zbuddy* zbuddy::rebuild_zbuddy(u64 addr, u64 bytes, u32 space_order)
 
         for (u32 index = begin_index; index < end_index; index++)
         {
-            if (zbuddy_node_space(buddy_state, index) > space_ability)
+            if (zbuddy_get_node_ability(buddy_state, index) > space_ability)
             {
-                LogError() << "ability:" << zbuddy_node_space(buddy_state, index)
+                LogError() << "ability:" << zbuddy_get_node_ability(buddy_state, index)
                     << " over the depth max ability:" << space_ability << ", depth:" << depth << ", index:" << index;
                 return NULL;
             }
@@ -375,16 +400,16 @@ zbuddy* zbuddy::build_zbuddy(void* addr, u64 bytes, u32 space_order)
         return NULL;
     }
 
-    if (bytes < zbuddy::buddy_state_size(space_order))
+    if (bytes < zbuddy::get_zbuddy_state_size(space_order))
     {
         LogError() << "target addr no enough memory to build space order:<"
-            << space_order << "> tree.  need least:<:" << zbuddy::buddy_state_size(space_order) << ">.";
+            << space_order << "> tree.  need least:<:" << zbuddy::get_zbuddy_state_size(space_order) << ">.";
         return NULL;
     }
 
     zbuddy* buddy_state = (zbuddy*)addr;
     buddy_state->space_order_ = space_order;
-    buddy_state->page_free_count_ = zbuddy_shift_size(space_order);
+    buddy_state->free_pages_ = zbuddy_shift_size(space_order);
     buddy_state->nodes_[0].space_ability = 0;
     for (u32 depth = 0; depth <= space_order; depth++)
     {
@@ -400,16 +425,16 @@ zbuddy* zbuddy::build_zbuddy(void* addr, u64 bytes, u32 space_order)
     return buddy_state;
 }
 
-u32 zbuddy::right_page_bound() const
+u32 zbuddy::get_now_right_used_pages() const
 {
-    u32 right_bound = 1;
+    u32 right_bound = zbuddy_root_index;
     u32 ability = space_order_ + 1;
     u32 end_page_index = 0;
     while (nodes_[right_bound].space_ability < ability && ability > 0)
     {
         if (nodes_[right_bound].space_ability == 0)
         {
-            end_page_index = zbuddy_index_2_level_offset_index(space_order_ + 1 - ability, right_bound);
+            end_page_index = zbuddy_horizontal_offset(right_bound);
             end_page_index = (end_page_index + 1) << (ability - 1);
             return end_page_index;
         }
@@ -425,123 +450,78 @@ u32 zbuddy::right_page_bound() const
     return 0;
 }
 
-void zbuddy::summary() const
+
+bool zbuddy::check_node_in_used(u32 index) const
 {
-    LogInfo() << "["
-        << "  space_order:" << space_order_
-        << ", max pages:" << zbuddy_shift_size(space_order_)
-        << ", free pages:" << page_free_count_
-        << ", right bound page:" << right_page_bound()
-        << ", root:" << (u32)nodes_[1].space_ability
-        << ", root ability pages:"
-        << ((nodes_[1].space_ability == 0) ? 0 : zbuddy_shift_size(nodes_[1].space_ability - 1))
-        << "]";
-}
-
-void zbuddy::summary(u64 page_size) const
-{
-    auto mf = [](u64 n) {return n / 1024.0 / 1024.0; };
-
-    LogInfo() << "["
-        << "  space:" << mf(zbuddy_shift_size64(space_order_) * page_size)
-        << "m, free:" << mf(page_free_count_ * page_size)
-        << "m, right bound:" << mf(right_page_bound() * page_size)
-        << "m, root max block:"
-        << ((nodes_[1].space_ability == 0) ? 0 : mf(zbuddy_shift_size64(nodes_[1].space_ability - 1ULL)) * 1ULL * page_size)
-        << "]";
-}
-
-void zbuddy::dump() const
-{
-    std::deque<u32> input;
-    std::deque<u32> output;
-
-    using MemInfos = std::deque<std::pair<u32, u32>>;
-    std::deque<MemInfos>  statistic;
-    statistic.resize(space_order_ + 1);
-
-    input.push_back(1);
-    while (!input.empty() || !output.empty())
+    while (index >= zbuddy_root_index && index < get_max_space_nodes())
     {
-        for (auto index : input)
+        if (nodes_[index].space_ability == 0)
         {
-            u32 depth = zbuddy_tree_depth(index);
-            u32 ability = space_order_ - depth + 1;
-            if (zbuddy_node_space(this, index) == ability)
+            return true;
+        }
+        index = zbuddy_parent(index);
+    }
+    return false;
+}
+
+template<class StreamLog>
+void zbuddy::debug_state_log(StreamLog logwrap)  const
+{
+    auto log = std::move(logwrap());
+    log << "["
+        << "  max_space_order:" << get_max_space_order()
+        << ", max_space_pages:" << get_max_space_pages()
+        << ", max_space_nodes:" << get_max_space_nodes()
+        << ", now_continuous_order:" << get_now_continuous_order()
+        << ", now_continuous_pages:" << get_now_continuous_pages()
+        << ", now_free_pages:" << get_now_free_pages()
+        << ", now_right_used_pages:" << get_now_right_used_pages()
+        << ", now_continuous_pages:" << get_now_continuous_pages()
+        << "]";
+}
+
+template<class StreamLog>
+void zbuddy::debug_fragment_log(StreamLog logwrap) const
+{
+    logwrap() << "zbuddy::debug_fragment_log:";
+    constexpr static u32 line_page_size = 128;
+    u32 first_leaf_id = get_first_leaf_node_index();
+
+
+    u32 max_line = get_max_space_pages() / line_page_size;
+    if (max_line > 50)
+    {
+        logwrap() << "zbuddy has pages:" << get_max_space_nodes() << ", this log only show the head:" << line_page_size * 50 << " pages.";
+        max_line = 50;
+    }
+    else
+    {
+        if (get_max_space_pages() % line_page_size != 0)
+        {
+            max_line += 1;
+        }
+    }
+
+    u32 line = 0;
+    for (; line < max_line; line++)
+    {
+        auto log = std::move(logwrap());
+        log << "[" << line * line_page_size << "-" << (line + 1) * line_page_size - 1 <<"]:";
+        log << FNLog::LogBlankAlign<12>();
+        for (u32 i = 0; i < line_page_size; i++)
+        {
+            u32 index = line * line_page_size + i + first_leaf_id;
+            if (index >= get_max_space_nodes())
             {
                 continue;
             }
-            else if (zbuddy_node_space(this, index) == 0)
-            {
-                MemInfos& mems = statistic[depth];
-                u32 offset = zbuddy_index_2_level_offset_index(depth, index);
-                bool inserted = false;
-                for (MemInfos::iterator iter = mems.begin(); iter != mems.end(); ++iter)
-                {
-                    u32 begin_offset = iter->first;
-                    u32 end_offset = iter->first + iter->second;  //second element is the linked node count. if no mege the second is 1
-
-                    if (offset <= begin_offset && offset > end_offset)
-                    {
-                        LogError() << "has duplicate space. depth:" << depth << ", offset:" << offset;
-                    }
-
-                    if (offset == end_offset)
-                    {
-                        iter->second += 1;
-                        inserted = true;
-                        break;
-                    }
-                    else if (offset > begin_offset)
-                    {
-                        mems.insert(iter, std::make_pair(offset, 1));
-                        inserted = true;
-                        break;
-                    }
-                }
-
-                if (!inserted)
-                {
-                    mems.push_back(std::make_pair(offset, 1));
-                }
-            }
-            else if (depth < space_order_)
-            {
-                output.push_back(zbuddy_left(index));
-                output.push_back(zbuddy_right(index));
-            }
-        }
-        input.clear();
-        input.swap(output);
-    }
-
-
-    std::string log_content;
-    for (u32 depth = 0; depth < statistic.size(); depth++)
-    {
-        if (statistic[depth].empty())
-        {
-            continue;
-        }
-        /*
-        auto log(LOG_STREAM_DEFAULT_LOGGER(0, FNLog::PRIORITY_ALARM, 0, FNLog::LOG_PREFIX_NULL));
-        log << "depth[";
-        log.write_number<02>(depth) << "]: ";
-
-        for (auto& mem : statistic[depth])
-        {
-            if (mem.first == 0)
-            {
-                log << "0x0";
-            }
             else
             {
-                log << (void*)(u64)mem.first;
+                log << (check_node_in_used(index) ? "1" : "0");
             }
-            log << ":" << mem.second << ",  ";
         }
-        */
     }
+
 }
 
 
