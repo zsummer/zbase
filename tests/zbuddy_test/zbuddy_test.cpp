@@ -43,7 +43,7 @@ s32 zbuddy_base_macro_test()
 s32 zbuddy_base_test()
 {
     static constexpr u32 space_order = 10;
-    u32 memory_size = zbuddy::get_zbuddy_state_size(space_order);
+    u32 memory_size = zbuddy::get_zbuddy_head_size(space_order);
     char* mem = new char[memory_size];
     zbuddy* buddy = zbuddy::build_zbuddy(mem, memory_size, space_order);
 
@@ -71,7 +71,7 @@ s32 zbuddy_base_test()
 s32 zbuddy_stress_test()
 {
     static constexpr u32 space_order = 15;
-    u32 memory_size = zbuddy::get_zbuddy_state_size(space_order);
+    u32 memory_size = zbuddy::get_zbuddy_head_size(space_order);
     char* mem = new char[memory_size];
     zbuddy* buddy = zbuddy::build_zbuddy(mem, memory_size, space_order);
 
