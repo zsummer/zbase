@@ -246,7 +246,7 @@ u32 zbuddy::alloc_ablility(u32 ability)
 
     u32 page_index = zbuddy_horizontal_offset(target_index << (ability - 1));
 
-    while (target_index = zbuddy_parent(target_index))
+    while ((target_index = zbuddy_parent(target_index)))
     {
         tree[target_index].space_ability = zbuddy_max(tree[zbuddy_left(target_index)].space_ability, tree[zbuddy_right(target_index)].space_ability);
     }
@@ -486,15 +486,17 @@ template<class StreamLog>
 void zbuddy::debug_fragment_log(StreamLog logwrap) const
 {
     logwrap() << "zbuddy::debug_fragment_log:";
-    constexpr static u32 line_page_size = 256;
+    constexpr static u32 line_page_size = 128;
+    constexpr static u32 limit_line_count = 80;
+
     u32 first_leaf_id = get_first_leaf_node_index();
 
 
     u32 max_line = get_max_space_pages() / line_page_size;
-    if (max_line > 50)
+    if (max_line > limit_line_count)
     {
-        logwrap() << "zbuddy has pages:" << get_max_space_nodes() << ", this log only show the head:" << line_page_size * 50 << " pages.";
-        max_line = 50;
+        logwrap() << "zbuddy has pages:" << get_max_space_nodes() << ", this log only show the head:" << line_page_size * limit_line_count << " pages.";
+        max_line = limit_line_count;
     }
     else
     {
