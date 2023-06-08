@@ -135,7 +135,9 @@ inline Integer zbuddy_fill_right_u32(Integer num)
 // node: 用于管理地址空间的buddy节点  
 // ability: -1为当前node空间下的最大连续空间; 0为无  
 
-#define zbuddy_used_left_first 1
+#define ZBUDDY_POLICY_LEFT_FIRST 1
+
+
 
 //基础位操作函数  
 #define zbuddy_max(v1, v2)  ((v1) > (v2) ? (v1) : (v2))
@@ -205,7 +207,7 @@ protected:
 public:
     u32 space_order_;  
     u32 free_pages_;  //status 
-    buddy_node nodes_[1]; //buddy tree; zbuddy必须在已有足够大的内存上构建;   
+    buddy_node nodes_[2]; //buddy tree; zbuddy必须在预分配的内存上构建;   
 };
 
 
@@ -224,7 +226,7 @@ u32 zbuddy::alloc_ablility(u32 ability)
 
     for (u32 cur_ability = this->space_order_ + 1; cur_ability != ability; cur_ability--)
     {
-#if zbuddy_used_left_first
+#if ZBUDDY_POLICY_LEFT_FIRST
         target_index = tree[zbuddy_left(target_index)].space_ability >= ability ? zbuddy_left(target_index) : zbuddy_right(target_index);
 #else
         u32 left_child_index = zbuddy_left(target_index);
@@ -484,7 +486,7 @@ template<class StreamLog>
 void zbuddy::debug_fragment_log(StreamLog logwrap) const
 {
     logwrap() << "zbuddy::debug_fragment_log:";
-    constexpr static u32 line_page_size = 128;
+    constexpr static u32 line_page_size = 256;
     u32 first_leaf_id = get_first_leaf_node_index();
 
 
@@ -507,7 +509,7 @@ void zbuddy::debug_fragment_log(StreamLog logwrap) const
     {
         auto log = std::move(logwrap());
         log << "[" << line * line_page_size << "-" << (line + 1) * line_page_size - 1 <<"]:";
-        log << FNLog::LogBlankAlign<12>();
+        log << FNLog::LogBlankAlign<14>();
         for (u32 i = 0; i < line_page_size; i++)
         {
             u32 index = line * line_page_size + i + first_leaf_id;
