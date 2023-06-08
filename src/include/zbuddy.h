@@ -157,6 +157,22 @@ inline Integer zbuddy_fill_right_u32(Integer num)
 #define zbuddy_depth(index)  zbuddy_high_bit_index(index)  //root depth is 0  
 #define zbuddy_horizontal_offset(index) ((index) - zbuddy_shift_size(zbuddy_depth(index)))  //index在当前深度下的offset 
 
+//
+enum ZBUDDY_ERROR_CODE  : s32
+{
+    ZBUDDY_EC_SUCCESS = 0,
+    ZBUDDY_EC_ERROR = 1,
+    ZBUDDY_EC_NO_PAGES = 2,
+    ZBUDDY_EC_NO_CONTINUOUS_PAGES = 3,
+    ZBUDDY_EC_ILL_PAGE_INDEX = 4,
+    ZBUDDY_EC_ILL_PAGE_STATE,
+
+    ZBUDDY_EC_ILL_PARAM = 10,
+    ZBUDDY_EC_MEM_ADDR_ALIGN = 11,
+    ZBUDDY_EC_VERSION_MISMATCH,
+    ZBUDDY_EC_WRONG_HEAD_STATE,
+    ZBUDDY_EC_WRONG_NODE_STATE,
+};
 
 
 /*
@@ -175,8 +191,8 @@ public:
     };
 public:
     inline static u32 get_zbuddy_head_size(u32 space_order);
-    inline static zbuddy* build_zbuddy(void* addr, u64 bytes, u32 space_order);
-    inline static zbuddy* rebuild_zbuddy(u64 addr, u64 bytes, u32 space_order);
+    inline static zbuddy* build_zbuddy(void* addr, u64 bytes, u32 space_order, s32* error_code = nullptr);
+    inline static zbuddy* rebuild_zbuddy(u64 addr, u64 bytes, u32 space_order, s32* error_code = nullptr);
 
     inline u32 alloc_page(u32 pages);
     inline u32 free_page(u32 page_index);
@@ -201,7 +217,9 @@ public:
 
 public:
     u32 space_order_;  
-    u32 free_pages_;  //status 
+    u32 free_pages_;  //status
+    s32 error_count_;
+    s32 last_error_;
     buddy_node nodes_[2]; //buddy tree; zbuddy必须在预分配的内存上构建;   
 };
 
@@ -218,11 +236,18 @@ u32 zbuddy::alloc_page(u32 pages)
     }
     ability += 1;
 
+    if (free_pages_ < pages)
+    {
+        last_error_ = ZBUDDY_EC_NO_PAGES;
+        error_count_++;
+        return -1U;
+    }
 
     if (nodes_[ZBUDDY_ROOT_INDEX].space_ability < ability)
     {
-        LogError() << "no enough pages . ability:" << ability
-            << ". buddy_state:" << this;
+        last_error_ = ZBUDDY_EC_NO_CONTINUOUS_PAGES;
+        error_count_++;
+        //LogError() << "no enough pages . ability:" << ability << ". buddy_state:" << this;
         return -1U;
     }
 
@@ -264,7 +289,9 @@ u32 zbuddy::free_page(u32 page_index)
     u32 leaf_size = zbuddy_shift_size(space_order_);
     if (page_index >= leaf_size)
     {
-        LogError() << "page_index:" << page_index << " too big than leaf_index:" << (leaf_size - 1) << ", head: " << this;
+        last_error_ = ZBUDDY_EC_ILL_PAGE_INDEX;
+        error_count_++;
+        //LogError() << "page_index:" << page_index << " too big than leaf_index:" << (leaf_size - 1) << ", head: " << this;
         return 0;
     }
 
@@ -283,7 +310,9 @@ u32 zbuddy::free_page(u32 page_index)
 
     if (node_index == 0)
     {
-        LogError() << "no page:" << page_index << " info head:" << this;
+        last_error_ = ZBUDDY_EC_ILL_PAGE_STATE;
+        error_count_++;
+        //LogError() << "no page:" << page_index << " info head:" << this;
         return 0;
     }
 
@@ -316,49 +345,61 @@ u32 zbuddy::get_zbuddy_head_size(u32 space_order)
 }
 
 
-zbuddy* zbuddy::rebuild_zbuddy(u64 addr, u64 bytes, u32 space_order)
+zbuddy* zbuddy::rebuild_zbuddy(u64 addr, u64 bytes, u32 space_order, s32* error_code)
 {
+    s32 local_error_code = 0;
+    if (error_code == nullptr)
+    {
+        //easy debug and code  
+        error_code = &local_error_code;
+    }
+
     if (addr == 0)
     {
-        LogError() << "the addr is null." << (void*)addr;
+        *error_code = ZBUDDY_EC_ILL_PARAM;
+        //LogError() << "the addr is null." << (void*)addr;
         return NULL;
     }
 
     u32 buddy_tree_size = zbuddy::get_zbuddy_head_size(space_order);
     if (bytes < buddy_tree_size)
     {
-        LogError() << "addr:" << (void*)addr << " may be too small: "
-            << "need least:" << buddy_tree_size << ", give size:" << bytes;
+        *error_code = ZBUDDY_EC_ILL_PARAM;
+        //LogError() << "addr:" << (void*)addr << " may be too small: "<< "need least:" << buddy_tree_size << ", give size:" << bytes;
         return NULL;
     }
 
     u64 addr_mask = sizeof(void*) - 1U;
     if ((u64)addr & addr_mask)
     {
-        LogError() << "addr not align:" << (void*)addr;
+        *error_code = ZBUDDY_EC_MEM_ADDR_ALIGN;
+        //LogError() << "addr not align:" << (void*)addr;
         return NULL;
     }
 
 
     zbuddy* buddy_state = (zbuddy*)addr;
-    LogDebug() << "dump buddy head:" << buddy_state;
+    //LogDebug() << "dump buddy head:" << buddy_state;
 
     if (buddy_state->space_order_ != space_order)
     {
-        LogError() << "expire space_order is:" << space_order << ", dump buddy head:" << buddy_state;
+        *error_code = ZBUDDY_EC_VERSION_MISMATCH;
+        //LogError() << "expire space_order is:" << space_order << ", dump buddy head:" << buddy_state;
         return NULL;
     }
 
     if (buddy_state->free_pages_ > zbuddy_shift_size(space_order))
     {
-        LogError() << "page_free_count over the tree manager size."
-            "max page is:" << zbuddy_shift_size(space_order) << ", target page_free_count :" << buddy_state->free_pages_;
+        *error_code = ZBUDDY_EC_WRONG_HEAD_STATE;
+        //LogError() << "page_free_count over the tree manager size."
+        //    "max page is:" << zbuddy_shift_size(space_order) << ", target page_free_count :" << buddy_state->free_pages_;
         return NULL;
     }
 
     if (buddy_state->nodes_[ZBUDDY_INVALID_INDEX].space_ability != 0)
     {
-        LogError() << " index 0 ability not 0";
+        *error_code = ZBUDDY_EC_VERSION_MISMATCH;
+        //LogError() << " index 0 ability not 0";
         return NULL;
     }
 
@@ -372,8 +413,9 @@ zbuddy* zbuddy::rebuild_zbuddy(u64 addr, u64 bytes, u32 space_order)
         {
             if (buddy_state->nodes_[index].space_ability > space_ability)
             {
-                LogError() << "ability:" << buddy_state->nodes_[index].space_ability
-                    << " over the depth max ability:" << space_ability << ", depth:" << depth << ", index:" << index;
+                *error_code = ZBUDDY_EC_WRONG_NODE_STATE;
+                //LogError() << "ability:" << buddy_state->nodes_[index].space_ability
+                //    << " over the depth max ability:" << space_ability << ", depth:" << depth << ", index:" << index;
                 return NULL;
             }
         }
@@ -381,31 +423,44 @@ zbuddy* zbuddy::rebuild_zbuddy(u64 addr, u64 bytes, u32 space_order)
     return buddy_state;
 }
 
-zbuddy* zbuddy::build_zbuddy(void* addr, u64 bytes, u32 space_order)
+zbuddy* zbuddy::build_zbuddy(void* addr, u64 bytes, u32 space_order, s32* error_code)
 {
+    s32 local_error_code = 0;
+    if (error_code == nullptr)
+    {
+        //easy debug and code  
+        error_code = &local_error_code;
+    }
+
+
     u64 addr_mask = sizeof(void*) - 1U;
     if ((u64)addr & addr_mask)
     {
-        LogError() << "addr not align:" << (void*)addr;
+        *error_code = ZBUDDY_EC_MEM_ADDR_ALIGN;
+        //LogError() << "addr not align:" << (void*)addr;
         return NULL;
     }
 
     if (addr == NULL)
     {
-        LogError() << "addr is null:" << (void*)addr;
+        *error_code = ZBUDDY_EC_ILL_PARAM;
+        //LogError() << "addr is null:" << (void*)addr;
         return NULL;
     }
 
     if (bytes < zbuddy::get_zbuddy_head_size(space_order))
     {
-        LogError() << "target addr no enough memory to build space order:<"
-            << space_order << "> tree.  need least:<:" << zbuddy::get_zbuddy_head_size(space_order) << ">.";
+        *error_code = ZBUDDY_EC_ILL_PARAM;
+        //LogError() << "target addr no enough memory to build space order:<"
+        //    << space_order << "> tree.  need least:<:" << zbuddy::get_zbuddy_head_size(space_order) << ">.";
         return NULL;
     }
 
     zbuddy* buddy_state = (zbuddy*)addr;
     buddy_state->space_order_ = space_order;
     buddy_state->free_pages_ = zbuddy_shift_size(space_order);
+    buddy_state->error_count_ = 0;
+    buddy_state->last_error_ = 0;
     buddy_state->nodes_[ZBUDDY_INVALID_INDEX].space_ability = 0;
     for (u32 depth = 0; depth <= space_order; depth++)
     {
