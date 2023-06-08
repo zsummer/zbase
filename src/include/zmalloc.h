@@ -75,6 +75,7 @@ using f64 = double;
 #ifdef WIN32
 /*
 * left to right scan
+* num:<0>  ill 
 * num:<1>  return 0
 * num:<2>  return 1
 * num:<3>  return 1
