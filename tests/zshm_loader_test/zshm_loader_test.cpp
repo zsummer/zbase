@@ -30,7 +30,6 @@ using shm_header = zarray<u32, 100>;
 
 s32 shm_loader_base_test()
 {
-
     u32 mem_size = sizeof(shm_header);
 
     zshm_loader loader_svr;
@@ -45,7 +44,8 @@ s32 shm_loader_base_test()
     {
         header->push_back(i);
     }
-    loader_svr.detach();
+    ASSERT_TEST(loader_svr.detach() == 0);
+
 
 
     ASSERT_TEST(loader_clt.check_exist(198709, mem_size));
@@ -72,6 +72,69 @@ s32 shm_loader_base_test()
 
 s32 shm_loader_stress_test()
 {
+    u32 mem_size = sizeof(shm_header);
+
+    zshm_loader shm_loader;
+    ASSERT_TEST(!shm_loader.check_exist(198709, mem_size));
+    ASSERT_TEST(shm_loader.create_from_shm() == 0);
+    new (shm_loader.attach_addr()) shm_header;
+    shm_header* header = (shm_header*)shm_loader.attach_addr();
+    shm_header& shm = *header;
+    shm_header& heap = * (new shm_header);
+    if (true)
+    {
+        PROF_DEFINE_AUTO_MULTI_ANON_RECORD(cost, 1000 * 10000, "shm push pop");
+        for (u32 i = 0; i < 1000*10000; i++)
+        {
+            shm.push_back(i);
+            volatile int a = shm.size();
+            (void)a;
+            shm.pop_back();
+            
+        }
+    }
+
+    
+    if (true)
+    {
+        PROF_DEFINE_AUTO_MULTI_ANON_RECORD(cost, 1000 * 10000, "heap push pop");
+        for (u32 i = 0; i < 1000 * 10000; i++)
+        {
+            heap.push_back(i);
+            volatile int a = shm.size();
+            (void)a;
+            heap.pop_back();
+        }
+    }
+
+    if (true)
+    {
+        PROF_DEFINE_AUTO_MULTI_ANON_RECORD(cost, 1000 * 10000, "shm push pop");
+        for (u32 i = 0; i < 1000 * 10000; i++)
+        {
+            shm.push_back(i);
+            volatile int a = shm.size();
+            (void)a;
+            shm.pop_back();
+        }
+    }
+    if (true)
+    {
+        PROF_DEFINE_AUTO_MULTI_ANON_RECORD(cost, 1000 * 10000, "heap push pop");
+        for (u32 i = 0; i < 1000 * 10000; i++)
+        {
+            heap.push_back(i);
+            volatile int a = shm.size();
+            (void)a;
+            heap.pop_back();
+        }
+    }
+
+
+    delete& heap;
+
+    ASSERT_TEST(shm_loader.detach() == 0);
+    ASSERT_TEST(shm_loader.destroy() == 0);
 
     return 0;
 }
