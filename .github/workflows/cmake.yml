@@ -40,11 +40,15 @@ jobs:
       # See https://cmake.org/cmake/help/latest/manual/ctest.1.html for more detail
       run: |
         cd ${{github.workspace}}/bin
+        ./empty_test
         ./base_test
+        ./zbuddy_test
         ./malloc_test
         ./foreach_test
         ./zpool_test
         ./zbitset_test
         ./mapping_test
-        ./empty_test
+        ./zsingle_test
+        ./zshm_loader_test
+
       
