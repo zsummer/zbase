@@ -1,12 +1,12 @@
-release fn-log version date:2023-06-07 16:08:47
+release fn-log version date:2023-06-09 11:37:56
 
 git log:
-commit 9acb4d7cf8091ac9f41865aa6f44e72f979b96b8
+commit dbb9521c06cd77bc29de1da4d74752fc15f93150
 Author: skylerzhang <skylerzhang@tencent.com>
-Date:   Wed Jun 7 14:49:35 2023 +0800
+Date:   Fri Jun 9 11:35:32 2023 +0800
 
-    bitset copy
+    clean zbuddy code
 
- src/include/zbitset.h               |  5 ++++-
- tests/zbitset_test/zbitset_test.cpp | 22 ++++++++++++++++++++++
- 2 files changed, 26 insertions(+), 1 deletion(-)
+ src/include/zbuddy.h              | 93 ++++++++++++++++++++++-----------------
+ tests/zbuddy_test/zbuddy_test.cpp | 19 ++++----
+ 2 files changed, 63 insertions(+), 49 deletions(-)
