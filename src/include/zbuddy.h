@@ -133,7 +133,10 @@ inline Integer zbuddy_fill_right_u32(Integer num)
 // space: 地址空间   
 // order: 数的大小 order和shift都是2为底的的指数值 
 // node: 用于管理地址空间的buddy节点  
-// ability: -1为当前node空间下的最大连续空间; 0为无  
+// ability: -1后为当前node空间下的最大连续空间; 0为使用中  
+// index: 若无特别说明则指node的下标  
+// page: zbuddy管理的平坦地址空间的最小单位;  在zbuddy中 page的数量为node的叶子节点数量  
+
 
 #define ZBUDDY_POLICY_LEFT_FIRST 1
 
@@ -157,6 +160,10 @@ inline Integer zbuddy_fill_right_u32(Integer num)
 #define zbuddy_depth(index)  zbuddy_high_bit_index(index)  //root depth is 0  
 #define zbuddy_horizontal_offset(index) ((index) - zbuddy_shift_size(zbuddy_depth(index)))  //index在当前深度下的offset 
 
+
+//返回码  
+constexpr static u32 ZBUDDY_INVALID_PAGE_INDEX = (~0U);
+
 //
 enum ZBUDDY_ERROR_CODE  : s32
 {
@@ -168,7 +175,7 @@ enum ZBUDDY_ERROR_CODE  : s32
     ZBUDDY_EC_ILL_PAGE_STATE,
 
     ZBUDDY_EC_ILL_PARAM = 10,
-    ZBUDDY_EC_MEM_ADDR_ALIGN = 11,
+    ZBUDDY_EC_ADDR_NO_ALIGN = 11,
     ZBUDDY_EC_VERSION_MISMATCH,
     ZBUDDY_EC_WRONG_HEAD_STATE,
     ZBUDDY_EC_WRONG_NODE_STATE,
@@ -187,7 +194,7 @@ class zbuddy
 public:
     struct buddy_node
     {
-        u32 space_ability;
+        u32 ability_;
     };
 public:
     inline static u32 get_zbuddy_head_size(u32 space_order);
@@ -202,14 +209,18 @@ public:
     u32 get_max_space_pages()  const { return zbuddy_shift_size(space_order_); }
     u32 get_max_space_nodes()  const { return zbuddy_shift_size(space_order_ + 1); }
     u32 get_first_leaf_node_index() const { return zbuddy_shift_size(space_order_); }
-    u32 get_now_continuous_order()  const { return (nodes_[ZBUDDY_ROOT_INDEX].space_ability > 0 ? nodes_[ZBUDDY_ROOT_INDEX].space_ability - 1 : 0); }
-    u32 get_now_continuous_pages()  const { return  (nodes_[ZBUDDY_ROOT_INDEX].space_ability > 0 ? zbuddy_shift_size(nodes_[ZBUDDY_ROOT_INDEX].space_ability - 1) : 0); }
+    u32 get_now_continuous_order()  const { return (nodes_[ZBUDDY_ROOT_INDEX].ability_ > 0 ? nodes_[ZBUDDY_ROOT_INDEX].ability_ - 1 : 0); }
+    u32 get_now_continuous_pages()  const { return  (nodes_[ZBUDDY_ROOT_INDEX].ability_ > 0 ? zbuddy_shift_size(nodes_[ZBUDDY_ROOT_INDEX].ability_ - 1) : 0); }
     u32 get_now_free_pages() const { return free_pages_; }
-    inline u32 get_now_right_used_pages() const;
+    inline u32 get_right_bound_used() const;
+
+    //status
+    s32 get_last_error()const { return last_error_; }
+    s32 get_error_count()const { return error_count_; }
+    void clean_error() { last_error_ = 0; error_count_ = 0; }
 
     //check 
     inline bool check_node_in_used(u32 index) const;
-
     template<class StreamLog>
     inline void debug_state_log(StreamLog logwrap) const;
     template<class StreamLog>
@@ -217,9 +228,9 @@ public:
 
 public:
     u32 space_order_;  
-    u32 free_pages_;  //status
-    s32 error_count_;
+    u32 free_pages_;  
     s32 last_error_;
+    s32 error_count_;
     buddy_node nodes_[2]; //buddy tree; zbuddy必须在预分配的内存上构建;   
 };
 
@@ -240,15 +251,15 @@ u32 zbuddy::alloc_page(u32 pages)
     {
         last_error_ = ZBUDDY_EC_NO_PAGES;
         error_count_++;
-        return -1U;
+        return ZBUDDY_INVALID_PAGE_INDEX;
     }
 
-    if (nodes_[ZBUDDY_ROOT_INDEX].space_ability < ability)
+    if (nodes_[ZBUDDY_ROOT_INDEX].ability_ < ability)
     {
         last_error_ = ZBUDDY_EC_NO_CONTINUOUS_PAGES;
         error_count_++;
         //LogError() << "no enough pages . ability:" << ability << ". buddy_state:" << this;
-        return -1U;
+        return ZBUDDY_INVALID_PAGE_INDEX;
     }
 
     auto& tree = this->nodes_;
@@ -256,21 +267,21 @@ u32 zbuddy::alloc_page(u32 pages)
 
     for (u32 cur_ability = this->space_order_ + 1; cur_ability != ability; cur_ability--)
     {
-#if ZBUDDY_POLICY_LEFT_FIRST
-        target_index = tree[zbuddy_left(target_index)].space_ability >= ability ? zbuddy_left(target_index) : zbuddy_right(target_index);
-#else
+#if ZBUDDY_POLICY_LEFT_FIRST 
+        target_index = tree[zbuddy_left(target_index)].ability_ >= ability ? zbuddy_left(target_index) : zbuddy_right(target_index);
+#else   //更低碎片做法  
         u32 left_child_index = zbuddy_left(target_index);
         u32 right_child_index = zbuddy_right(target_index);
 
-        u32 left_ability = tree[left_child_index].space_ability;
-        u32 right_ability = tree[right_child_index].space_ability;
+        u32 left_ability = tree[left_child_index].ability_;
+        u32 right_ability = tree[right_child_index].ability_;
         u32 min_child_index = left_ability <= right_ability ? left_child_index : right_child_index;
         u32 max_child_index = left_ability >= right_ability ? left_child_index : right_child_index;
-        target_index = (tree[min_child_index].space_ability >= ability) ? min_child_index : max_child_index;
+        target_index = (tree[min_child_index].ability_ >= ability) ? min_child_index : max_child_index;
 #endif
     }
 
-    nodes_[target_index].space_ability = 0U; //hold, no page alloc ability
+    nodes_[target_index].ability_ = 0U; //hold, no page alloc ability
 
     free_pages_ -= 1U << (ability - 1);
 
@@ -278,7 +289,7 @@ u32 zbuddy::alloc_page(u32 pages)
 
     while ((target_index = zbuddy_parent(target_index)))
     {
-        tree[target_index].space_ability = zbuddy_max(tree[zbuddy_left(target_index)].space_ability, tree[zbuddy_right(target_index)].space_ability);
+        tree[target_index].ability_ = zbuddy_max(tree[zbuddy_left(target_index)].ability_, tree[zbuddy_right(target_index)].ability_);
     }
 
     return page_index;
@@ -301,7 +312,7 @@ u32 zbuddy::free_page(u32 page_index)
 
     for (; free_order < space_order_; free_order++)
     {
-        if (nodes[node_index].space_ability == 0)
+        if (nodes[node_index].ability_ == 0)
         {
             break;
         }
@@ -317,7 +328,7 @@ u32 zbuddy::free_page(u32 page_index)
     }
 
     u32 ability = free_order + 1;
-    nodes[node_index].space_ability = ability;
+    nodes[node_index].ability_ = ability;
     free_pages_ += zbuddy_shift_size(free_order);
 
 #ifdef __GNUC__
@@ -330,11 +341,11 @@ u32 zbuddy::free_page(u32 page_index)
 #pragma GCC diagnostic pop
 #endif
         ability++;
-        u32 left_ability = nodes[zbuddy_left(node_index)].space_ability;
-        u32 right_ability = nodes[zbuddy_right(node_index)].space_ability;
+        u32 left_ability = nodes[zbuddy_left(node_index)].ability_;
+        u32 right_ability = nodes[zbuddy_right(node_index)].ability_;
         u32 max_ability = zbuddy_max(left_ability, right_ability);
         u32 parrent_ability = (left_ability == right_ability && left_ability == ability - 1) ? ability : max_ability;
-        nodes[node_index].space_ability = parrent_ability;
+        nodes[node_index].ability_ = parrent_ability;
     }
     return zbuddy_shift_size(free_order);
 }
@@ -372,7 +383,7 @@ zbuddy* zbuddy::rebuild_zbuddy(u64 addr, u64 bytes, u32 space_order, s32* error_
     u64 addr_mask = sizeof(void*) - 1U;
     if ((u64)addr & addr_mask)
     {
-        *error_code = ZBUDDY_EC_MEM_ADDR_ALIGN;
+        *error_code = ZBUDDY_EC_ADDR_NO_ALIGN;
         //LogError() << "addr not align:" << (void*)addr;
         return NULL;
     }
@@ -396,7 +407,7 @@ zbuddy* zbuddy::rebuild_zbuddy(u64 addr, u64 bytes, u32 space_order, s32* error_
         return NULL;
     }
 
-    if (buddy_state->nodes_[ZBUDDY_INVALID_INDEX].space_ability != 0)
+    if (buddy_state->nodes_[ZBUDDY_INVALID_INDEX].ability_ != 0)
     {
         *error_code = ZBUDDY_EC_VERSION_MISMATCH;
         //LogError() << " index 0 ability not 0";
@@ -407,15 +418,15 @@ zbuddy* zbuddy::rebuild_zbuddy(u64 addr, u64 bytes, u32 space_order, s32* error_
     {
         u32 begin_index = zbuddy_shift_size(depth);
         u32 end_index = begin_index << 1U;
-        u32 space_ability = buddy_state->space_order_ - depth + 1U;
+        u32 ability_ = buddy_state->space_order_ - depth + 1U;
 
         for (u32 index = begin_index; index < end_index; index++)
         {
-            if (buddy_state->nodes_[index].space_ability > space_ability)
+            if (buddy_state->nodes_[index].ability_ > ability_)
             {
                 *error_code = ZBUDDY_EC_WRONG_NODE_STATE;
-                //LogError() << "ability:" << buddy_state->nodes_[index].space_ability
-                //    << " over the depth max ability:" << space_ability << ", depth:" << depth << ", index:" << index;
+                //LogError() << "ability:" << buddy_state->nodes_[index].ability_
+                //    << " over the depth max ability:" << ability_ << ", depth:" << depth << ", index:" << index;
                 return NULL;
             }
         }
@@ -436,7 +447,7 @@ zbuddy* zbuddy::build_zbuddy(void* addr, u64 bytes, u32 space_order, s32* error_
     u64 addr_mask = sizeof(void*) - 1U;
     if ((u64)addr & addr_mask)
     {
-        *error_code = ZBUDDY_EC_MEM_ADDR_ALIGN;
+        *error_code = ZBUDDY_EC_ADDR_NO_ALIGN;
         //LogError() << "addr not align:" << (void*)addr;
         return NULL;
     }
@@ -461,36 +472,36 @@ zbuddy* zbuddy::build_zbuddy(void* addr, u64 bytes, u32 space_order, s32* error_
     buddy_state->free_pages_ = zbuddy_shift_size(space_order);
     buddy_state->error_count_ = 0;
     buddy_state->last_error_ = 0;
-    buddy_state->nodes_[ZBUDDY_INVALID_INDEX].space_ability = 0;
+    buddy_state->nodes_[ZBUDDY_INVALID_INDEX].ability_ = 0;
     for (u32 depth = 0; depth <= space_order; depth++)
     {
         u32 begin_index = zbuddy_shift_size(depth);
         u32 end_index = begin_index << 1U;
-        u32 space_ability = buddy_state->space_order_ - depth + 1U;
+        u32 ability_ = buddy_state->space_order_ - depth + 1U;
 
         for (u32 index = begin_index; index < end_index; index++)
         {
-            buddy_state->nodes_[index].space_ability = space_ability;
+            buddy_state->nodes_[index].ability_ = ability_;
         }
     }
     return buddy_state;
 }
 
-u32 zbuddy::get_now_right_used_pages() const
+u32 zbuddy::get_right_bound_used() const
 {
     u32 right_bound = ZBUDDY_ROOT_INDEX;
     u32 ability = space_order_ + 1;
     u32 end_page_index = 0;
-    while (nodes_[right_bound].space_ability < ability && ability > 0)
+    while (nodes_[right_bound].ability_ < ability && ability > 0)
     {
-        if (nodes_[right_bound].space_ability == 0)
+        if (nodes_[right_bound].ability_ == 0)
         {
             end_page_index = zbuddy_horizontal_offset(right_bound);
             end_page_index = (end_page_index + 1) << (ability - 1);
             return end_page_index;
         }
         ability--;
-        if (nodes_[zbuddy_right(right_bound)].space_ability < ability)
+        if (nodes_[zbuddy_right(right_bound)].ability_ < ability)
         {
             right_bound = zbuddy_right(right_bound);
             continue;
@@ -506,7 +517,7 @@ bool zbuddy::check_node_in_used(u32 index) const
 {
     while (index >= ZBUDDY_ROOT_INDEX && index < get_max_space_nodes())
     {
-        if (nodes_[index].space_ability == 0)
+        if (nodes_[index].ability_ == 0)
         {
             return true;
         }
@@ -526,7 +537,7 @@ void zbuddy::debug_state_log(StreamLog logwrap)  const
         << ", now_continuous_order:" << get_now_continuous_order()
         << ", now_continuous_pages:" << get_now_continuous_pages()
         << ", now_free_pages:" << get_now_free_pages()
-        << ", now_right_used_pages:" << get_now_right_used_pages()
+        << ", now_right_used_pages:" << get_right_bound_used()
         << ", now_continuous_pages:" << get_now_continuous_pages()
         << "]";
 }
