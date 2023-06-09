@@ -1,12 +1,11 @@
-release fn-log version date:2023-06-09 11:37:56
+release fn-log version date:2023-06-09 19:25:05
 
 git log:
-commit dbb9521c06cd77bc29de1da4d74752fc15f93150
+commit 8589b163faa2ba2c0184d6a09ee6f33e5e1bc9e0
 Author: skylerzhang <skylerzhang@tencent.com>
-Date:   Fri Jun 9 11:35:32 2023 +0800
+Date:   Fri Jun 9 17:37:35 2023 +0800
 
-    clean zbuddy code
+    zshm_loader stress
 
- src/include/zbuddy.h              | 93 ++++++++++++++++++++++-----------------
- tests/zbuddy_test/zbuddy_test.cpp | 19 ++++----
- 2 files changed, 63 insertions(+), 49 deletions(-)
+ tests/zshm_loader_test/zshm_loader_test.cpp | 67 ++++++++++++++++++++++++++++-
+ 1 file changed, 65 insertions(+), 2 deletions(-)
