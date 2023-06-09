@@ -49,17 +49,20 @@ s32 zbuddy_base_test()
 
     debug_zbuddy_log(buddy, "begin alloc ");
     u32 page_index = buddy->alloc_page(zbuddy_shift_size(space_order+1));
-    ASSERT_TEST(page_index == (u32)-1, page_index);
+    ASSERT_TEST(page_index == ZBUDDY_INVALID_PAGE_INDEX, page_index);
+    ASSERT_TEST(buddy->get_error_count() == 1, buddy->get_error_count());
+    buddy->clean_error();
+
 
     page_index = buddy->alloc_page(100U);
-    ASSERT_TEST(page_index != (u32)-1);
+    ASSERT_TEST(page_index != ZBUDDY_INVALID_PAGE_INDEX);
     debug_zbuddy_log(buddy, "alloced 100 pages");
 
 
     u32 page_size = buddy->free_page(page_index);
     ASSERT_TEST(page_size == zbuddy_fill_right(100U) + 1);
     debug_zbuddy_log(buddy, "freed 100 pages ");
-
+    ASSERT_TEST(buddy->get_error_count() == 0, buddy->get_error_count());
 
     delete mem;
     return 0;
@@ -104,9 +107,9 @@ s32 zbuddy_stress_test()
         for (u32 i = 0; i < 50; i++)
         {
             used_set_1.push_back(buddy->alloc_page((rand() % 100) + 1));
-            ASSERT_TEST_NOLOG(used_set_1.back() != -1U);
+            ASSERT_TEST_NOLOG(used_set_1.back() != ZBUDDY_INVALID_PAGE_INDEX);
             used_set_2.push_back(buddy->alloc_page((rand() % 100) + 1));
-            ASSERT_TEST_NOLOG(used_set_2.back() != -1U);
+            ASSERT_TEST_NOLOG(used_set_2.back() != ZBUDDY_INVALID_PAGE_INDEX);
         }
         for (auto page : used_set_1)
         {
@@ -123,7 +126,7 @@ s32 zbuddy_stress_test()
                     if (!used_set_1.full())
                     {
                         used_set_1.push_back(buddy->alloc_page((rand() % 100) + 1));
-                        ASSERT_TEST_NOLOG(used_set_1.back() != -1U);
+                        ASSERT_TEST_NOLOG(used_set_1.back() != ZBUDDY_INVALID_PAGE_INDEX);
                     }
                     
                 }
@@ -132,7 +135,7 @@ s32 zbuddy_stress_test()
                     if (!used_set_2.full())
                     {
                         used_set_2.push_back(buddy->alloc_page((rand() % 100) + 1));
-                        ASSERT_TEST_NOLOG(used_set_2.back() != -1U);
+                        ASSERT_TEST_NOLOG(used_set_2.back() != ZBUDDY_INVALID_PAGE_INDEX);
                     }
                 }
             }
@@ -191,7 +194,7 @@ s32 zbuddy_stress_test()
         used_set_2.clear();
     }
 
-
+    ASSERT_TEST(buddy->get_error_count() == 0, buddy->get_error_count());
     delete mem;
     return 0;
 }
