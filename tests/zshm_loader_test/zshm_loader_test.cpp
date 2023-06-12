@@ -38,8 +38,8 @@ s32 shm_loader_base_test()
 
     ASSERT_TEST(!loader_svr.check_exist(198709, mem_size));
     ASSERT_TEST(loader_svr.create_from_shm() == 0);
-    new (loader_svr.attach_addr()) shm_header;
-    shm_header* header = (shm_header*)loader_svr.attach_addr();
+    new (loader_svr.shm_mnt_addr()) shm_header;
+    shm_header* header = (shm_header*)loader_svr.shm_mnt_addr();
     for (u32 i = 0; i < 100; i++)
     {
         header->push_back(i);
@@ -51,7 +51,7 @@ s32 shm_loader_base_test()
     ASSERT_TEST(loader_clt.check_exist(198709, mem_size));
     ASSERT_TEST(loader_clt.load_from_shm() == 0);
     
-    header = (shm_header*)loader_clt.attach_addr();
+    header = (shm_header*)loader_clt.shm_mnt_addr();
 
     ASSERT_TEST(header->size() == 100);
 
@@ -75,12 +75,15 @@ s32 shm_loader_stress_test()
     u32 mem_size = sizeof(shm_header);
 
     zshm_loader shm_loader;
+    zshm_loader heap_loader(true);
     ASSERT_TEST(!shm_loader.check_exist(198709, mem_size));
     ASSERT_TEST(shm_loader.create_from_shm() == 0);
-    new (shm_loader.attach_addr()) shm_header;
-    shm_header* header = (shm_header*)shm_loader.attach_addr();
-    shm_header& shm = *header;
-    shm_header& heap = * (new shm_header);
+    ASSERT_TEST(!heap_loader.check_exist(198709, 2000*1024*1024));
+    //ASSERT_TEST(!heap_loader.check_exist(198709, mem_size));
+    ASSERT_TEST(heap_loader.create_from_shm() == 0);
+
+    shm_header& shm = *(shm_header*)shm_loader.shm_mnt_addr();
+    shm_header& heap = *(shm_header*)heap_loader.shm_mnt_addr();
     if (true)
     {
         PROF_DEFINE_AUTO_MULTI_ANON_RECORD(cost, 1000 * 10000, "shm push pop");
@@ -131,11 +134,12 @@ s32 shm_loader_stress_test()
     }
 
 
-    delete& heap;
+    
 
     ASSERT_TEST(shm_loader.detach() == 0);
     ASSERT_TEST(shm_loader.destroy() == 0);
-
+    ASSERT_TEST(heap_loader.detach() == 0);
+    ASSERT_TEST(heap_loader.destroy() == 0);
     return 0;
 }
 

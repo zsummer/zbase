@@ -138,6 +138,8 @@ inline Integer zbuddy_fill_right_u32(Integer num)
 // page: zbuddy管理的平坦地址空间的最小单位;  在zbuddy中 page的数量为node的叶子节点数量  
 
 
+
+//
 #define ZBUDDY_POLICY_LEFT_FIRST 1
 
 
@@ -189,6 +191,7 @@ enum ZBUDDY_ERROR_CODE  : s32
     delete mem;  
 */
 
+//flattened buddy tree 
 class zbuddy
 {
 public:
@@ -231,7 +234,7 @@ public:
     u32 free_pages_;  
     s32 last_error_;
     s32 error_count_;
-    buddy_node nodes_[2]; //buddy tree; zbuddy必须在预分配的内存上构建;   
+    buddy_node nodes_[2]; //flexible array: buddy tree    
 };
 
 
@@ -269,7 +272,7 @@ u32 zbuddy::alloc_page(u32 pages)
     {
 #if ZBUDDY_POLICY_LEFT_FIRST 
         target_index = tree[zbuddy_left(target_index)].ability_ >= ability ? zbuddy_left(target_index) : zbuddy_right(target_index);
-#else   //更低碎片做法  
+#else   //碎片程度相同时左优先, 否则优先拆分更碎的伙伴树;     
         u32 left_child_index = zbuddy_left(target_index);
         u32 right_child_index = zbuddy_right(target_index);
 
