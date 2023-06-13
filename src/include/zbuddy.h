@@ -185,8 +185,8 @@ enum ZBUDDY_ERROR_CODE  : s32
 
 
 /*
-    char * mem = new char [zbuddy::get_zbuddy_head_size(16)];
-    zbuddy* buddy = build_zbuddy(mem, zbuddy::get_zbuddy_head_size(16), 16);
+    char * mem = new char [zbuddy::zbuddy_size(16)];
+    zbuddy* buddy = build_zbuddy(mem, zbuddy::zbuddy_size(16), 16);
     //todo used buddy  
     delete mem;  
 */
@@ -200,9 +200,13 @@ public:
         u32 ability_;
     };
 public:
-    inline static u32 get_zbuddy_head_size(u32 space_order);
+    inline static u32 zbuddy_size(u32 space_order);
+    inline static zbuddy& instance() { return *instance_ptr(); }
+    inline static zbuddy*& instance_ptr() { static zbuddy* g_zbuddy_state = NULL; return g_zbuddy_state; }
+    inline static void set_global(zbuddy* state) { instance_ptr() = state; }
+
     inline static zbuddy* build_zbuddy(void* addr, u64 bytes, u32 space_order, s32* error_code = nullptr);
-    inline static zbuddy* rebuild_zbuddy(u64 addr, u64 bytes, u32 space_order, s32* error_code = nullptr);
+    inline static zbuddy* rebuild_zbuddy(void* addr, u64 bytes, u32 space_order, s32* error_code = nullptr);
 
     inline u32 alloc_page(u32 pages);
     inline u32 free_page(u32 page_index);
@@ -353,13 +357,13 @@ u32 zbuddy::free_page(u32 page_index)
     return zbuddy_shift_size(free_order);
 }
 
-u32 zbuddy::get_zbuddy_head_size(u32 space_order)
+u32 zbuddy::zbuddy_size(u32 space_order)
 {
     return sizeof(zbuddy) + (sizeof(zbuddy::buddy_node) << (space_order + 1));
 }
 
 
-zbuddy* zbuddy::rebuild_zbuddy(u64 addr, u64 bytes, u32 space_order, s32* error_code)
+zbuddy* zbuddy::rebuild_zbuddy(void*addr, u64 bytes, u32 space_order, s32* error_code)
 {
     s32 local_error_code = 0;
     if (error_code == nullptr)
@@ -368,14 +372,14 @@ zbuddy* zbuddy::rebuild_zbuddy(u64 addr, u64 bytes, u32 space_order, s32* error_
         error_code = &local_error_code;
     }
 
-    if (addr == 0)
+    if (addr == nullptr)
     {
         *error_code = ZBUDDY_EC_ILL_PARAM;
         //LogError() << "the addr is null." << (void*)addr;
         return NULL;
     }
 
-    u32 buddy_tree_size = zbuddy::get_zbuddy_head_size(space_order);
+    u32 buddy_tree_size = zbuddy::zbuddy_size(space_order);
     if (bytes < buddy_tree_size)
     {
         *error_code = ZBUDDY_EC_ILL_PARAM;
@@ -462,11 +466,11 @@ zbuddy* zbuddy::build_zbuddy(void* addr, u64 bytes, u32 space_order, s32* error_
         return NULL;
     }
 
-    if (bytes < zbuddy::get_zbuddy_head_size(space_order))
+    if (bytes < zbuddy::zbuddy_size(space_order))
     {
         *error_code = ZBUDDY_EC_ILL_PARAM;
         //LogError() << "target addr no enough memory to build space order:<"
-        //    << space_order << "> tree.  need least:<:" << zbuddy::get_zbuddy_head_size(space_order) << ">.";
+        //    << space_order << "> tree.  need least:<:" << zbuddy::zbuddy_size(space_order) << ">.";
         return NULL;
     }
 
