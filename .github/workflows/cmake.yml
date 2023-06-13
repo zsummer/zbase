@@ -50,5 +50,10 @@ jobs:
         ./mapping_test
         ./zsingle_test
         ./zshm_loader_test
+        ./zshm_boot_test start
+        ./zshm_boot_test resume
+        ./zshm_boot_test stop
+        ./zshm_boot_test start heap  
+        
 
       
