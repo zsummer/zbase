@@ -72,6 +72,33 @@ s32 shm_loader_base_test()
 
 
 
+s32 shm_loader_unix_test()
+{
+    u32 mem_size = sizeof(shm_header);
+
+    zshm_loader loader_svr;
+
+    ASSERT_TEST(!loader_svr.check_exist(1987090, mem_size));
+    ASSERT_TEST(loader_svr.create_from_shm(0x0000700000000000) == 0);
+    if (loader_svr.shm_mnt_addr() != (void*)0x0000700000000000ULL)
+    {
+        LogError() << "mnt addr:" << loader_svr.shm_mnt_addr();
+    }
+
+    new (loader_svr.shm_mnt_addr()) shm_header;
+    shm_header* header = (shm_header*)loader_svr.shm_mnt_addr();
+    for (u32 i = 0; i < 100; i++)
+    {
+        header->push_back(i);
+    }
+    ASSERT_TEST(loader_svr.detach() == 0);
+    ASSERT_TEST(loader_svr.destroy() == 0);
+    ASSERT_TEST(!loader_svr.check_exist(1987090, mem_size));
+    return 0;
+}
+
+
+
 
 s32 shm_loader_stress_test()
 {
@@ -155,6 +182,12 @@ int main(int argc, char *argv[])
 
     ASSERT_TEST(shm_loader_base_test() == 0);
     ASSERT_TEST(shm_loader_stress_test() == 0);
+
+#ifdef WIN32
+#else
+    ASSERT_TEST(shm_loader_unix_test() == 0);
+#endif // WIN32
+
 
     LogInfo() << "all test finish .";
     return 0;

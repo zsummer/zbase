@@ -62,13 +62,13 @@ struct zshm_space_entry
 	u64 space_addr_;
 	u64 shm_key_;
 	s32 use_heap_;
-	s32 used_fixed_address_;
+	s32 use_fixed_address_;
 	zshm_space whole_space_;
 	std::array<zshm_space, ZSHM_MAX_SPACES> spaces_;
 };
 
 
-//用完即丢 
+//引导   
 class zshm_boot
 {
 public:
@@ -87,17 +87,12 @@ public:
 		s32 ret = loader.create_from_shm(params.space_addr_);
 		if (ret != 0)
 		{
-			return -2;
+			return ret;
 		}
 		memcpy(loader.shm_mnt_addr(), &params, sizeof(params));
 		entry = static_cast<zshm_space_entry*>(loader.shm_mnt_addr());
 		entry->space_addr_ = (u64)(loader.shm_mnt_addr());
-		if (params.used_fixed_address_)
-		{
-			loader.destroy();
-			entry = nullptr;
-			return -3;
-		}
+
 		return 0;
 	}
 
