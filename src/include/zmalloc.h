@@ -183,12 +183,14 @@ public:
     static const u32 BINMAP_SIZE = (sizeof(u64) * 8U);
     static const u32 BITMAP_LEVEL = 2;
     static const u32 DEFAULT_BLOCK_SIZE = (8 * 1024 * 1024);
+
 public:
-    inline static zmalloc& instance();
-    inline static zmalloc*& instance_ptr();
+    inline static u32 zmalloc_size() { return sizeof(zmalloc); }
+    inline static zmalloc& instance() { return *instance_ptr(); }
+    inline static zmalloc*& instance_ptr() {static zmalloc* g_zmalloc_state = NULL;return g_zmalloc_state;}
+    inline static void set_global(zmalloc* state) { instance_ptr() = state; }
     inline static void* default_block_alloc(u64 );
     inline static u64 default_block_free(void*);
-    inline static void set_global(zmalloc* state);
     inline void set_block_callback(block_alloc_func block_alloc, block_free_func block_free);
     template<u16 COLOR = 0>
     inline void* alloc_memory(u64 bytes);
@@ -393,15 +395,7 @@ static_assert(offsetof(zmalloc::free_chunk_type, prev_node) == sizeof(zmalloc::c
 
 
 
-zmalloc& zmalloc::instance()
-{
-    return *instance_ptr();
-}
-zmalloc*& zmalloc::instance_ptr()
-{
-    static zmalloc* g_zmalloc_state = NULL;
-    return g_zmalloc_state;
-}
+
 
 
 //tcmalloc some version not hook aligned alloc.  
@@ -469,10 +463,7 @@ u64 zmalloc::default_block_free(void* addr)
 }
 
 
-void zmalloc::set_global(zmalloc* state)
-{
-    instance_ptr() = state;
-}
+
 
 void zmalloc::set_block_callback(block_alloc_func block_alloc, block_free_func block_free)
 {
@@ -1066,6 +1057,7 @@ u64  zmalloc::merge_and_release(free_chunk_type* chunk, u32 level, u64 bytes)
 
 void zmalloc::check_health()
 {
+    free_memory(alloc_memory(1));//inalloc_memory has init case.  ! 
     check_block(instance());
     check_bitmap(instance());
     if (runtime_errors_ > 0)
