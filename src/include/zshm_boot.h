@@ -1,5 +1,5 @@
 /*
-* zboot_loader License
+* zshm_boot License
 * Copyright (C) 2019 YaweiZhang <yawei.zhang@foxmail.com>.
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
@@ -44,11 +44,11 @@ using f64 = double;
 #include "zshm_loader.h"
 #include "zarray.h"
 
-#define ZSHM_MAX_SPACE_SEGMENTS 20
+#define ZSHM_MAX_SPACES 20
 
 
 //desc  
-struct zshm_addres
+struct zshm_space
 {
 	u64 version_;
 	u64 hash_;
@@ -63,19 +63,19 @@ struct zshm_space_entry
 	u64 shm_key_;
 	s32 use_heap_;
 	s32 used_fixed_address_;
-	zshm_addres whole_space_;
-	std::array<zshm_addres, ZSHM_MAX_SPACE_SEGMENTS> segments_;
+	zshm_space whole_space_;
+	std::array<zshm_space, ZSHM_MAX_SPACES> spaces_;
 };
 
 
 //ÓÃÍê¼´¶ª 
-class zboot_loader
+class zshm_boot
 {
 public:
-	zboot_loader() {}
-	~zboot_loader() {}
+	zshm_boot() {}
+	~zshm_boot() {}
 
-	s32 build_frame(const zshm_space_entry& params, zshm_space_entry*& entry)
+	static s32 build_frame(const zshm_space_entry& params, zshm_space_entry*& entry)
 	{
 		entry = nullptr;
 		zshm_loader loader(params.use_heap_);
@@ -101,7 +101,7 @@ public:
 		return 0;
 	}
 
-	s32 resume_frame(const zshm_space_entry& params, zshm_space_entry*& entry)
+	static s32 resume_frame(const zshm_space_entry& params, zshm_space_entry*& entry)
 	{
 		entry = nullptr;
 		zshm_loader loader(params.use_heap_);
@@ -131,13 +131,18 @@ public:
 			entry = nullptr;
 			return -4;
 		}
-		if (memcmp(&entry->segments_, &params.segments_, sizeof(params.segments_)) != 0)
+		if (memcmp(&entry->spaces_, &params.spaces_, sizeof(params.spaces_)) != 0)
 		{
 			entry = nullptr;
 			return -5;
 		}
 
 		return 0;
+	}
+
+	static s32 destroy_frame(const zshm_space_entry& params)
+	{
+		return zshm_loader::static_destroy(params.shm_key_, params.use_heap_, (void*)params.space_addr_, params.whole_space_.size_);
 	}
 
 private:
