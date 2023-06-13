@@ -36,7 +36,7 @@ s32 shm_loader_base_test()
     zshm_loader loader_clt;
 
 
-    ASSERT_TEST(!loader_svr.check_exist(198709, mem_size));
+    ASSERT_TEST(!loader_svr.check_exist(1987090, mem_size));
     ASSERT_TEST(loader_svr.create_from_shm() == 0);
     new (loader_svr.shm_mnt_addr()) shm_header;
     shm_header* header = (shm_header*)loader_svr.shm_mnt_addr();
@@ -48,7 +48,7 @@ s32 shm_loader_base_test()
 
 
 
-    ASSERT_TEST(loader_clt.check_exist(198709, mem_size));
+    ASSERT_TEST(loader_clt.check_exist(1987090, mem_size));
     ASSERT_TEST(loader_clt.load_from_shm() == 0);
     
     header = (shm_header*)loader_clt.shm_mnt_addr();
@@ -62,8 +62,11 @@ s32 shm_loader_base_test()
     ASSERT_TEST(loader_svr.destroy() == 0);
     ASSERT_TEST(loader_clt.destroy() == 0);
 
+
     loader_clt.reset();
-    ASSERT_TEST(!loader_clt.check_exist(198709, mem_size));
+    ASSERT_TEST(!loader_clt.check_exist(1987090, mem_size));
+
+
     return 0;
 }
 

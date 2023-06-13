@@ -172,8 +172,7 @@ public:
 			//no shm  
 			return -1;
 		}
-		CloseHandle(map_file_);
-		map_file_ = nullptr;
+
 
 		std::string str_key = std::to_string(shm_key_);
 		HANDLE handle = CreateFileMapping(INVALID_HANDLE_VALUE, NULL, PAGE_READWRITE, shm_mem_size_ >> 32, shm_mem_size_ & (MAXUINT32), str_key.c_str());
@@ -181,6 +180,7 @@ public:
 		{
 			return -2;
 		}
+		CloseHandle(map_file_);
 		map_file_ = handle;
 
 
@@ -193,9 +193,10 @@ public:
 		}
 		shm_mnt_addr_ = addr;
 
-		//防止内存泄露 
-		CloseHandle(map_file_);
-		map_file_ = nullptr;
+		// 资源安全: view和handle双引用  
+		// 共享策略: 至少还有一个进程的handle的存活 && 单个进程不能多个view  
+		//CloseHandle(map_file_);
+		//map_file_ = nullptr;
 		return 0;
 	}
 
@@ -224,9 +225,10 @@ public:
 		shm_mnt_addr_ = addr;
 		//*(u64*)shm_mnt_addr_ = 1;
 
-		//防止内存泄露 
-		CloseHandle(map_file_);
-		map_file_ = nullptr;
+		// 资源安全: view和handle双引用  
+		// 共享策略: 至少还有一个进程的handle的存活 && 单个进程不能多个view  
+		//CloseHandle(map_file_);
+		//map_file_ = nullptr;
 		return 0;
 	}
 
@@ -262,7 +264,7 @@ public:
 	}
 
 	
-	static s32 destroy_shm(u64 shm_key, void* real_addr, s64 mem_size)
+	static s32 static_destroy(u64 shm_key, void* real_addr, s64 mem_size)
 	{
 		std::string str_key = std::to_string(shm_key);
 		HANDLE handle = OpenFileMapping(PAGE_READWRITE, FALSE, str_key.c_str());
@@ -400,7 +402,7 @@ public:
 		return 0;
 	}
 
-	static s32 destroy_shm(u64 shm_key, void* real_addr, s64 mem_size)
+	static s32 static_destroy(u64 shm_key, void* real_addr, s64 mem_size)
 	{
 		int idx = shmget(shm_key, 0, 0);
 		if (idx < 0 && errno != ENOENT)
@@ -501,7 +503,7 @@ public:
 	}
 
 
-	static s32 destroy_shm(u64 shm_key, void* real_addr, s64 mem_size)
+	static s32 static_destroy(u64 shm_key, void* real_addr, s64 mem_size)
 	{
 		if (real_addr == nullptr)
 		{
@@ -558,16 +560,16 @@ public:
 
 	void reset(){ used_heap_ ? heap_loader_.reset(): loader_.reset();}
 
-	static s32 destroy_shm(u64 shm_key, s32 use_heap, void* real_addr, s64 mem_size) 
+	static s32 static_destroy(u64 shm_key, s32 use_heap, void* real_addr, s64 mem_size) 
 	{ 
 		if (use_heap)
 		{
-			return zshm_loader_heap::destroy_shm(shm_key, real_addr, mem_size);
+			return zshm_loader_heap::static_destroy(shm_key, real_addr, mem_size);
 		}
 #ifdef WIN32
-		return zshm_loader_win32::destroy_shm(shm_key, real_addr, mem_size);
+		return zshm_loader_win32::static_destroy(shm_key, real_addr, mem_size);
 #else
-		return zshm_loader_unix::destroy_shm(shm_key, real_addr, mem_size);
+		return zshm_loader_unix::static_destroy(shm_key, real_addr, mem_size);
 #endif // WIN32
 	}
 };
