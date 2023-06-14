@@ -17,8 +17,8 @@
 */
 
 #pragma once
-#ifndef _ZSHM_LOADER_H_
-#define _ZSHM_LOADER_H_
+#ifndef _ZSHM_PTR_H_
+#define _ZSHM_PTR_H_
 
 #include <type_traits>
 
@@ -56,6 +56,8 @@ using f64 = double;
 //  warn: don't use this ptr to fix multi-inheritance polymorphic   
 //  warn: don't use the real object's bases class. 
 //  warn: shm_ptr not control object life,  it's same not unique_ptr/shared_ptr
+
+//marks:  gcc tr2 bases can collect all base class type. used dynamic_cast get the right offset and vtable can suport multi-inheritance.  more cost;   
 
 template<class InstType> //don't don't don't use base class 
 class zshm_ptr
