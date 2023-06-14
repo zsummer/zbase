@@ -90,11 +90,16 @@ public:
     typename std::enable_if<std::is_polymorphic<Ty>::value, Ty>::type* fix_vptr()
     {
         u64 vtable_adress = s_vptr_val;
-        u64& obj_vtable_adrees = *(u64*)obj_;
+        //O2下直接范围obj_会因strict-aliasing假定导致上层直接cache旧的vtable 
+        //(1) volatile阻止strict-aliasing 
+        u64 obj_vtable_adrees = *reinterpret_cast<u64*>(reinterpret_cast<char*>(obj_));
         if (obj_vtable_adrees != vtable_adress)
         {
-            obj_vtable_adrees = vtable_adress;
+            //(2) memcpy (char*  阻止 
+            memcpy((char*)obj_, &vtable_adress, sizeof(vtable_adress));
+            //obj_vtable_adrees = vtable_adress;
         }
+        //(1)(2) cost= org ptr's cost *2
         return obj_;
     }
 
@@ -129,7 +134,8 @@ private:
         get_vtable_address()
     {
         Ty* ptr = new Ty();
-        u64 vptr = *(u64*)ptr;
+        u64 vptr = 0;
+        memcpy(&vptr, (char*)ptr, sizeof(vptr));
         delete ptr;
         return vptr;
     }
@@ -139,7 +145,10 @@ private:
         get_vtable_address()
     {
         Ty t;
-        return *(u64*)&t;
+        u64 vptr = 0;
+        //char* can safly clean warn: strict-aliasing rules  
+        memcpy(&vptr, (char*)&t, sizeof(vptr));
+        return vptr;
     }
 
     template<class Ty>
