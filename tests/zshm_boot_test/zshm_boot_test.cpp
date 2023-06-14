@@ -25,6 +25,7 @@
 #include "zshm_boot.h"
 #include "zbuddy.h"
 #include "zmalloc.h"
+#include "zshm_ptr.h"
 
 using shm_header = zarray<u32, 100>;
 
@@ -95,8 +96,7 @@ private:
     template<class T, class ... Args>
     static inline void RebuildVPTR(void* addr, Args ... args)
     {
-        T* inst = new T(args...);
-        *(u64*)addr = *(u64*)inst;
+        zshm_ptr<T>(addr).fix_vptr();
     }
     template<class T, class ... Args>
     static inline void BuildObject(void* addr, Args ... args)
