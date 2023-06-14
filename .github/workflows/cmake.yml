@@ -54,6 +54,6 @@ jobs:
         ./zshm_boot_test resume
         ./zshm_boot_test stop
         ./zshm_boot_test start heap  
-        
+        ./zshm_ptr_test 
 
       
