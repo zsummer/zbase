@@ -87,8 +87,6 @@ s32 shm_ptr_base_test()
 
 s32 shm_ptr_fixed_test()
 {
-    pod pod_val;
-    small_vtable small_val;
     big_vtable* big_val = new big_vtable;
 
 
@@ -97,7 +95,12 @@ s32 shm_ptr_fixed_test()
         ASSERT_TEST(big_val->id() == 3);
         ASSERT_TEST(big_val->value() == 3);
 
+        LogDebug() << "vtable:" << (void*)*(u64*)big_val;
         zshm_ptr<small_vtable> vptr(big_val);
+        //int id = vptr->id();
+        //LogDebug() << "id:" << id << "vtable:" << (void*)*(u64*)big_val;
+        
+        //-O2will return old func before fixed  
         ASSERT_TEST(vptr->id() == 2);
         ASSERT_TEST(vptr->value() == 3);
 
@@ -106,9 +109,12 @@ s32 shm_ptr_fixed_test()
 
 
         zshm_ptr<big_vtable>(big_val).fix_vptr();
+        //id = big_val->id();
+        //LogDebug() << "id:" << id << "vtable:" << (void*)*(u64*)big_val;
 
-        ASSERT_TEST(big_val->id() == 3);
-        ASSERT_TEST(big_val->value() == 3);
+        //-O2will return old func before fixed  
+        ASSERT_TEST(big_val->id() == 3, big_val->id());
+        ASSERT_TEST(big_val->value() == 3, big_val->value());
 
     }
     delete big_val;
@@ -163,6 +169,8 @@ s32 shm_ptr_stress_test()
             value = shm_ptr->value();
         }
     }
+
+    (void)value;
     delete big_val;
 
 
