@@ -1057,7 +1057,10 @@ u64  zmalloc::merge_and_release(free_chunk_type* chunk, u32 level, u64 bytes)
 
 void zmalloc::check_health()
 {
-    free_memory(alloc_memory(1));//inalloc_memory has init case.  ! 
+    if (!inited_)
+    {
+        return;
+    }
     check_block(instance());
     check_bitmap(instance());
     if (runtime_errors_ > 0)
