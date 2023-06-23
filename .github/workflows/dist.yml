@@ -1,0 +1,26 @@
+name: auto-dist
+on:
+  push:
+    branches:
+      - '**'
+      - '!main'
+jobs:
+  auto-dist:
+    runs-on: ubuntu-latest
+    steps:
+      - name: clone
+        run: |
+          git clone https://${{secrets.ActionToken}}@github.com/zsummer/zbase.git zbase-master
+          git clone https://${{secrets.ActionToken}}@github.com/zsummer/zbase.git -b dist zbase-dist
+      - name: auto-dist
+        run: |
+          cd zbase-master
+          base release_version.sh 
+          cp dist/* ../zbase-dist/
+          cd ../zbase-dist/
+          git commit -a -m "auto dist"  
+          git push 
+          
+          
+          
+          
