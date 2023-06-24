@@ -23,7 +23,7 @@ jobs:
           cd zbase-master
           bash release_version.sh 
           git status
-          cp dist/* ../zbase-dist/
+          cp -r dist/* ../zbase-dist/
           cd ../zbase-dist/
           git status
           git config --global user.email "yawei.zhang@foxmail.com"
