@@ -1,11 +1,11 @@
-release fn-log version date:2023-06-09 19:25:05
+release fn-log version date:2023-06-24 15:00:30
 
 git log:
-commit 8589b163faa2ba2c0184d6a09ee6f33e5e1bc9e0
-Author: skylerzhang <skylerzhang@tencent.com>
-Date:   Fri Jun 9 17:37:35 2023 +0800
+commit 2a7d2e6c2f8b85f094b06490afe158d940b94b1d
+Author: 夏天 <yawei.zhang@foxmail.com>
+Date:   Sat Jun 24 23:00:18 2023 +0800
 
-    zshm_loader stress
+    Update dist.yml
 
- tests/zshm_loader_test/zshm_loader_test.cpp | 67 ++++++++++++++++++++++++++++-
- 1 file changed, 65 insertions(+), 2 deletions(-)
+ .github/workflows/dist.yml | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
