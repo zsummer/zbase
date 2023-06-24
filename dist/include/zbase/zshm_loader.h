@@ -114,7 +114,6 @@ using f64 = double;
 
 
 
-#define ZSHM_LOADER_USED_HEAP 0
 
 
 #ifdef WIN32
@@ -132,17 +131,17 @@ public:
 		map_file_ = nullptr;
 		shm_key_ = 0;
 		shm_mem_size_ = 0;
-		attach_addr_ = nullptr;
+		shm_mnt_addr_ = nullptr;
 	}
 	s64 shm_mem_size() { return shm_mem_size_; }
-	void* attach_addr() { return attach_addr_; }
+	void* shm_mnt_addr() { return shm_mnt_addr_; }
 private:
 	HANDLE map_file_;
-	s64 shm_key_;
+	u64 shm_key_;
 	s64 shm_mem_size_;
-	void* attach_addr_;
+	void* shm_mnt_addr_;
 public:
-	bool check_exist(s64 shm_key, s64 mem_size)
+	bool check_exist(u64 shm_key, s64 mem_size)
 	{
 		if (shm_key <= 0)
 		{
@@ -166,15 +165,14 @@ public:
 	}
 
 
-	s32 load_from_shm(u64 attach_addr = 0)
+	s32 load_from_shm(u64 expect_addr = 0)
 	{
 		if (map_file_ == nullptr)
 		{
 			//no shm  
 			return -1;
 		}
-		CloseHandle(map_file_);
-		map_file_ = nullptr;
+
 
 		std::string str_key = std::to_string(shm_key_);
 		HANDLE handle = CreateFileMapping(INVALID_HANDLE_VALUE, NULL, PAGE_READWRITE, shm_mem_size_ >> 32, shm_mem_size_ & (MAXUINT32), str_key.c_str());
@@ -182,6 +180,7 @@ public:
 		{
 			return -2;
 		}
+		CloseHandle(map_file_);
 		map_file_ = handle;
 
 
@@ -192,11 +191,16 @@ public:
 			(void)dw;
 			return -2;
 		}
-		attach_addr_ = addr;
+		shm_mnt_addr_ = addr;
+
+		// 资源安全: view和handle双引用  
+		// 共享策略: 至少还有一个进程的handle的存活 && 单个进程不能多个view  
+		//CloseHandle(map_file_);
+		//map_file_ = nullptr;
 		return 0;
 	}
 
-	s32 create_from_shm(u64 attach_addr = 0)
+	s32 create_from_shm(u64 expect_addr = 0)
 	{
 		if (shm_key_ == 0)
 		{
@@ -218,15 +222,19 @@ public:
 		{
 			return -2;
 		}
-		attach_addr_ = addr;
-		*(u64*)attach_addr_ = 1;
+		shm_mnt_addr_ = addr;
+		//*(u64*)shm_mnt_addr_ = 1;
 
+		// 资源安全: view和handle双引用  
+		// 共享策略: 至少还有一个进程的handle的存活 && 单个进程不能多个view  
+		//CloseHandle(map_file_);
+		//map_file_ = nullptr;
 		return 0;
 	}
 
 	bool is_attach()
 	{
-		return attach_addr_ != nullptr;
+		return shm_mnt_addr_ != nullptr;
 	}
 
 
@@ -237,8 +245,8 @@ public:
 		{
 			//所有handle都unmap后会数据落地  
 			//这之前可以FlushViewOfFile   
-			UnmapViewOfFile(attach_addr_);
-			attach_addr_ = nullptr;
+			UnmapViewOfFile(shm_mnt_addr_);
+			shm_mnt_addr_ = nullptr;
 		}
 		return 0;
 	}
@@ -252,6 +260,24 @@ public:
 			CloseHandle(map_file_);
 			map_file_ = nullptr;
 		}
+		return 0;
+	}
+
+	
+	static s32 static_destroy(u64 shm_key, void* real_addr, s64 mem_size)
+	{
+		std::string str_key = std::to_string(shm_key);
+		HANDLE handle = OpenFileMapping(PAGE_READWRITE, FALSE, str_key.c_str());
+		if (handle == nullptr)
+		{
+			return -1;
+		}
+		if (real_addr != nullptr)
+		{
+			UnmapViewOfFile(real_addr);
+			real_addr = nullptr;
+		}
+		CloseHandle(handle);
 		return 0;
 	}
 };
@@ -271,17 +297,17 @@ public:
 		shm_key_ = 0;
 		shm_index_ = -1;
 		shm_mem_size_ = 0;
-		attach_addr_ = nullptr;
+		shm_mnt_addr_ = nullptr;
 	}
 	s64 shm_mem_size() { return shm_mem_size_; }
-	void* attach_addr() { return attach_addr_; }
+	void* shm_mnt_addr() { return shm_mnt_addr_; }
 private:
-	s64 shm_key_;
+	u64 shm_key_;
 	s32 shm_index_;
 	s64 shm_mem_size_;
-	void* attach_addr_;
+	void* shm_mnt_addr_;
 public:
-	bool check_exist(s64 shm_key, s64 mem_size)
+	bool check_exist(u64 shm_key, s64 mem_size)
 	{
 		if (shm_key <= 0)
 		{
@@ -305,24 +331,24 @@ public:
 	}
 
 
-	s32 load_from_shm(u64 attach_addr = 0)
+	s32 load_from_shm(u64 expect_addr = 0)
 	{
 		if (shm_index_ == -1)
 		{
 			//no shm  
 			return -1;
 		}
-		void* addr = shmat(shm_index_, (void*)attach_addr, 0);
+		void* addr = shmat(shm_index_, (void*)expect_addr, 0);
 		if (addr == nullptr || addr == (void*)-1)
 		{
 			//attach error. 
 			return -2;
 		}
-		attach_addr_ = addr;
+		shm_mnt_addr_ = addr;
 		return 0;
 	}
 
-	s32 create_from_shm(u64 attach_addr = 0)
+	s32 create_from_shm(u64 expect_addr = 0)
 	{
 		if (shm_key_ == 0)
 		{
@@ -338,27 +364,27 @@ public:
 		}
 		shm_index_ = idx;
 
-		void* addr = shmat(shm_index_, (void*)attach_addr, 0);
+		void* addr = shmat(shm_index_, (void*)expect_addr, 0);
 		if (addr == nullptr || addr == (void*)-1)
 		{
 			//attach error. 
 			return -3;
 		}
 
-		attach_addr_ = addr;
+		shm_mnt_addr_ = addr;
 		return 0;
 	}
 	bool is_attach()
 	{
-		return attach_addr_ != nullptr;
+		return shm_mnt_addr_ != nullptr;
 	}
 
 	s32 detach()
 	{
 		if (is_attach())
 		{
-			shmdt(attach_addr_);
-			attach_addr_ = nullptr;
+			shmdt(shm_mnt_addr_);
+			shm_mnt_addr_ = nullptr;
 		}
 
 		return 0;
@@ -373,6 +399,25 @@ public:
 			shmctl(shm_index_, IPC_RMID, nullptr);
 			shm_index_ = -1;
 		}
+		return 0;
+	}
+
+	static s32 static_destroy(u64 shm_key, void* real_addr, s64 mem_size)
+	{
+		int idx = shmget(shm_key, 0, 0);
+		if (idx < 0 && errno != ENOENT)
+		{
+			return -1;
+		}
+		if (idx < 0)
+		{
+			return -2;
+		}
+		if (real_addr != nullptr)
+		{
+			shmdt(real_addr);
+		}
+		shmctl(idx, IPC_RMID, nullptr);
 		return 0;
 	}
 };
@@ -391,42 +436,47 @@ public:
 	}
 	void reset()
 	{
-		attach_addr_ = nullptr;
+		shm_mnt_addr_ = nullptr;
 		shm_mem_size_ = 0;
 	}
 	s64 shm_mem_size() { return shm_mem_size_; }
-	void* attach_addr() { return attach_addr_; }
+	void* shm_mnt_addr() { return shm_mnt_addr_; }
 private:
-	void* attach_addr_;
+	void* shm_mnt_addr_;
 	s64 shm_mem_size_;
 public:
-	bool check_exist(s64 shm_key, s64 mem_size)
+	bool check_exist(u64 shm_key, s64 mem_size)
 	{
 		shm_mem_size_ = mem_size;
 		return false;
 	}
 
 
-	s32 load_from_shm(u64 attach_addr = 0)
+	s32 load_from_shm(u64 expect_addr = 0)
 	{
 		return -1;
 	}
 
-	s32 create_from_shm(u64 attach_addr = 0)
+	s32 create_from_shm(u64 expect_addr = 0)
 	{
 #ifdef WIN32
-		char* addr = (char*)_aligned_malloc(shm_mem_size_, 16);
+		//提交内存不代表实际使用 但windows下系统提交内存总大小不能超过物理内存+交换文件 否则会内存不足.  
+		char* addr = (char*)VirtualAlloc((LPVOID)expect_addr, shm_mem_size_, MEM_COMMIT|MEM_RESERVE, PAGE_READWRITE);
 #else
-		char* addr = (char*)aligned_alloc(16, shm_mem_size_);
+		char* addr = (char*)mmap(NULL, shm_mem_size_, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, -1, 0);
 #endif // WIN32
-		attach_addr_ = addr;
+		if (addr == nullptr)
+		{
+			return -1;
+		}
+		shm_mnt_addr_ = addr;
 		return 0;
 	}
 
 
 	bool is_attach()
 	{
-		return attach_addr_ != nullptr;
+		return shm_mnt_addr_ != nullptr;
 	}
 
 	s32 detach()
@@ -434,13 +484,13 @@ public:
 		if (is_attach())
 		{
 #ifdef WIN32
-			_aligned_free(attach_addr_);
+			VirtualFree(shm_mnt_addr_, 0, MEM_RELEASE);
 #else
-			free(attach_addr_);
+			munmap(shm_mnt_addr_, shm_mem_size_);
 #endif // WIN32
 
 
-			attach_addr_ = nullptr;
+			shm_mnt_addr_ = nullptr;
 		}
 
 		return 0;
@@ -451,6 +501,21 @@ public:
 		detach();
 		return 0;
 	}
+
+
+	static s32 static_destroy(u64 shm_key, void* real_addr, s64 mem_size)
+	{
+		if (real_addr == nullptr)
+		{
+			return -1;
+		}
+#ifdef WIN32
+		VirtualFree(real_addr, 0, MEM_RELEASE);
+#else
+		munmap(real_addr, mem_size);
+#endif // WIN32
+		return 0;
+	}
 };
 
 
@@ -458,59 +523,54 @@ public:
 
 class zshm_loader
 {
-#if ZSHM_LOADER_USED_HEAP
-	zshm_loader_heap loader_;
-#else
 #ifdef WIN32
 	zshm_loader_win32 loader_;
 #else
 	zshm_loader_unix loader_;
 #endif // WIN32
-#endif
-
-
+	zshm_loader_heap heap_loader_;
+	bool used_heap_;
 public:
 	zshm_loader()
 	{
+		used_heap_ = false;
 	}
+	zshm_loader(bool used_heap)
+	{
+		used_heap_ = used_heap;
+	}
+
 	~zshm_loader()
 	{
 	}
-	s64 shm_mem_size() { return loader_.shm_mem_size(); }
-	void* attach_addr() { return loader_.attach_addr(); }
 
-	bool check_exist(s64 shm_key, s64 mem_size)
-	{
-		return loader_.check_exist(shm_key, mem_size);
-	}
+	s64 shm_mem_size() { return used_heap_ ? heap_loader_.shm_mem_size() : loader_.shm_mem_size(); }
+	void* shm_mnt_addr() { return used_heap_ ? heap_loader_.shm_mnt_addr() : loader_.shm_mnt_addr(); }
 
-	s32 load_from_shm(u64 attach_addr = 0)
-	{
-		return loader_.load_from_shm(attach_addr);
-	}
-	s32 create_from_shm(u64 attach_addr = 0)
-	{
-		return loader_.create_from_shm(attach_addr);
-	}
+	bool check_exist(u64 shm_key, s64 mem_size){return used_heap_ ? heap_loader_.check_exist(shm_key, mem_size): loader_.check_exist(shm_key, mem_size);}
 
-	bool is_attach()
-	{
-		return loader_.is_attach();
-	}
+	s32 load_from_shm(u64 expect_addr = 0){return used_heap_ ? heap_loader_.load_from_shm(expect_addr): loader_.load_from_shm(expect_addr);}
+	s32 create_from_shm(u64 expect_addr = 0){return used_heap_ ? heap_loader_.create_from_shm(expect_addr): loader_.create_from_shm(expect_addr);}
 
-	s32 detach()
-	{
-		return loader_.detach();
-	}
+	bool is_attach(){return used_heap_ ? heap_loader_.is_attach(): loader_.is_attach();}
 
-	s32 destroy()
-	{
-		return loader_.destroy();
-	}
+	s32 detach(){return used_heap_ ? heap_loader_.detach(): loader_.detach();}
 
-	void reset()
-	{
-		loader_.reset();
+	s32 destroy(){return used_heap_ ? heap_loader_.destroy(): loader_.destroy();}
+
+	void reset(){ used_heap_ ? heap_loader_.reset(): loader_.reset();}
+
+	static s32 static_destroy(u64 shm_key, s32 use_heap, void* real_addr, s64 mem_size) 
+	{ 
+		if (use_heap)
+		{
+			return zshm_loader_heap::static_destroy(shm_key, real_addr, mem_size);
+		}
+#ifdef WIN32
+		return zshm_loader_win32::static_destroy(shm_key, real_addr, mem_size);
+#else
+		return zshm_loader_unix::static_destroy(shm_key, real_addr, mem_size);
+#endif // WIN32
 	}
 };
 
@@ -518,3 +578,16 @@ public:
 
 
 #endif
+
+
+
+/*
+
+mmap最小起始地址略小于0x0000 7F00 0000 0000
+
+安全中心: 0x0000 5655 5555 5555 + (0x0000 7F00 0000 0000 - 0x0000 5655 5555 5555)/2   =  0x0000 6AAA AAAA AAAA
+
+brk起始地址最大略大于 0x0000 5655 5555 5555
+
+*/
+
