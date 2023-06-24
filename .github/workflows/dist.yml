@@ -21,9 +21,13 @@ jobs:
         run: |
           ls
           cd zbase-master
-          base release_version.sh 
+          bash release_version.sh 
+          git status
           cp dist/* ../zbase-dist/
           cd ../zbase-dist/
+          git status
+          git config --global user.email "yawei.zhang@foxmail.com"
+          git config --global user.name "zsummer"
           git commit -a -m "auto dist"  
           git push 
           
