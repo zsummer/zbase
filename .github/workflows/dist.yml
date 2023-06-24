@@ -10,9 +10,9 @@ jobs:
     steps:
       - name: clone
         run: |
-          git clone https://github.com/zsummer/zbase.git zbase-master
+          git clone https://github.com:zsummer/zsummer/zbase.git zbase-master
           # git clone https://${{secrets.ActionToken}}@github.com/zsummer/zbase.git zbase-master
-          git clone https://github.com/zsummer/zbase.git -b dist zbase-dist
+          git clone https://github.com:zsummer/zsummer/zbase.git -b dist zbase-dist
           # git clone https://${{secrets.ActionToken}}@github.com/zsummer/zbase.git -b dist zbase-dist
       - name: auto-dist
         run: |
