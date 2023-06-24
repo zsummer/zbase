@@ -12,8 +12,14 @@ jobs:
         run: |
           git clone https://${{secrets.ACTIONTOKEN}}@github.com/zsummer/zbase.git zbase-master
           git clone https://${{secrets.ACTIONTOKEN}}@github.com/zsummer/zbase.git -b dist zbase-dist
+          ls
+          cd zbase-master
+          git status
+          cd ../zbase-dist
+          git status
       - name: auto-dist
         run: |
+          ls
           cd zbase-master
           base release_version.sh 
           cp dist/* ../zbase-dist/
