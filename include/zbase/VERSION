@@ -1,11 +1,16 @@
-release fn-log version date:2023-06-24 15:00:30
+release fn-log version date:2023-06-24 15:16:49
 
 git log:
-commit 2a7d2e6c2f8b85f094b06490afe158d940b94b1d
-Author: 夏天 <yawei.zhang@foxmail.com>
-Date:   Sat Jun 24 23:00:18 2023 +0800
+commit d61469bbef5490386dee8fd8ed88ba242c1301df
+Author: zsummer <yawei.zhang@foxmail.com>
+Date:   Sat Jun 24 23:16:34 2023 +0800
 
-    Update dist.yml
+    new dist
 
- .github/workflows/dist.yml | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ dist/include/zbase/VERSION       |  14 +--
+ dist/include/zbase/zbuddy.h      |  31 ++++--
+ dist/include/zbase/zmalloc.h     |  27 ++---
+ dist/include/zbase/zshm_boot.h   | 149 +++++++++++++++++++++++++
+ dist/include/zbase/zshm_loader.h | 229 ++++++++++++++++++++++++++-------------
+ dist/include/zbase/zshm_ptr.h    | 173 +++++++++++++++++++++++++++++
+ 6 files changed, 510 insertions(+), 113 deletions(-)
