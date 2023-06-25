@@ -11,8 +11,11 @@ cp src/include/* ./dist/include/zbase/
 cp README.md ./dist/include/zbase/
 cp LICENSE ./dist/include/zbase/
 
-version=`date +"release fn-log version date:%Y-%m-%d %H:%M:%S"`
-echo $version > ./dist/include/zbase/VERSION 
+last_sha1=`git rev-parse HEAD`
+last_date=`git show --pretty=format:"%ci" | head -1`
+echo "version:" > ./dist/include/zbase/VERSION
+echo "last_sha1=$last_sha1" >> ./dist/include/zbase/VERSION 
+echo "last_date=$last_date" >> ./dist/include/zbase/VERSION 
 echo "" >> ./dist/include/zbase/VERSION 
 echo "git log:" >> ./dist/include/zbase/VERSION 
-git log -1 --stat >> ./dist/include/zbase/VERSION 
+git log -1 --stat ./src >> ./dist/include/zbase/VERSION 
