@@ -1,11 +1,11 @@
-release fn-log version date:2023-06-25 02:11:26
+release fn-log version date:2023-06-25 02:11:37
 
 git log:
-commit e2cd3b2dec8db647d12e707fdd0271dd29b990df
+commit 3dc0fc2fd8ad35baf49983e6958bfd85ccbdab90
 Author: zsummer <yawei.zhang@foxmail.com>
-Date:   Sun Jun 25 02:11:15 2023 +0000
+Date:   Sun Jun 25 02:11:26 2023 +0000
 
     auto dist
 
- dist/include/zbase/VERSION | 12 +++++-------
- 1 file changed, 5 insertions(+), 7 deletions(-)
+ dist/include/zbase/VERSION | 10 +++++-----
+ 1 file changed, 5 insertions(+), 5 deletions(-)
