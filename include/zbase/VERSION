@@ -1,13 +1,5 @@
 version:
-last_sha1=86d3a445f8db4240696a796cc6d83ca75c173702
-last_date=2023-06-25 11:08:51 +0800
+last_sha1(./src)=53109cbbec064ffbd97da213f8341cdee8670db5
+last_date(./src)=2023-06-14 20:52:37 +0800
 
-git log:
-commit 53109cbbec064ffbd97da213f8341cdee8670db5
-Author: skylerzhang <skylerzhang@tencent.com>
-Date:   Wed Jun 14 20:52:37 2023 +0800
-
-    comment
-
- src/include/zshm_ptr.h | 9 +++++----
- 1 file changed, 5 insertions(+), 4 deletions(-)
+git log -1 --stat ./src:
