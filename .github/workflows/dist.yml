@@ -3,8 +3,7 @@ on:
   push:
     branches:
       - 'master'
-  pull_request:
-    branches: [ master ]
+
 jobs:
   auto-dist:
     runs-on: ubuntu-latest
