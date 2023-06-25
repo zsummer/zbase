@@ -1,11 +1,13 @@
-release fn-log version date:2023-06-25 02:10:47
+release fn-log version date:2023-06-25 02:11:01
 
 git log:
-commit c04d62ec922427db65e7e3f51de955fc3580613d
-Author: 夏天 <yawei.zhang@foxmail.com>
-Date:   Sun Jun 25 10:10:32 2023 +0800
+commit 9902b8a45b4bdfabda66e442d438a1f6f275e7e0
+Author: zsummer <yawei.zhang@foxmail.com>
+Date:   Sun Jun 25 02:10:47 2023 +0000
 
-    Update dist.yml
+    auto dist
 
- .github/workflows/dist.yml | 6 ++++++
- 1 file changed, 6 insertions(+)
+ dist/include/zbase/VERSION      |   10 +-
+ dist/include/zbase/zallocator.h |  194 +--
+ dist/include/zbase/zmalloc.h    | 2914 +++++++++++++++++++--------------------
+ 3 files changed, 1559 insertions(+), 1559 deletions(-)
