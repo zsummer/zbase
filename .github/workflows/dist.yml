@@ -2,8 +2,8 @@ name: auto-dist
 on:
   push:
     branches:
-      - '**'
-      - '!main'
+      - 'main'
+
 jobs:
   auto-dist:
     runs-on: ubuntu-latest
@@ -27,7 +27,7 @@ jobs:
           git config --global user.name "zsummer"
           git add *
           git diff --cached |wc -l
-          git commit -a --allow-empty -m "auto dist"  
+          git commit -a --allow-empty -m "[skip ci] auto dist"  
           git push 
           cp -r dist/* ../zbase-dist/
           cd ../zbase-dist/
@@ -36,7 +36,7 @@ jobs:
           git config --global user.name "zsummer"
           git add *
           git diff --cached |wc -l
-          git commit -a --allow-empty -m "auto dist"  
+          git commit -a --allow-empty -m "[skip ci]auto dist"  
           git push 
           
           
