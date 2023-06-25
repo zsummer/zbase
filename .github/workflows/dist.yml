@@ -14,8 +14,12 @@ jobs:
           git clone https://${{secrets.ACTIONTOKEN}}@github.com/zsummer/zbase.git -b dist zbase-dist
           ls
           cd zbase-master
+          git config --global user.email "yawei.zhang@foxmail.com"
+          git config --global user.name "zsummer"
           git status
           cd ../zbase-dist
+          git config --global user.email "yawei.zhang@foxmail.com"
+          git config --global user.name "zsummer"
           git status
       - name: auto-dist
         run: |
@@ -23,8 +27,6 @@ jobs:
           cd zbase-master
           bash release_version.sh 
           git status
-          git config --global user.email "yawei.zhang@foxmail.com"
-          git config --global user.name "zsummer"
           git add *
           git diff --cached |wc -l
           git commit -a --allow-empty -m "[skip ci] auto dist"  
@@ -32,8 +34,6 @@ jobs:
           cp -r dist/* ../zbase-dist/
           cd ../zbase-dist/
           git status
-          git config --global user.email "yawei.zhang@foxmail.com"
-          git config --global user.name "zsummer"
           git add *
           git diff --cached |wc -l
           git commit -a --allow-empty -m "[skip ci]auto dist"  
