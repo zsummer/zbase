@@ -1,9 +1,9 @@
-release fn-log version date:2023-06-25 02:12:48
+release fn-log version date:2023-06-25 02:12:58
 
 git log:
-commit e9c0ab858e521943d656fd8ca57bb83d03212ad7
+commit a84a025686aeb33f023484b0e610e1dc64cf33f2
 Author: zsummer <yawei.zhang@foxmail.com>
-Date:   Sun Jun 25 02:12:35 2023 +0000
+Date:   Sun Jun 25 02:12:48 2023 +0000
 
     auto dist
 
