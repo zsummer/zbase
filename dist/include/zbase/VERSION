@@ -1,13 +1,11 @@
-release fn-log version date:2023-06-25 02:11:01
+release fn-log version date:2023-06-25 02:11:15
 
 git log:
-commit 9902b8a45b4bdfabda66e442d438a1f6f275e7e0
+commit 0a26a4f55148ccc457f2901e57a0b81b25300776
 Author: zsummer <yawei.zhang@foxmail.com>
-Date:   Sun Jun 25 02:10:47 2023 +0000
+Date:   Sun Jun 25 02:11:01 2023 +0000
 
     auto dist
 
- dist/include/zbase/VERSION      |   10 +-
- dist/include/zbase/zallocator.h |  194 +--
- dist/include/zbase/zmalloc.h    | 2914 +++++++++++++++++++--------------------
- 3 files changed, 1559 insertions(+), 1559 deletions(-)
+ dist/include/zbase/VERSION | 16 +++++++++-------
+ 1 file changed, 9 insertions(+), 7 deletions(-)
