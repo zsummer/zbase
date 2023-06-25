@@ -1,11 +1,13 @@
-release fn-log version date:2023-06-25 02:14:56
+version:
+last_sha1=3dc5afa21132365ca896104ff3c8b1101356a106
+last_date=2023-06-25 10:23:22 +0800
 
 git log:
-commit 488a0c58cc47103305bf0adad9e6cee5c51068da
-Author: zsummer <yawei.zhang@foxmail.com>
-Date:   Sun Jun 25 02:14:41 2023 +0000
+commit 53109cbbec064ffbd97da213f8341cdee8670db5
+Author: skylerzhang <skylerzhang@tencent.com>
+Date:   Wed Jun 14 20:52:37 2023 +0800
 
-    auto dist
+    comment
 
- dist/include/zbase/VERSION | 10 +++++-----
- 1 file changed, 5 insertions(+), 5 deletions(-)
+ src/include/zshm_ptr.h | 9 +++++----
+ 1 file changed, 5 insertions(+), 4 deletions(-)
