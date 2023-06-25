@@ -21,16 +21,16 @@ jobs:
           git config --global user.email "yawei.zhang@foxmail.com"
           git config --global user.name "zsummer"
           git status
-      - name: auto-dist
+      - name: local-dist
         run: |
-          ls
           cd zbase-master
           bash release_version.sh 
-          git status
           git add *
-          git diff --cached |wc -l
           git commit -a --allow-empty -m "[skip ci] auto dist"  
           git push 
+      - name: branch-dist
+        run: |
+          cd zbase-master
           cp -r dist/* ../zbase-dist/
           cd ../zbase-dist/
           git status
