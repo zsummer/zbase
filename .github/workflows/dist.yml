@@ -10,29 +10,29 @@ jobs:
     steps:
       - name: clone
         run: |
-          git clone https://${{secrets.ACTIONTOKEN}}@github.com/zsummer/zbase.git zbase-master
-          git clone https://${{secrets.ACTIONTOKEN}}@github.com/zsummer/zbase.git -b dist zbase-dist
+          git clone https://${{secrets.ACTIONTOKEN}}@github.com/zsummer/fn-log.git fn-log-master
+          git clone https://${{secrets.ACTIONTOKEN}}@github.com/zsummer/fn-log.git -b dist fn-log-dist
           ls
-          cd zbase-master
+          cd fn-log-master
           git config --global user.email "yawei.zhang@foxmail.com"
           git config --global user.name "zsummer"
           git status
-          cd ../zbase-dist
+          cd ../fn-log-dist
           git config --global user.email "yawei.zhang@foxmail.com"
           git config --global user.name "zsummer"
           git status
       - name: local-dist
         run: |
-          cd zbase-master
+          cd fn-log-master
           bash release_version.sh 
-          git add *
+          git add ./dist/
           git commit -a --allow-empty -m "[skip ci] auto dist"  
           git push 
       - name: branch-dist
         run: |
-          cd zbase-master
-          cp -r dist/* ../zbase-dist/
-          cd ../zbase-dist/
+          cd fn-log-master
+          cp -r dist/* ../fn-log-dist/
+          cd ../fn-log-dist/
           git status
           git add *
           git diff --cached |wc -l
