@@ -90,19 +90,22 @@ endfunction()
 
 function(auto_include_sub_hpp_dir dir_path)
     message("find all sub dirs from ${dir_path}")
-    FILE(GLOB_RECURSE hpps ${dir_path}/*.h ${dir_path}/*.hpp)
+    file(GLOB_RECURSE hpps ${dir_path}/*.h ${dir_path}/*.hpp)
     auto_include_from_source(hpps)
 endfunction()
 
 
-
-
 function(auto_group_sub_cpp_dir dir_path)
     message("find all sub dirs from ${dir_path}")
-    FILE(GLOB_RECURSE hpps ${dir_path}/*.h ${dir_path}/*.hpp ${dir_path}/*.cpp)
+    file(GLOB_RECURSE hpps ${dir_path}/*.h ${dir_path}/*.hpp ${dir_path}/*.cpp)
     auto_group_source(hpps)
 endfunction()
 
+function(auto_custom_target_sub_dir dir_path target)
+    file(GLOB_RECURSE hpps ${dir_path}/*.h ${dir_path}/*.hpp)
+    message(${hpps})
+    add_custom_target(${target} SOURCES  ${hpps} )
+endfunction()
 
 
 function(auto_link_from_file src_file_list)
