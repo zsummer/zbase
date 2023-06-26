@@ -86,14 +86,64 @@ function(auto_include_from_source src_file_list)
 endfunction()
 
 
+
+
 function(auto_include_sub_hpp_dir dir_path)
     message("find all sub dirs from ${dir_path}")
     FILE(GLOB_RECURSE hpps ${dir_path}/*.h ${dir_path}/*.hpp)
     auto_include_from_source(hpps)
 endfunction()
 
+
+
+
 function(auto_group_sub_cpp_dir dir_path)
     message("find all sub dirs from ${dir_path}")
     FILE(GLOB_RECURSE hpps ${dir_path}/*.h ${dir_path}/*.hpp ${dir_path}/*.cpp)
     auto_group_source(hpps)
 endfunction()
+
+
+
+function(auto_link_from_file src_file_list)
+    foreach(file_name ${${src_file_list}})
+        string(REGEX REPLACE "[^/\\]+$" " " dir_path ${file_name} )
+        string(REGEX MATCH "[^/\\]+$" lib_name ${file_name} )
+        list(APPEND dir_paths ${dir_path})
+        list(APPEND lib_names ${lib_name})
+    endforeach()
+
+    if(dir_paths)
+        list(REMOVE_DUPLICATES dir_paths)
+    endif()
+
+    if(lib_names)
+        list(REMOVE_DUPLICATES lib_names)
+    endif()
+
+    foreach(dir_path ${dir_paths})
+        message("auto include: " ${dir_path} )
+        link_directories(${dir_path})
+    endforeach()
+
+    foreach(lib_name ${lib_names})
+        message("auto include: " ${lib_name} )
+        add_library(${lib_name})
+    endforeach()
+
+endfunction()
+
+
+
+
+function(auto_link_sub_lib_dir dir_path suffix)
+    message("find all sub dirs from ${dir_path}")
+    if(WIN32)
+        FILE(GLOB_RECURSE libs ${dir_path}/*${suffix}.so ${dir_path}/*${suffix}.a)
+    else()
+        FILE(GLOB_RECURSE libs ${dir_path}/*${suffix}.lib ${dir_path}/*${suffix}.dll)
+    endif()
+    auto_link_from_file(libs)
+endfunction()
+
+
