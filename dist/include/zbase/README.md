@@ -46,6 +46,15 @@ the dist branch auto merge  from ```[master]/dist``` to ```[dist]/```
 
 
 
+# mark action token use
+1. generay key 
+   * [github] Settings -> Developer settings   
+   * copy key
+2. secrys env [var]   
+   * Repo -> Settings -> Secrets -> Action   
+   * write var and content(key)   
+3. use secrys var in actions  
+   * ${{secrets.VAR_NAME}}   
 
  
 
