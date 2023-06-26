@@ -60,7 +60,7 @@ using f64 = double;
 
 //marks(1):  gcc tr2 bases can collect all base class type. used dynamic_cast get the right offset and vtable can suport multi-inheritance.  more cost;   
 
-template<class InstType> //don't don't don't use base class 
+template<class InstType>  
 class zshm_ptr
 {
 public:
