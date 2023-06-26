@@ -82,6 +82,10 @@ add_custom_target(${PROJECT_NAME} SOURCES  ${src_files} )
 
 
 
+# todo: auto include & link  vender 
+auto_link_sub_lib_dir(${CMAKE_SOURCE_DIR}/vender "")
+auto_include_sub_hpp_dir(${CMAKE_SOURCE_DIR}/vender)
+auto_group_sub_cpp_dir(${CMAKE_SOURCE_DIR}/vender)
 
 
 # tests  
@@ -116,6 +120,5 @@ foreach(sub_dir_name ${sub_dirs})
 
     add_dependencies(${sub_dir_name} ${PROJECT_NAME})
 endforeach()
-
 
 
