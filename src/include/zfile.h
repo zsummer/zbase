@@ -108,6 +108,7 @@ public:
     inline std::string read_line();
     inline std::string read_content();
 
+    //utils
     static inline bool is_dir(const std::string& path);
     static inline bool is_file(const std::string& path);
     static inline bool create_dir(const std::string& path);

@@ -845,9 +845,7 @@ int main(int argc, char *argv[])
 
     LogInfo() << "all test finish .";
 
-#ifdef WIN32
-    std::this_thread::sleep_for(std::chrono::milliseconds(10000));
-#endif // WIN32
+
 
     return 0;
 }

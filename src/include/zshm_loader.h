@@ -118,6 +118,9 @@ using f64 = double;
 
 #ifdef WIN32
 
+#ifdef WIN32_FILE_LESS_MAPPING
+
+
 class zshm_loader_win32
 {
 public:
@@ -281,7 +284,184 @@ public:
 		return 0;
 	}
 };
+#else
 
+class zshm_loader_win32
+{
+public:
+	zshm_loader_win32()
+	{
+		reset();
+	}
+
+	void reset()
+	{
+		map_file_ = nullptr;
+		shm_key_ = 0;
+		shm_mem_size_ = 0;
+		shm_mnt_addr_ = nullptr;
+	}
+	s64 shm_mem_size() { return shm_mem_size_; }
+	void* shm_mnt_addr() { return shm_mnt_addr_; }
+private:
+	HANDLE map_file_;
+	u64 shm_key_;
+	s64 shm_mem_size_;
+	void* shm_mnt_addr_;
+public:
+	bool check_exist(u64 shm_key, s64 mem_size)
+	{
+		if (shm_key <= 0)
+		{
+			return false;
+		}
+
+		shm_key_ = shm_key;
+		shm_mem_size_ = mem_size;
+
+
+		std::string str_key = std::to_string(shm_key);
+		
+		HANDLE handle = ::CreateFile(str_key.c_str(), GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+		if (handle == INVALID_HANDLE_VALUE)
+		{
+			return false;
+		}
+
+		if (true)
+		{
+			LARGE_INTEGER file_size;
+			if (!GetFileSizeEx(handle, &file_size))
+			{
+				::CloseHandle(handle);
+				return false;
+			}
+			if ((s64)file_size.QuadPart != shm_mem_size_)
+			{
+				::CloseHandle(handle);
+				return false;
+			}
+		}
+
+		HANDLE map_handle = CreateFileMapping(handle, NULL, PAGE_READWRITE, 0, 0, NULL);
+		if (map_handle == NULL)
+		{
+			::CloseHandle(handle);
+			return false;
+		}
+
+
+		::CloseHandle(handle);
+		map_file_ = map_handle;
+		return true;
+	}
+
+
+	s32 load_from_shm(u64 expect_addr = 0)
+	{
+		if (map_file_ == nullptr)
+		{
+			//no shm  
+			return -1;
+		}
+
+		LPVOID addr = MapViewOfFile(map_file_, FILE_MAP_ALL_ACCESS, 0, 0, shm_mem_size_);
+		if (addr == nullptr)
+		{
+			volatile DWORD dw = GetLastError();
+			(void)dw;
+			return -2;
+		}
+		shm_mnt_addr_ = addr;
+
+		return 0;
+	}
+
+	s32 create_from_shm(u64 expect_addr = 0)
+	{
+		if (shm_key_ == 0)
+		{
+			//no shm key   
+			return -1;
+		}
+		std::string str_key = std::to_string(shm_key_);
+
+		HANDLE handle = ::CreateFile(str_key.c_str(), GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+		if (handle == INVALID_HANDLE_VALUE)
+		{
+			return 1;
+		}
+
+		LARGE_INTEGER file_size;
+		file_size.QuadPart = shm_mem_size_;
+
+		HANDLE map_handle = CreateFileMapping(handle, NULL, PAGE_READWRITE, file_size.HighPart, file_size.LowPart, NULL);
+		if (map_handle == NULL)
+		{
+			::CloseHandle(handle);
+			return 1;
+		}
+		::CloseHandle(handle);
+		map_file_ = map_handle;
+
+		LPVOID addr = MapViewOfFile(map_file_, FILE_MAP_ALL_ACCESS, 0, 0, shm_mem_size_);
+		if (addr == nullptr)
+		{
+			return -2;
+		}
+		shm_mnt_addr_ = addr;
+
+		return 0;
+	}
+
+	bool is_attach()
+	{
+		return shm_mnt_addr_ != nullptr;
+	}
+
+
+	//
+	s32 detach()
+	{
+		if (is_attach())
+		{
+			//所有handle都unmap后会数据落地  
+			//这之前可以FlushViewOfFile   
+			UnmapViewOfFile(shm_mnt_addr_);
+			shm_mnt_addr_ = nullptr;
+		}
+		return 0;
+	}
+
+	s32 destroy()
+	{
+		detach();
+		//win没有destroy mapping接口 而是所有handle被close   
+		if (map_file_ != nullptr)
+		{
+			CloseHandle(map_file_);
+			map_file_ = nullptr;
+			std::string str_key = std::to_string(shm_key_);
+			::remove(str_key.c_str());
+		}
+		return 0;
+	}
+
+
+	static s32 static_destroy(u64 shm_key, void* real_addr, s64 mem_size)
+	{
+		if (real_addr != nullptr)
+		{
+			UnmapViewOfFile(real_addr);
+			real_addr = nullptr;
+		}
+		std::string str_key = std::to_string(shm_key);
+		::remove(str_key.c_str());
+		return 0;
+	}
+};
+
+#endif // WIN32_FILE_LESS_MAPPING
 
 #else
 
