@@ -1,6 +1,6 @@
 version:
-last_sha1(./src)=e6499c07736c42bcd37b0b66ce4b681afb12c706
-last_date(./src)=2023-06-27 21:18:05 +0800
+last_sha1(./src)=36d0719acc00b4db4658f384b65b6d6167fa1af9
+last_date(./src)=2023-06-28 22:25:55 +0800
 
 git log -1 --stat ./src:
-commit e6499c07736c42bcd37b0b66ce4b681afb12c706 Author: skylerzhang <skylerzhang@tencent.com> Date: Tue Jun 27 21:17:49 2023 +0800 shm loader in win32 used named file mapping src/include/zfile.h | 1 + src/include/zfile_mapping.h | 76 ++++++++++++++++--- src/include/zshm_loader.h | 180 ++++++++++++++++++++++++++++++++++++++++++++ 3 files changed, 246 insertions(+), 11 deletions(-)
+commit 36d0719acc00b4db4658f384b65b6d6167fa1af9 Author: skylerzhang <skylerzhang@tencent.com> Date: Wed Jun 28 22:25:55 2023 +0800 new memory pool src/include/zmem_pool.h | 196 +++++++++++++++++++++++++++++++----------------- 1 file changed, 127 insertions(+), 69 deletions(-)
