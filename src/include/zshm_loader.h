@@ -47,6 +47,8 @@
 #include <atomic>
 #include <cstddef>
 
+
+
 #ifdef WIN32
 
 #ifndef KEEP_INPUT_QUICK_EDIT
@@ -112,305 +114,205 @@ using f64 = double;
 #define ZBASE_ALIAS
 #endif
 
+namespace zshm_errno
+{
+	enum zshm_errno_enum :s32
+	{
+		kSuccess = 0,
+		kNoInit,
+		kParamError,
+		kNoShmMapping,
+		kInvalidShmMapping,
+		kCreateShmMappingFailed,
+		kAttachShmMappingFailed,
+		kCreateFileFailed,
+		kCreateFileMappingFailed,
+		kAttachFileMappingFailed,
+		kShmVersionMismatch,
 
+		kMaxError,
+	};
 
+#define zshm_errno_to_string(code) case code: return #code; 
 
+	static const char* str(s32 error_code)
+	{
+		switch (error_code)
+		{
+			zshm_errno_to_string(kSuccess);
+			zshm_errno_to_string(kNoInit);
+			zshm_errno_to_string(kParamError);
+			zshm_errno_to_string(kNoShmMapping);
+			zshm_errno_to_string(kInvalidShmMapping);
+			zshm_errno_to_string(kCreateShmMappingFailed);
+			zshm_errno_to_string(kAttachShmMappingFailed);
+			zshm_errno_to_string(kCreateFileFailed);
+			zshm_errno_to_string(kCreateFileMappingFailed);
+			zshm_errno_to_string(kAttachFileMappingFailed);
+			zshm_errno_to_string(kShmVersionMismatch);
+		}
 
-#ifdef WIN32
+		return "unknown error";
+	}
+};
 
-#ifdef WIN32_FILE_LESS_MAPPING
 
 
 class zshm_loader_win32
 {
 public:
+#ifdef WIN32
+	using WIN32_HANDLE = HANDLE;
+#else
+	using WIN32_HANDLE = void*;
+#endif
+
 	zshm_loader_win32()
 	{
-		reset();
+		init(0, 0);
 	}
-
-	void reset()
+	void init(u64 shm_key, s64 mem_size)
 	{
-		map_file_ = nullptr;
-		shm_key_ = 0;
-		shm_mem_size_ = 0;
+		shm_key_ = shm_key;
+		shm_mem_size_ = mem_size;
 		shm_mnt_addr_ = nullptr;
 	}
+
 	s64 shm_mem_size() { return shm_mem_size_; }
 	void* shm_mnt_addr() { return shm_mnt_addr_; }
 private:
-	HANDLE map_file_;
 	u64 shm_key_;
 	s64 shm_mem_size_;
 	void* shm_mnt_addr_;
 public:
-	bool check_exist(u64 shm_key, s64 mem_size)
-	{
-		if (shm_key <= 0)
-		{
-			return false;
-		}
-
-		shm_key_ = shm_key;
-		shm_mem_size_ = mem_size;
-
-
-		std::string str_key = std::to_string(shm_key);
-		HANDLE handle = OpenFileMapping(PAGE_READWRITE, FALSE, str_key.c_str());
-
-		if (handle == nullptr)
-		{
-			return false;
-		}
-
-		map_file_ = handle;
-		return true;
-	}
-
-
-	s32 load_from_shm(u64 expect_addr = 0)
-	{
-		if (map_file_ == nullptr)
-		{
-			//no shm  
-			return -1;
-		}
-
-
-		std::string str_key = std::to_string(shm_key_);
-		HANDLE handle = CreateFileMapping(INVALID_HANDLE_VALUE, NULL, PAGE_READWRITE, shm_mem_size_ >> 32, shm_mem_size_ & (MAXUINT32), str_key.c_str());
-		if (handle == nullptr)
-		{
-			return -2;
-		}
-		CloseHandle(map_file_);
-		map_file_ = handle;
-
-
-		LPVOID addr = MapViewOfFile(handle, FILE_MAP_ALL_ACCESS, 0, 0, shm_mem_size_);
-		if (addr == nullptr)
-		{
-			volatile DWORD dw = GetLastError();
-			(void)dw;
-			return -2;
-		}
-		shm_mnt_addr_ = addr;
-
-		// 资源安全: view和handle双引用  
-		// 共享策略: 至少还有一个进程的handle的存活 && 单个进程不能多个view  
-		//CloseHandle(map_file_);
-		//map_file_ = nullptr;
-		return 0;
-	}
-
-	s32 create_from_shm(u64 expect_addr = 0)
+	s32 check()
 	{
 		if (shm_key_ == 0)
 		{
-			//no shm key   
-			return -1;
+			return zshm_errno::kNoInit;
 		}
+
 		std::string str_key = std::to_string(shm_key_);
-		//可读写共享  
-		//创建且不允许已经存在  
-		HANDLE handle = CreateFileMapping(INVALID_HANDLE_VALUE, NULL, PAGE_READWRITE, shm_mem_size_ >> 32, shm_mem_size_ & (MAXUINT32), str_key.c_str());
-		if (handle == nullptr)
-		{
-			return -2;
-		}
-		map_file_ = handle;
 
-		LPVOID addr = MapViewOfFile(map_file_, FILE_MAP_ALL_ACCESS, 0, 0, shm_mem_size_);
-		if (addr == nullptr)
-		{
-			return -2;
-		}
-		shm_mnt_addr_ = addr;
-		//*(u64*)shm_mnt_addr_ = 1;
-
-		// 资源安全: view和handle双引用  
-		// 共享策略: 至少还有一个进程的handle的存活 && 单个进程不能多个view  
-		//CloseHandle(map_file_);
-		//map_file_ = nullptr;
-		return 0;
-	}
-
-	bool is_attach()
-	{
-		return shm_mnt_addr_ != nullptr;
-	}
-
-
-	//
-	s32 detach()
-	{
-		if (is_attach())
-		{
-			//所有handle都unmap后会数据落地  
-			//这之前可以FlushViewOfFile   
-			UnmapViewOfFile(shm_mnt_addr_);
-			shm_mnt_addr_ = nullptr;
-		}
-		return 0;
-	}
-
-	s32 destroy()
-	{
-		detach();
-		//win没有destroy mapping接口 而是所有handle被close   
-		if (map_file_ != nullptr)
-		{
-			CloseHandle(map_file_);
-			map_file_ = nullptr;
-		}
-		return 0;
-	}
-
-	
-	static s32 static_destroy(u64 shm_key, void* real_addr, s64 mem_size)
-	{
-		std::string str_key = std::to_string(shm_key);
-		HANDLE handle = OpenFileMapping(PAGE_READWRITE, FALSE, str_key.c_str());
-		if (handle == nullptr)
-		{
-			return -1;
-		}
-		if (real_addr != nullptr)
-		{
-			UnmapViewOfFile(real_addr);
-			real_addr = nullptr;
-		}
-		CloseHandle(handle);
-		return 0;
-	}
-};
-#else
-
-class zshm_loader_win32
-{
-public:
-	zshm_loader_win32()
-	{
-		reset();
-	}
-
-	void reset()
-	{
-		map_file_ = nullptr;
-		shm_key_ = 0;
-		shm_mem_size_ = 0;
-		shm_mnt_addr_ = nullptr;
-	}
-	s64 shm_mem_size() { return shm_mem_size_; }
-	void* shm_mnt_addr() { return shm_mnt_addr_; }
-private:
-	HANDLE map_file_;
-	u64 shm_key_;
-	s64 shm_mem_size_;
-	void* shm_mnt_addr_;
-public:
-	bool check_exist(u64 shm_key, s64 mem_size)
-	{
-		if (shm_key <= 0)
-		{
-			return false;
-		}
-
-		shm_key_ = shm_key;
-		shm_mem_size_ = mem_size;
-
-
-		std::string str_key = std::to_string(shm_key);
-		
+#ifdef WIN32
 		HANDLE handle = ::CreateFile(str_key.c_str(), GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
 		if (handle == INVALID_HANDLE_VALUE)
 		{
-			return false;
+			return zshm_errno::kNoShmMapping;
 		}
 
-		if (true)
-		{
-			LARGE_INTEGER file_size;
-			if (!GetFileSizeEx(handle, &file_size))
-			{
-				::CloseHandle(handle);
-				return false;
-			}
-			if ((s64)file_size.QuadPart != shm_mem_size_)
-			{
-				::CloseHandle(handle);
-				return false;
-			}
-		}
 
-		HANDLE map_handle = CreateFileMapping(handle, NULL, PAGE_READWRITE, 0, 0, NULL);
-		if (map_handle == NULL)
+		LARGE_INTEGER file_size;
+		if (!GetFileSizeEx(handle, &file_size))
 		{
 			::CloseHandle(handle);
-			return false;
+			return zshm_errno::kInvalidShmMapping;
+		}
+
+		if ((s64)file_size.QuadPart != shm_mem_size_)
+		{
+			::CloseHandle(handle);
+			return zshm_errno::kInvalidShmMapping;
 		}
 
 
 		::CloseHandle(handle);
-		map_file_ = map_handle;
-		return true;
+#endif
+		return zshm_errno::kSuccess;
 	}
 
 
-	s32 load_from_shm(u64 expect_addr = 0)
+
+	s32 attach(u64 expect_addr = 0)
 	{
-		if (map_file_ == nullptr)
+		if (shm_key_ == 0)
 		{
-			//no shm  
-			return -1;
+			return zshm_errno::kNoInit;
 		}
 
-		LPVOID addr = MapViewOfFile(map_file_, FILE_MAP_ALL_ACCESS, 0, 0, shm_mem_size_);
+		std::string str_key = std::to_string(shm_key_);
+#ifdef WIN32
+		HANDLE handle = ::CreateFile(str_key.c_str(), GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+		if (handle == INVALID_HANDLE_VALUE)
+		{
+			return zshm_errno::kNoShmMapping;
+		}
+
+
+		LARGE_INTEGER file_size;
+		if (!GetFileSizeEx(handle, &file_size))
+		{
+			::CloseHandle(handle);
+			return zshm_errno::kInvalidShmMapping;
+		}
+
+		if ((s64)file_size.QuadPart != shm_mem_size_)
+		{
+			::CloseHandle(handle);
+			return zshm_errno::kInvalidShmMapping;
+		}
+
+		HANDLE mapping_handle = CreateFileMapping(handle, NULL, PAGE_READWRITE, 0, 0, NULL);
+		if (mapping_handle == NULL)
+		{
+			::CloseHandle(handle);
+			return zshm_errno::kAttachFileMappingFailed;
+		}
+
+		::CloseHandle(handle);
+
+		LPVOID addr = MapViewOfFileEx(mapping_handle, FILE_MAP_ALL_ACCESS, 0, 0, shm_mem_size_, (void*)expect_addr);
 		if (addr == nullptr)
 		{
 			volatile DWORD dw = GetLastError();
 			(void)dw;
-			return -2;
+			return zshm_errno::kAttachShmMappingFailed;
 		}
-		shm_mnt_addr_ = addr;
 
+		CloseHandle(mapping_handle);
+		shm_mnt_addr_ = addr;
+#endif
 		return 0;
 	}
 
-	s32 create_from_shm(u64 expect_addr = 0)
+
+	s32 create(u64 expect_addr = 0)
 	{
 		if (shm_key_ == 0)
 		{
-			//no shm key   
-			return -1;
+			return zshm_errno::kNoInit;
 		}
-		std::string str_key = std::to_string(shm_key_);
 
+		std::string str_key = std::to_string(shm_key_);
+#ifdef WIN32
 		HANDLE handle = ::CreateFile(str_key.c_str(), GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
 		if (handle == INVALID_HANDLE_VALUE)
 		{
-			return 1;
+			return zshm_errno::kCreateFileFailed;
 		}
 
 		LARGE_INTEGER file_size;
 		file_size.QuadPart = shm_mem_size_;
 
-		HANDLE map_handle = CreateFileMapping(handle, NULL, PAGE_READWRITE, file_size.HighPart, file_size.LowPart, NULL);
-		if (map_handle == NULL)
+		HANDLE mapping_handle = CreateFileMapping(handle, NULL, PAGE_READWRITE, file_size.HighPart, file_size.LowPart, NULL);
+		if (mapping_handle == NULL)
 		{
 			::CloseHandle(handle);
-			return 1;
+			return zshm_errno::kCreateFileMappingFailed;
 		}
 		::CloseHandle(handle);
-		map_file_ = map_handle;
 
-		LPVOID addr = MapViewOfFile(map_file_, FILE_MAP_ALL_ACCESS, 0, 0, shm_mem_size_);
+
+		LPVOID addr = MapViewOfFileEx(mapping_handle, FILE_MAP_ALL_ACCESS, 0, 0, shm_mem_size_, (void*)expect_addr);
 		if (addr == nullptr)
 		{
-			return -2;
+			volatile DWORD dw = GetLastError();
+			(void)dw;
+			return zshm_errno::kAttachShmMappingFailed;
 		}
+		CloseHandle(mapping_handle);
 		shm_mnt_addr_ = addr;
-
+#endif
 		return 0;
 	}
 
@@ -423,60 +325,56 @@ public:
 	//
 	s32 detach()
 	{
+#ifdef WIN32
 		if (is_attach())
 		{
-			//所有handle都unmap后会数据落地  
-			//这之前可以FlushViewOfFile   
+			//auto flush to file when all views unmaped   
+			//FlushViewOfFile   
 			UnmapViewOfFile(shm_mnt_addr_);
 			shm_mnt_addr_ = nullptr;
 		}
+#endif
 		return 0;
 	}
 
 	s32 destroy()
 	{
 		detach();
-		//win没有destroy mapping接口 而是所有handle被close   
-		if (map_file_ != nullptr)
-		{
-			CloseHandle(map_file_);
-			map_file_ = nullptr;
-			std::string str_key = std::to_string(shm_key_);
-			::remove(str_key.c_str());
-		}
+		std::string str_key = std::to_string(shm_key_);
+		::remove(str_key.c_str());
 		return 0;
 	}
 
 
-	static s32 static_destroy(u64 shm_key, void* real_addr, s64 mem_size)
+	static s32 external_destroy(u64 shm_key, void* real_addr, s64 mem_size)
 	{
+#ifdef WIN32
 		if (real_addr != nullptr)
 		{
 			UnmapViewOfFile(real_addr);
 			real_addr = nullptr;
 		}
+#endif
 		std::string str_key = std::to_string(shm_key);
 		::remove(str_key.c_str());
 		return 0;
 	}
 };
 
-#endif // WIN32_FILE_LESS_MAPPING
 
-#else
 
 class zshm_loader_unix
 {
 public:
 	zshm_loader_unix()
 	{
-		reset();
+		init(0, 0);
 	}
-	void reset()
+	void init(u64 shm_key, s64 mem_size)
 	{
-		shm_key_ = 0;
+		shm_key_ = shm_key;
 		shm_index_ = -1;
-		shm_mem_size_ = 0;
+		shm_mem_size_ = mem_size;
 		shm_mnt_addr_ = nullptr;
 	}
 	s64 shm_mem_size() { return shm_mem_size_; }
@@ -487,73 +385,82 @@ private:
 	s64 shm_mem_size_;
 	void* shm_mnt_addr_;
 public:
-	bool check_exist(u64 shm_key, s64 mem_size)
-	{
-		if (shm_key <= 0)
-		{
-			return false;
-		}
-		shm_key_ = shm_key;
-		shm_mem_size_ = mem_size;
-		int idx = shmget(shm_key, 0, 0);
-		if (idx < 0 && errno != ENOENT)
-		{
-			return false;
-		}
-		if (idx < 0)
-		{
-			return false;
-		}
-		
-		shm_index_ = idx;
-		
-		return true;
-	}
-
-
-	s32 load_from_shm(u64 expect_addr = 0)
-	{
-		if (shm_index_ == -1)
-		{
-			//no shm  
-			return -1;
-		}
-		void* addr = shmat(shm_index_, (void*)expect_addr, 0);
-		if (addr == nullptr || addr == (void*)-1)
-		{
-			//attach error. 
-			return -2;
-		}
-		shm_mnt_addr_ = addr;
-		return 0;
-	}
-
-	s32 create_from_shm(u64 expect_addr = 0)
+	s32 check()
 	{
 		if (shm_key_ == 0)
 		{
-			//no shm key   
-			return -1;
+			return zshm_errno::kNoInit;
 		}
+#ifndef WIN32
+		int idx = shmget(shm_key_, 0, 0);
+		if (idx < 0 && errno == ENOENT)
+		{
+			return zshm_errno::kNoShmMapping;
+		}
+		if (idx < 0)
+		{
+			return zshm_errno::kInvalidShmMapping;
+		}
+#endif
+		return zshm_errno::kSuccess;
+	}
+
+
+	s32 attach(u64 expect_addr = 0)
+	{
+		if (shm_key_ == 0)
+		{
+			return zshm_errno::kNoInit;
+		}
+#ifndef WIN32
+		int idx = shmget(shm_key_, 0, 0);
+		if (idx < 0 && errno == ENOENT)
+		{
+			return zshm_errno::kNoShmMapping;
+		}
+		if (idx < 0)
+		{
+			return zshm_errno::kInvalidShmMapping;
+		}
+
+		void* addr = shmat(idx, (void*)expect_addr, 0);
+		if (addr == nullptr || addr == (void*)-1)
+		{
+			return zshm_errno::kAttachShmMappingFailed;
+		}
+		shm_index_ = idx;
+		shm_mnt_addr_ = addr;
+#endif
+		return 0;
+	}
+
+	s32 create(u64 expect_addr = 0)
+	{
+		if (shm_key_ == 0)
+		{
+			return zshm_errno::kNoInit;
+		}
+#ifndef WIN32
 		//可读写共享  
 		//创建且不允许已经存在  
 		s32 idx = shmget(shm_key_, shm_mem_size_, IPC_CREAT | IPC_EXCL | 0600);
 		if (idx < 0)
 		{
-			return -2;
+			return zshm_errno::kCreateShmMappingFailed;
 		}
-		shm_index_ = idx;
+		
 
-		void* addr = shmat(shm_index_, (void*)expect_addr, 0);
+		void* addr = shmat(idx, (void*)expect_addr, 0);
 		if (addr == nullptr || addr == (void*)-1)
 		{
-			//attach error. 
-			return -3;
+			return zshm_errno::kAttachShmMappingFailed;
 		}
-
+		shm_index_ = idx;
 		shm_mnt_addr_ = addr;
+#endif
 		return 0;
 	}
+
 	bool is_attach()
 	{
 		return shm_mnt_addr_ != nullptr;
@@ -561,48 +468,50 @@ public:
 
 	s32 detach()
 	{
+#ifndef WIN32
 		if (is_attach())
 		{
 			shmdt(shm_mnt_addr_);
 			shm_mnt_addr_ = nullptr;
 		}
-
+#endif
 		return 0;
 	}
 
 	s32 destroy()
 	{
 		detach();
-
+#ifndef WIN32
 		if (shm_index_ >= 0)
 		{
 			shmctl(shm_index_, IPC_RMID, nullptr);
 			shm_index_ = -1;
 		}
+#endif
 		return 0;
 	}
 
-	static s32 static_destroy(u64 shm_key, void* real_addr, s64 mem_size)
+	static s32 external_destroy(u64 shm_key, void* real_addr, s64 mem_size)
 	{
+#ifndef WIN32
 		int idx = shmget(shm_key, 0, 0);
-		if (idx < 0 && errno != ENOENT)
+		if (idx < 0 && errno == ENOENT)
 		{
-			return -1;
+			return zshm_errno::kNoShmMapping;
 		}
 		if (idx < 0)
 		{
-			return -2;
+			return zshm_errno::kInvalidShmMapping;
 		}
 		if (real_addr != nullptr)
 		{
 			shmdt(real_addr);
 		}
 		shmctl(idx, IPC_RMID, nullptr);
+#endif
 		return 0;
 	}
 };
-
-#endif // WIN32
 
 
 
@@ -612,32 +521,32 @@ class zshm_loader_heap
 public:
 	zshm_loader_heap()
 	{
-		reset();
+		init(0, 0);
 	}
-	void reset()
+	void init(u64 shm_key, s64 mem_size)
 	{
+		shm_key_ = shm_key;
 		shm_mnt_addr_ = nullptr;
-		shm_mem_size_ = 0;
+		shm_mem_size_ = mem_size;
 	}
 	s64 shm_mem_size() { return shm_mem_size_; }
 	void* shm_mnt_addr() { return shm_mnt_addr_; }
 private:
+	u64 shm_key_;
 	void* shm_mnt_addr_;
 	s64 shm_mem_size_;
 public:
-	bool check_exist(u64 shm_key, s64 mem_size)
+	s32 check()
 	{
-		shm_mem_size_ = mem_size;
-		return false;
+		return zshm_errno::kNoShmMapping;
 	}
 
-
-	s32 load_from_shm(u64 expect_addr = 0)
+	s32 attach(u64 expect_addr = 0)
 	{
-		return -1;
+		return zshm_errno::kNoShmMapping;
 	}
 
-	s32 create_from_shm(u64 expect_addr = 0)
+	s32 create(u64 expect_addr = 0)
 	{
 #ifdef WIN32
 		//提交内存不代表实际使用 但windows下系统提交内存总大小不能超过物理内存+交换文件 否则会内存不足.  
@@ -647,7 +556,7 @@ public:
 #endif // WIN32
 		if (addr == nullptr)
 		{
-			return -1;
+			return zshm_errno::kCreateShmMappingFailed;
 		}
 		shm_mnt_addr_ = addr;
 		return 0;
@@ -668,8 +577,6 @@ public:
 #else
 			munmap(shm_mnt_addr_, shm_mem_size_);
 #endif // WIN32
-
-
 			shm_mnt_addr_ = nullptr;
 		}
 
@@ -683,7 +590,7 @@ public:
 	}
 
 
-	static s32 static_destroy(u64 shm_key, void* real_addr, s64 mem_size)
+	static s32 external_destroy(u64 shm_key, void* real_addr, s64 mem_size)
 	{
 		if (real_addr == nullptr)
 		{
@@ -704,20 +611,24 @@ public:
 class zshm_loader
 {
 #ifdef WIN32
-	zshm_loader_win32 loader_;
+	using impl_loader = zshm_loader_win32;
 #else
-	zshm_loader_unix loader_;
+	using impl_loader = zshm_loader_unix;
 #endif // WIN32
+	impl_loader loader_;
 	zshm_loader_heap heap_loader_;
 	bool used_heap_;
 public:
-	zshm_loader()
+	zshm_loader(bool used_heap = false, u64 shm_key = 0, s64 mem_size = 0)
 	{
-		used_heap_ = false;
+		init(used_heap, shm_key, mem_size);
 	}
-	zshm_loader(bool used_heap)
+
+	void init(bool used_heap, u64 shm_key, s64 mem_size)
 	{
 		used_heap_ = used_heap;
+		loader_.init(shm_key, mem_size);
+		heap_loader_.init(shm_key, mem_size);
 	}
 
 	~zshm_loader()
@@ -727,10 +638,10 @@ public:
 	s64 shm_mem_size() { return used_heap_ ? heap_loader_.shm_mem_size() : loader_.shm_mem_size(); }
 	void* shm_mnt_addr() { return used_heap_ ? heap_loader_.shm_mnt_addr() : loader_.shm_mnt_addr(); }
 
-	bool check_exist(u64 shm_key, s64 mem_size){return used_heap_ ? heap_loader_.check_exist(shm_key, mem_size): loader_.check_exist(shm_key, mem_size);}
+	s32 check(){return used_heap_ ? heap_loader_.check(): loader_.check();}
 
-	s32 load_from_shm(u64 expect_addr = 0){return used_heap_ ? heap_loader_.load_from_shm(expect_addr): loader_.load_from_shm(expect_addr);}
-	s32 create_from_shm(u64 expect_addr = 0){return used_heap_ ? heap_loader_.create_from_shm(expect_addr): loader_.create_from_shm(expect_addr);}
+	s32 attach(u64 expect_addr = 0){return used_heap_ ? heap_loader_.attach(expect_addr): loader_.attach(expect_addr);}
+	s32 create(u64 expect_addr = 0){return used_heap_ ? heap_loader_.create(expect_addr): loader_.create(expect_addr);}
 
 	bool is_attach(){return used_heap_ ? heap_loader_.is_attach(): loader_.is_attach();}
 
@@ -738,28 +649,18 @@ public:
 
 	s32 destroy(){return used_heap_ ? heap_loader_.destroy(): loader_.destroy();}
 
-	void reset(){ used_heap_ ? heap_loader_.reset(): loader_.reset();}
-
-	static s32 static_destroy(u64 shm_key, s32 use_heap, void* real_addr, s64 mem_size) 
+	static s32 external_destroy(u64 shm_key, s32 use_heap, void* real_addr, s64 mem_size) 
 	{ 
 		if (use_heap)
 		{
-			return zshm_loader_heap::static_destroy(shm_key, real_addr, mem_size);
+			return zshm_loader_heap::external_destroy(shm_key, real_addr, mem_size);
 		}
-#ifdef WIN32
-		return zshm_loader_win32::static_destroy(shm_key, real_addr, mem_size);
-#else
-		return zshm_loader_unix::static_destroy(shm_key, real_addr, mem_size);
-#endif // WIN32
+		return impl_loader::external_destroy(shm_key, real_addr, mem_size);
 	}
 };
 
 
-
-
 #endif
-
-
 
 /*
 

@@ -78,13 +78,13 @@ public:
 	static s32 build_frame(const zshm_space_entry& params, zshm_space_entry*& entry)
 	{
 		entry = nullptr;
-		zshm_loader loader(params.use_heap_);
-		bool is_exist = loader.check_exist(params.shm_key_, params.whole_space_.size_);
-		if (is_exist)
+		zshm_loader loader(params.use_heap_, params.shm_key_, params.whole_space_.size_);
+		s32 ret = loader.check();
+		if (ret != zshm_errno::kNoShmMapping)
 		{
-			return -1;
+			return ret;
 		}
-		s32 ret = loader.create_from_shm(params.space_addr_);
+		ret = loader.create(params.space_addr_);
 		if (ret != 0)
 		{
 			return ret;
@@ -99,37 +99,31 @@ public:
 	static s32 resume_frame(const zshm_space_entry& params, zshm_space_entry*& entry)
 	{
 		entry = nullptr;
-		zshm_loader loader(params.use_heap_);
-		bool is_exist = loader.check_exist(params.shm_key_, params.whole_space_.size_);
-		if (!is_exist)
-		{
-			return -1;
-		}
-		s32 ret = loader.load_from_shm(params.space_addr_);
+		zshm_loader loader(params.use_heap_, params.shm_key_, params.whole_space_.size_);
+		s32 ret = loader.check();
 		if (ret != 0)
 		{
-			return -2;
+			return ret;
 		}
+		ret = loader.attach(params.space_addr_);
+		if (ret != 0)
+		{
+			return ret;
+		}
+
 		entry = static_cast<zshm_space_entry*>(loader.shm_mnt_addr());
 		entry->space_addr_ = (u64)(loader.shm_mnt_addr());
-		if (false)
-		{
-			//resume失败要手动清理shm  防止误删shm数据集  
-			//loader.destroy();
-			entry = nullptr;
-			return -3;
-		}
 
 		//check version  
 		if (memcmp(&entry->whole_space_, &params.whole_space_, sizeof(params.whole_space_)) != 0)
 		{
 			entry = nullptr;
-			return -4;
+			return zshm_errno::kShmVersionMismatch;
 		}
 		if (memcmp(&entry->spaces_, &params.spaces_, sizeof(params.spaces_)) != 0)
 		{
 			entry = nullptr;
-			return -5;
+			return zshm_errno::kShmVersionMismatch;
 		}
 
 		return 0;
@@ -137,7 +131,7 @@ public:
 
 	static s32 destroy_frame(const zshm_space_entry& params)
 	{
-		return zshm_loader::static_destroy(params.shm_key_, params.use_heap_, (void*)params.space_addr_, params.whole_space_.size_);
+		return zshm_loader::external_destroy(params.shm_key_, params.use_heap_, (void*)params.space_addr_, params.whole_space_.size_);
 	}
 
 private:
