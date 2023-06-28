@@ -24,7 +24,6 @@
 #include "zforeach.h"
 #include "zlist.h"
 #include "zarray.h"
-#include "zpool.h"
 #include "test_common.h"
 #include "zbitset.h"
 

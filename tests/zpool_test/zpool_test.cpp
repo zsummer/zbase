@@ -24,10 +24,13 @@
 #include "zforeach.h"
 #include "zlist.h"
 #include "zarray.h"
-#include "zpool.h"
+#include "zmem_pool.h"
 #include "test_common.h"
 
 
+
+constexpr static s32 NODE_COUNT = 50;
+constexpr static s32 SEQ_COUNT = 5;
 
 struct Node
 {
@@ -39,7 +42,7 @@ struct Node
     {
         node_seq_id+= n;
     }
-    u64 seq[5] = { 0 };
+    u64 seq[SEQ_COUNT] = { 0 };
     static u64 node_seq_id;
 };
 u64 Node::node_seq_id = 0;
@@ -64,27 +67,27 @@ int main(int argc, char *argv[])
     if (true)
     {
         Node::node_seq_id = 0;
-        zpool_obj_static<Node, 100> ds;
-        zarray<Node*, 100> store;
+        zmem_obj_pool<Node, NODE_COUNT> ds;
+        zarray<Node*, NODE_COUNT> store;
         for (int loop = 0; loop < 2; loop++)
         {
-            for (int i = 0; i < 100; i++)
+            for (int i = 0; i < NODE_COUNT; i++)
             {
-                ASSERT_TEST(Node::node_seq_id == (u64)loop*100 + i, "");
+                ASSERT_TEST(Node::node_seq_id == (u64)loop*NODE_COUNT + i, "");
                 Node* p = ds.create();
                 ASSERT_TEST(p != NULL, "");
-                for (u32 j = 0; j < 5; j++)
+                for (u32 j = 0; j < SEQ_COUNT; j++)
                 {
-                    p->seq[j] = (u64)loop * 100 + i;
+                    p->seq[j] = (u64)loop * NODE_COUNT + i;
                 }
-                ASSERT_TEST(Node::node_seq_id == (u64)loop * 100 + i + 1, "");
+                ASSERT_TEST(Node::node_seq_id == (u64)loop * NODE_COUNT + i + 1, "");
                 store.push_back(p);
             }
-            for (int i = 0; i < 100; i++)
+            for (int i = 0; i < NODE_COUNT; i++)
             {
-                for (u32 j = 0; j < 5; j++)
+                for (u32 j = 0; j < SEQ_COUNT; j++)
                 {
-                    ASSERT_TEST(store[i]->seq[j] == (u64)loop * 100 + i, "");
+                    ASSERT_TEST(store[i]->seq[j] == (u64)loop * NODE_COUNT + i, "");
                 }
             }
             ASSERT_TEST(ds.full(), "");
@@ -102,27 +105,27 @@ int main(int argc, char *argv[])
     if (true)
     {
         Node::node_seq_id = 0;
-        zpool_obj_static<Node, 100> ds;
-        zarray<Node*, 100> store;
+        zmem_obj_pool<Node, NODE_COUNT> ds;
+        zarray<Node*, NODE_COUNT> store;
         for (int loop = 0; loop < 2; loop++)
         {
-            for (int i = 0; i < 100; i++)
+            for (int i = 0; i < NODE_COUNT; i++)
             {
-                ASSERT_TEST(Node::node_seq_id == (u64)loop * 100 * 5 + i * 5, "");
+                ASSERT_TEST(Node::node_seq_id == (u64)loop * NODE_COUNT * SEQ_COUNT + i * SEQ_COUNT, "");
                 Node* p = ds.create(5);
                 ASSERT_TEST(p != NULL, "");
-                for (u32 j = 0; j < 5; j++)
+                for (u32 j = 0; j < SEQ_COUNT; j++)
                 {
-                    p->seq[j] = (u64)loop * 100 * 5 + i * 5;
+                    p->seq[j] = (u64)loop * NODE_COUNT * SEQ_COUNT + i * SEQ_COUNT;
                 }
-                ASSERT_TEST(Node::node_seq_id == (u64)loop * 100*5 + i*5 + 5, "");
+                ASSERT_TEST(Node::node_seq_id == (u64)loop * NODE_COUNT* SEQ_COUNT + i* SEQ_COUNT + SEQ_COUNT, "");
                 store.push_back(p);
             }
-            for (int i = 0; i < 100; i++)
+            for (int i = 0; i < NODE_COUNT; i++)
             {
-                for (u32 j = 0; j < 5; j++)
+                for (u32 j = 0; j < SEQ_COUNT; j++)
                 {
-                    ASSERT_TEST(store[i]->seq[j] == (u64)loop * 100 * 5 + i * 5, "");
+                    ASSERT_TEST(store[i]->seq[j] == (u64)loop * NODE_COUNT * SEQ_COUNT + i * SEQ_COUNT, "");
                 }
             }
             ASSERT_TEST(ds.full(), "");
@@ -138,18 +141,18 @@ int main(int argc, char *argv[])
 
     if (true)
     {
-        zpool_obj_static<int, 100> ds;
-        zarray<int*, 100> store;
+        zmem_obj_pool<int, NODE_COUNT> ds;
+        zarray<int*, NODE_COUNT> store;
         for (int loop = 0; loop < 2; loop++)
         {
-            for (int i = 0; i < 100; i++)
+            for (int i = 0; i < NODE_COUNT; i++)
             {
                 int* p = ds.create();
                 ASSERT_TEST(p != NULL, "");
                 *p = i;
                 store.push_back(p);
             }
-            for (int i = 0; i < 100; i++)
+            for (int i = 0; i < NODE_COUNT; i++)
             {
                 ASSERT_TEST(*store[i] == i, "");
             }
@@ -168,11 +171,11 @@ int main(int argc, char *argv[])
 
     if (true)
     {
-        zpool_obj_static<int, 100> ds;
-        zarray<int*, 100> store;
+        zmem_obj_pool<int, NODE_COUNT> ds;
+        zarray<int*, NODE_COUNT> store;
         for (int loop = 0; loop < 2; loop++)
         {
-            for (int i = 0; i < 100; i++)
+            for (int i = 0; i < NODE_COUNT; i++)
             {
                 int* p = ds.create(0);
                 ASSERT_TEST(p != NULL, "");
@@ -180,7 +183,7 @@ int main(int argc, char *argv[])
                 *p = i;
                 store.push_back(p);
             }
-            for (int i = 0; i < 100; i++)
+            for (int i = 0; i < NODE_COUNT; i++)
             {
                 ASSERT_TEST(*store[i] == i, "");
             }

@@ -1,6 +1,6 @@
 
 /*
-* zpool License
+* zmem_pool License
 * Copyright (C) 2019 YaweiZhang <yawei.zhang@foxmail.com>.
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,8 +18,8 @@
 
 
 
-#ifndef  ZPOOL_H
-#define ZPOOL_H
+#ifndef  ZMEM_POOL_H
+#define ZMEM_POOL_H
 #include <string.h>
 #include <type_traits>
 #include <cstddef>
@@ -31,7 +31,7 @@ using u8 = unsigned char;
 using s16 = short int;
 using u16 = unsigned short int;
 using s32 = int;
-using u32 = unsigned int;
+using s32 = unsigned int;
 using s64 = long long;
 using u64 = unsigned long long;
 using f32 = float;
@@ -46,59 +46,116 @@ using f64 = double;
 
 
 
-class zpool
+class zmem_pool
 {
 public:
-    u32 chunk_size_;
-    u32 chunk_count_;
-    u32 chunk_exploit_offset_;
-    u32 chunk_used_count_;
-    u32 chunk_free_id_;
-    u32 placeholder_;
-    char space_[1];
+    s32 user_size_;
+    s32 chunk_size_;
+    s32 chunk_count_;
+    s32 chunk_exploit_offset_;
+    s32 chunk_used_count_;
+    s32 chunk_free_id_;
+    char* space_addr_;
+    s64  space_size_;
+    static constexpr s32 FENCE_4 = 0xbeafbeaf;
+    static constexpr s64 FENCE_8 = 0xbeafbeafbeafbeaf;
+    static constexpr s32 FENCE_SIZE = 8;
+    static constexpr s32 ALIGN_SIZE = FENCE_SIZE;
+
+    //8×Ö½Ú¶ÔÆë 
+    static constexpr s32 align_size(s32 input_size) { return ((input_size == 0 ? 1 : input_size) + ALIGN_SIZE - 1) / ALIGN_SIZE * ALIGN_SIZE; }
+    constexpr static s64 calculate_space_size(s32 user_size, s32 total_count) { return (FENCE_SIZE + align_size(user_size)) * 1ULL * total_count + FENCE_SIZE; }
 public:
-    //the real size need minus sizeof(block_[1]);  
-    constexpr static u32 align_chunk_size(u32 mem_size, u32 align_size) { return ((mem_size == 0 ? 1 : mem_size) + align_size - 1) / align_size * align_size; }
-    constexpr static u32 calculate_total_size(u32 mem_size, u32 align_size, u32 mem_count) { return align_chunk_size(mem_size, align_size) * mem_count + sizeof(zpool); }
-    inline void init(u32 mem_size, u32 align_size, u32 mem_count)
+    union chunk
     {
-        //clear head. 
-        memset(this, 0, sizeof(zpool));
-        chunk_size_ = align_chunk_size(mem_size, align_size);
-        chunk_count_ = mem_count;
-        chunk_free_id_ = (u32)-1;
+        struct
+        {
+            s32 small_fence_;
+            s32 free_id_;
+        };
+        struct
+        {
+            s64 fence_;
+            char data_;
+        };
+    };
+
+public:
+    inline chunk* chunk_ref(s32 chunk_id) { return  reinterpret_cast<chunk*>(space_addr_ + chunk_size_ * chunk_id); }
+    inline char* user_ref(s32 chunk_id) { return  &chunk_ref(chunk_id)->data_; }
+
+    inline s32   chunk_size() const { return chunk_size_; }
+    inline s32   max_size()const { return chunk_count_; }
+    inline s32   window_size() const { return chunk_exploit_offset_; } //history's largest end id for used.     
+    inline s32   size()const { return chunk_used_count_; }
+    inline s32   empty()const { return chunk_used_count_ == 0; }
+    inline s32   full()const { return chunk_used_count_ == chunk_count_; }
+
+
+    inline s32 init(s32 user_size, s32 total_count, void* space_addr, s64  space_size)
+    {
+        static_assert(sizeof(zmem_pool) % sizeof(s64) == 0, "");
+        static_assert(align_size(0) == align_size(8), "");
+        static_assert(align_size(7) == align_size(8), "");
+
+        s64 min_space_size = calculate_space_size(user_size, total_count);
+        if (space_size < min_space_size)
+        {
+            return -1;
+        }
+        if (space_addr == nullptr)
+        {
+            return -2;
+        }
+        if (total_count <= 0)
+        {
+            return -3;
+        }
+        if ((u64) space_addr  % FENCE_SIZE != 0)
+        {
+            return -4;
+        }
+        user_size_ = user_size;
+        chunk_size_ = FENCE_SIZE + align_size(user_size);
+        chunk_count_ = total_count;
+        chunk_exploit_offset_ = 0;
+        chunk_used_count_ = 0;
+        chunk_free_id_ = chunk_count_;
+        space_addr_ = (char*)space_addr;
+        space_size_ = space_size;
+        chunk* end_chunk = (chunk*)(space_addr_ + chunk_size_ * chunk_exploit_offset_);
+        end_chunk->fence_ = FENCE_8;
+        return 0;
     }
 
-    inline char* first_chunk() { return &space_[0]; }
-    inline const char* first_chunk() const { return &space_[0]; }
-    inline u32   chunk_size() const { return chunk_size_; }
-    inline u32   max_size()const { return chunk_count_; }
-    inline u32   window_size() const { return chunk_exploit_offset_; } //history's largest end id for used.     
-    inline u32   size()const { return chunk_used_count_; }
-    inline u32   empty()const { return chunk_used_count_ == 0; }
-    inline u32   full()const { return chunk_used_count_ == chunk_count_; }
+
 
     inline void* exploit()
     {
-        if (chunk_free_id_ != (u32)-1)
+        if (chunk_free_id_ != chunk_count_)
         {
-            u32* p = (u32*)&space_[chunk_free_id_ * chunk_size_];
-            chunk_free_id_ = *p;
+            chunk* c = chunk_ref(chunk_free_id_);
+            chunk_free_id_ = c->free_id_;
             chunk_used_count_++;
+
+            c->fence_ = FENCE_8;
+            chunk_ref(chunk_free_id_)->small_fence_ = FENCE_4;
 #ifdef ZDEBUG_UNINIT_MEMORY
-            memset(p, 0xfd, chunk_size_);
+            memset(&c->data_, 0xfd, chunk_size_ - FENCE_8);
 #endif // ZDEBUG_UNINIT_MEMORY
-            return (void*)p;
+            return &c->data_;
         }
         if (chunk_exploit_offset_ < chunk_count_)
         {
-            void* p = &space_[chunk_exploit_offset_ * chunk_size_];
-            chunk_exploit_offset_++;
+            chunk* c = chunk_ref(chunk_exploit_offset_ ++);
             chunk_used_count_++;
+
+            c->fence_ = FENCE_8;
+            chunk_ref(chunk_exploit_offset_)->fence_ = FENCE_8;
 #ifdef ZDEBUG_UNINIT_MEMORY
-            memset(p, 0xfd, chunk_size_);
+            memset(&c->data_, 0xfd, chunk_size_ - FENCE_8);
 #endif // ZDEBUG_UNINIT_MEMORY
-            return (void*)p;
+            return &c->data_;
         }
         return NULL;
     }
@@ -108,9 +165,10 @@ public:
 #ifdef ZDEBUG_DEATH_MEMORY
         memset(addr, 0xfd, chunk_size_);
 #endif // ZDEBUG_DEATH_MEMORY
-        u32 id = (u32)((char*)addr - &space_[0]) / chunk_size_;
-        u32* p = (u32*)addr;
-        *p = chunk_free_id_;
+        s32 id = (s32)((char*)addr - space_addr_) / chunk_size_;
+        chunk* c = chunk_ref(id);
+        c->small_fence_ = FENCE_4;
+        c->free_id_ = chunk_free_id_;
         chunk_free_id_ = id;
         chunk_used_count_--;
     }
@@ -118,7 +176,7 @@ public:
     template<class _Ty>
     inline _Ty* create_without_construct()
     {
-        return (_Ty * )exploit();
+        return (_Ty*)exploit();
     }
 
     template<class _Ty >
@@ -151,7 +209,7 @@ public:
     }
 
     template<class _Ty>
-    inline void destroy(const typename std::enable_if <std::is_trivial<_Ty>::value, _Ty>::type * obj)
+    inline void destroy(const typename std::enable_if <std::is_trivial<_Ty>::value, _Ty>::type* obj)
     {
         back(obj);
     }
@@ -165,46 +223,46 @@ public:
 
 
 
-template<u32 MEM_MIN_SIZE, u32 MEM_COUNT, u32 MEM_ALIGN_SIZE = sizeof(u32)>
-class zpool_static
+template<s32 USER_SIZE, s32 TOTAL_COUNT>
+class zmemory_static_pool
 {
 public:
-    inline void init()
+    inline s32 init()
     {
-        ref().init(MEM_MIN_SIZE, MEM_ALIGN_SIZE, MEM_COUNT);
+        return pool_.init(USER_SIZE, TOTAL_COUNT, space_, SPACE_SIZE);
     }
-    inline void* exploit() { return ref().exploit(); }
-    inline void back(void* addr) { return ref().back(addr); }
 
-    inline char* first_chunk() { return ref().first_chunk(); }
-    inline const char* first_chunk() const { return ref().first_chunk(); }
-    inline u32   chunk_size() const { return ref().chunk_size(); }
-    inline u32   max_size()const { return ref().max_size(); }
-    inline u32   window_size() const { return ref().window_size(); } //history's largest end id for used.     
-    inline u32   size()const { return ref().size(); }
-    inline u32   empty()const { return ref().empty(); }
-    inline u32   full()const { return ref().full(); }
+    inline void* exploit() { return pool_.exploit(); }
+    inline void back(void* addr) { return pool_.back(addr); }
+
+
+    inline s32   chunk_size() const { return pool_.chunk_size(); }
+    inline s32   max_size()const { return pool_.max_size(); }
+    inline s32   window_size() const { return pool_.window_size(); } //history's largest end id for used.     
+    inline s32   size()const { return pool_.size(); }
+    inline s32   empty()const { return pool_.empty(); }
+    inline s32   full()const { return pool_.full(); }
 
     template<class _Ty>
-    inline _Ty* create() { return ref().template create<_Ty>(); }
+    inline _Ty* create() { return pool_.template create<_Ty>(); }
     template<class _Ty, class... Args >
-    inline _Ty* create(Args&&... args) { return ref().template create<_Ty, Args ...>(std::forward<Args>(args) ... ); }
+    inline _Ty* create(Args&&... args) { return pool_.template create<_Ty, Args ...>(std::forward<Args>(args) ...); }
 
     template<class _Ty>
-    inline void destroy(const _Ty* obj) { ref().destroy(obj); }
+    inline void destroy(const _Ty* obj) { pool_.destroy(obj); }
 private:
-    inline zpool& ref() { return  *((zpool*)solo_); }
-    inline const zpool& ref() const { return  *((zpool*)solo_); }
-    constexpr static u32 SPACE_SIZE = zpool::calculate_total_size(MEM_MIN_SIZE, MEM_ALIGN_SIZE, MEM_COUNT);
-    char solo_[SPACE_SIZE];
+    constexpr static s64 SPACE_SIZE = zmem_pool::calculate_space_size(USER_SIZE, TOTAL_COUNT);
+    zmem_pool pool_;
+    char space_[SPACE_SIZE];
 };
 
-template<class _Ty, u32 ChunkCount>
-class zpool_obj_static : public zpool_static<sizeof(_Ty), ChunkCount, (alignof(_Ty) > sizeof(u32) ? alignof(_Ty)  : sizeof(u32)  )>
+
+template<class _Ty, s32 TotalCount>
+class zmem_obj_pool : public zmemory_static_pool<sizeof(_Ty), TotalCount>
 {
 public:
-    using zsuper = zpool_static<sizeof(_Ty), ChunkCount, (alignof(_Ty) > sizeof(u32) ? alignof(_Ty) : sizeof(u32) )>;
-    zpool_obj_static()
+    using zsuper = zmemory_static_pool<sizeof(_Ty), TotalCount>;
+    zmem_obj_pool()
     {
         zsuper::init();
     }
