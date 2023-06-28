@@ -334,11 +334,11 @@ public:
 		}
 		if (readonly)
 		{
-			file_data_ = (char*)mmap(NULL, sb.st_size, PROT_READ|PROT_WRITE, MAP_SHARED, file_fd_, 0);
+			file_data_ = (char*)mmap(NULL, sb.st_size, PROT_READ, MAP_SHARED, file_fd_, 0);
 		}
 		else
 		{
-			file_data_ = (char*)mmap(NULL, sb.st_size, PROT_READ, MAP_SHARED, file_fd_, 0);
+			file_data_ = (char*)mmap(NULL, sb.st_size, PROT_READ | PROT_WRITE, MAP_SHARED, file_fd_, 0);
 		}
 		file_size_ = sb.st_size;
 #endif 
