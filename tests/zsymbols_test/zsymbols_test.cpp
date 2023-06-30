@@ -29,7 +29,18 @@
 
 s32 zsymbols_test()
 {
-    
+    zsymbols_static<100> symbols;
+    for (u32 i = 0; i < 10; i++)
+    {
+        char buf[10];
+        sprintf(buf, "%d", i);
+        u32 id = symbols.add_symbol(buf, 0, true);
+        ASSERT_TEST(id != zsymbols::invalid_symbols_id);
+        const char* name = symbols.at(id);
+        ASSERT_TEST(strcmp(name, buf) == 0);
+    }
+
+
     return 0;
 }
 
