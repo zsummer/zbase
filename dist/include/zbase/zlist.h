@@ -1,6 +1,6 @@
 
 /*
-* zlist License
+* zbase License
 * Copyright (C) 2019 YaweiZhang <yawei.zhang@foxmail.com>.
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
