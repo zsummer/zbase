@@ -45,6 +45,20 @@ using f64 = double;
 #endif
 
 
+/* type_traits:
+*
+* is_trivially_copyable: in part
+    * memset: uninit or no dync heap
+    * memcpy: uninit or no dync heap
+* shm resume : safely, require heap address fixed
+    * has vptr:     no
+    * static var:   no
+    * has heap ptr: yes
+    * has code ptr: no
+* thread safe: read safe
+*
+*/
+
 
 class zmem_pool
 {

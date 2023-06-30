@@ -184,6 +184,21 @@ enum ZBUDDY_ERROR_CODE  : s32
 };
 
 
+/* type_traits:
+*
+* is_trivially_copyable: safely
+    * memset: safely
+    * memcpy: safely
+* shm resume : safely
+    * has vptr:     no
+    * static var:   no
+    * has heap ptr: no
+    * has code ptr: no
+* thread safe: read safe
+*
+*/
+
+
 /*
     char * mem = new char [zbuddy::zbuddy_size(16)];
     zbuddy* buddy = build_zbuddy(mem, zbuddy::zbuddy_size(16), 16);

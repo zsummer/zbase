@@ -172,7 +172,19 @@ static const u64 BIG_LOG_BYTES_BIN_ID = 63;
 static const u64 max_resolve_order_size = zmalloc_resolve_order_size(BIG_MAX_BIN_ID);
 
 
-
+/* type_traits:
+*
+* is_trivially_copyable: in part
+    * memset: uninit or no dync heap
+    * memcpy: uninit or no dync heap
+* shm resume : safely, require heap address fixed
+    * has vptr:     no
+    * static var:   no
+    * has heap ptr: yes
+    * has code ptr: no
+* thread safe: read safe
+*
+*/
 
 
 class zmalloc

@@ -121,6 +121,20 @@ bool operator != (const zlist_ext_iterator<list_type>& n1, const zlist_ext_itera
     return !(n1 == n2);
 }
 
+/* type_traits:
+*
+* is_trivially_copyable: in part
+    * memset: uninit or no dync heap
+    * memcpy: uninit or no dync heap
+* shm resume : safely, require heap address fixed 
+    * has vptr:     no
+    * static var:   no
+    * has heap ptr: yes
+    * has code ptr: no
+* thread safe: read safe
+*
+*/
+
 
 //分段双向链表, 使用两块平坦连续内存, 第一块为静态, 第二块为动态.  
 //_Size == _FixedSize 大小相等时为全静态, 此时与zlist的区别在于, zlist的node和value绑在一起, value小时 zlist因不需要取指针性能更好,  value大时 zlist_ext因分离数据性能会更好一些.  
