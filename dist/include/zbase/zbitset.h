@@ -51,6 +51,22 @@ using f64 = double;
 #endif
 
 
+/* type_traits: 
+*
+* is_trivially_copyable: in part  
+    * memset: uninit or no attach any array_data;
+    * memcpy: uninit or no attach any array_data;
+* shm resume : safely, require heap address fixed 
+    * has vptr:     no
+    * static var:   no
+    * has heap ptr: yes  (attach memory)  
+    * has code ptr: no
+    * has sys ptr:  no
+* thread safe: read safe
+*
+*/
+
+
 //如果不知道该使用zbitset还是std::bitset应该使用后者  
 //zbitset提供的是在一段连续平台内存上提供bitset的操作方法 相当于bitset的wrapper   
 
