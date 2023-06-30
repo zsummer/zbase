@@ -1,6 +1,6 @@
 version:
-last_sha1(./src)=6b3e2a73fb3676f7d8c54f3961630c5accba5a3b
-last_date(./src)=2023-06-29 00:04:09 +0800
+last_sha1(./src)=4cc65b21d49741fe81d87e7a1b84d6da5a960f01
+last_date(./src)=2023-06-29 18:31:53 +0800
 
 git log -1 --stat ./src:
-commit 6b3e2a73fb3676f7d8c54f3961630c5accba5a3b Author: zsummer <yawei.zhang@foxmail.com> Date: Thu Jun 29 00:04:09 2023 +0800 fix typo src/include/zfile_mapping.h | 4 ++-- 1 file changed, 2 insertions(+), 2 deletions(-)
+commit 4cc65b21d49741fe81d87e7a1b84d6da5a960f01 Author: skylerzhang <skylerzhang@tencent.com> Date: Thu Jun 29 18:31:53 2023 +0800 zforeach src/include/zforeach.h | 137 +++++++++++++++++++++++++++---------------------- 1 file changed, 77 insertions(+), 60 deletions(-)
