@@ -34,8 +34,8 @@
 
 
 
-template<int CLASS = 0>
-class RAIIVal
+template<int None = 0>
+class raii_object_impl
 {
 public:
     static u32 construct_count_;
@@ -54,63 +54,67 @@ public:
         destroy_count_ = 0;
         now_live_count_ = 0;
     }
-    RAIIVal()
+    raii_object_impl<None>()
     {
         val_ = 0;
         construct_count_++;
         now_live_count_++;
     }
-    RAIIVal(const RAIIVal& v)
+    raii_object_impl<None>(const raii_object_impl& v)
     {
         val_ = v.val_;
         construct_count_++;
         now_live_count_++;
     }
-    RAIIVal(int v)
+    raii_object_impl<None>(int v)
     {
         val_ = v;
         construct_count_++;
         now_live_count_++;
     }
-    ~RAIIVal()
+    ~raii_object_impl<None>()
     {
         destroy_count_++;
         now_live_count_--;
     }
 
 
-    RAIIVal<CLASS>& operator=(const RAIIVal<CLASS>& v)
+    raii_object_impl<None>& operator=(const raii_object_impl<None> v)
     {
         val_ = v.val_;
         return *this;
     }
-    RAIIVal<CLASS>& operator=(int v)
+    raii_object_impl<None>& operator=(int v)
     {
         val_ = v;
         return *this;
     }
 
 };
-template<int CLASS>
-bool operator <(const RAIIVal<CLASS>& v1, const RAIIVal<CLASS>& v2)
+template<int None = 0>
+bool operator <(const raii_object_impl<None>& v1, const raii_object_impl<None>& v2)
 {
     return v1.val_ < v2.val_;
 }
-template<int CLASS>
-u32 RAIIVal<CLASS>::construct_count_ = 0;
-template<int CLASS>
-u32 RAIIVal<CLASS>::destroy_count_ = 0;
-template<int CLASS>
-u32 RAIIVal<CLASS>::now_live_count_ = 0;
 
-template<class T>
-inline std::string TypeName()
+template<int None>
+u32 raii_object_impl<None>::construct_count_ = 0;
+template<int None>
+u32 raii_object_impl<None>::destroy_count_ = 0;
+template<int None>
+u32 raii_object_impl<None>::now_live_count_ = 0;
+
+using raii_object = raii_object_impl<0>;
+
+
+template<class _Ty>
+inline std::string readable_class_name()
 {
 #ifdef WIN32
-    return typeid(T).name();
+    return typeid(_Ty).name();
 #else
     int status = 0;   
-    char *p = abi::__cxa_demangle(typeid(T).name(), 0, 0, &status);  
+    char *p = abi::__cxa_demangle(typeid(_Ty).name(), 0, 0, &status);
     std::string dname = p;
     free(p);
     return dname;
@@ -119,21 +123,21 @@ inline std::string TypeName()
 
 
 
-#define ASSERT_RAII_VAL(name)   \
+#define ASSERT_RAII_EQUAL(name)   \
 do \
 {\
-    if(RAIIVal<>::construct_count_  != RAIIVal<>::destroy_count_ )\
+    if(raii_object::construct_count_  != raii_object::destroy_count_ )\
     {\
-        LogError() << name << ": ASSERT_RAII_VAL has error.  destroy / construct:" << RAIIVal<>::destroy_count_ << "/" << RAIIVal<>::construct_count_;\
+        LogError() << name << ": ASSERT_RAII_EQUAL has error.  destroy / construct:" << raii_object::destroy_count_ << "/" << raii_object::construct_count_;\
         return -2; \
     } \
     else \
     {\
-        LogInfo() << name << ": ASSERT_RAII_VAL.  destroy / construct:" << RAIIVal<>::destroy_count_ << "/" << RAIIVal<>::construct_count_; \
+        LogInfo() << name << ": ASSERT_RAII_EQUAL.  destroy / construct:" << raii_object::destroy_count_ << "/" << raii_object::construct_count_; \
     }\
 } while(0)
-//#define CheckRAIIValByType(t)   ASSERT_RAII_VAL(TypeName<decltype(t)>());
-#define CheckRAIIValByType(t)   ASSERT_RAII_VAL(TypeName<t>());
+
+#define ASSERT_TNAME_RAII_EQUAL(_Ty)   ASSERT_RAII_EQUAL(readable_class_name<_Ty>());
 
 
 

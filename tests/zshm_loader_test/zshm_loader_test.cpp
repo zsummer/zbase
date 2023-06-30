@@ -186,6 +186,7 @@ int main(int argc, char *argv[])
     ASSERT_TEST(shm_loader_unix_test() == 0);
 #endif // WIN32
 
+    (void)zshm_errno::str(zshm_errno::kSuccess);
 
     LogInfo() << "all test finish .";
     return 0;

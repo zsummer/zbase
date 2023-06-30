@@ -518,27 +518,27 @@ void DestroyT(T*p)
 #define LinerStressWrap(T, V, is_static, out_prof) \
 do\
 {\
-    RAIIVal<>::reset(); \
+    raii_object::reset(); \
     T* c = InstT<T>(); \
     s32 ret = LinerStress<T,V>(*c, #T, is_static, out_prof); \
     DestroyT<T>(c); \
     if (ret != 0) {LogError() <<"error."; return 1;} else {LogDebug() << #T <<"tested.";  std::this_thread::sleep_for(std::chrono::milliseconds(100));}\
-    CheckRAIIValByType(T);\
+    ASSERT_TNAME_RAII_EQUAL(T);\
 }\
 while(0)
 
 
-template<class T, class V = RAIIVal<>, bool IS_STATIC = false>
+template<class T, class V = raii_object, bool IS_STATIC = false>
 s32 LinerDestroyWrap()
 {
-    RAIIVal<>::reset();
+    raii_object::reset();
     T* c = new T;
     for (int i = 0; i < LOAD_CAPACITY; i++)
     {
         c->push_back(V(i));
     }
     delete c;
-    CheckRAIIValByType(T);
+    ASSERT_TNAME_RAII_EQUAL(T);
     return 0;
 }
 
@@ -548,10 +548,10 @@ s32 TestDynSpaceMemoryLeak()
 {
     for (int i = 0; i < M; i++)
     {
-        zlist_ext<RAIIVal<>, M, F>  z; 
+        zlist_ext<raii_object, M, F>  z; 
         for (int j = 0; j < i; j++)
         {
-            z.push_back(RAIIVal<>(i * 10000 + j)); 
+            z.push_back(raii_object(i * 10000 + j)); 
         }
     }
     return 0;
@@ -562,10 +562,10 @@ s32 TestStaticSpaceMemoryLeak()
 {
     for (int i = 0; i < M; i++)
     {
-        zlist<RAIIVal<>, M>  z;
+        zlist<raii_object, M>  z;
         for (int j = 0; j < i; j++)
         {
-            z.push_back(RAIIVal<>(i * 10000 + j));
+            z.push_back(raii_object(i * 10000 + j));
         }
     }
     return 0;
@@ -607,53 +607,53 @@ s32 contiainer_stress_test()
 
     if (true)
     {
-        ASSERT_RAII_VAL("empty  memory over test");
+        ASSERT_RAII_EQUAL("empty  memory over test");
         for (int i = 0; i < 1008; i++)
         {
-            zlist_ext<RAIIVal<>, 1000, 200>  z;
+            zlist_ext<raii_object, 1000, 200>  z;
             for (int j = 0; j < i; j++)
             {
-                z.push_back(RAIIVal<>(i * 10000 + j));
+                z.push_back(raii_object(i * 10000 + j));
             }
         }
-        ASSERT_RAII_VAL("zlist_ext  memory over test");
+        ASSERT_RAII_EQUAL("zlist_ext  memory over test");
         for (int i = 0; i < 1008; i++)
         {
-            zlist<RAIIVal<>, 1000>  z;
+            zlist<raii_object, 1000>  z;
             for (int j = 0; j < i; j++)
             {
-                z.push_back(RAIIVal<>(i * 10000 + j));
+                z.push_back(raii_object(i * 10000 + j));
             }
         }
-        ASSERT_RAII_VAL("zlist  memory over test");
+        ASSERT_RAII_EQUAL("zlist  memory over test");
         for (int i = 0; i < 1008; i++)
         {
-            zarray<RAIIVal<>, 1000>  z;
+            zarray<raii_object, 1000>  z;
             for (int j = 0; j < i; j++)
             {
-                z.push_back(RAIIVal<>(i * 10000 + j));
+                z.push_back(raii_object(i * 10000 + j));
             }
         }
-        ASSERT_RAII_VAL("zarray  memory over test");
+        ASSERT_RAII_EQUAL("zarray  memory over test");
 
         for (int i = 0; i < 1008; i++)
         {
-            zvector<RAIIVal<>, 1000, 1000>  z;
+            zvector<raii_object, 1000, 1000>  z;
             for (int j = 0; j < i; j++)
             {
-                z.push_back(RAIIVal<>(i * 10000 + j));
+                z.push_back(raii_object(i * 10000 + j));
             }
         }
-        ASSERT_RAII_VAL("zvector  memory over test");
+        ASSERT_RAII_EQUAL("zvector  memory over test");
         for (int i = 0; i < 1008; i++)
         {
-            zvector<RAIIVal<>, 1000, 0>  z;
+            zvector<raii_object, 1000, 0>  z;
             for (int j = 0; j < i; j++)
             {
-                z.push_back(RAIIVal<>(i * 10000 + j));
+                z.push_back(raii_object(i * 10000 + j));
             }
         }
-        ASSERT_RAII_VAL("zvector  memory over test");
+        ASSERT_RAII_EQUAL("zvector  memory over test");
     }
 
 
@@ -661,15 +661,15 @@ s32 contiainer_stress_test()
     LogDebug() << "================";
 
     using int_zarray = zarray<int, LOAD_CAPACITY>;
-    using raii_zarray = zarray<RAIIVal<>, LOAD_CAPACITY>;
+    using raii_zarray = zarray<raii_object, LOAD_CAPACITY>;
     using int_zvector_0_fixed = zvector<int, LOAD_CAPACITY, 0>;
-    using raii_zvector_0_fixed = zvector<RAIIVal<>, LOAD_CAPACITY, 0>;
+    using raii_zvector_0_fixed = zvector<raii_object, LOAD_CAPACITY, 0>;
     using int_zvector_half_fixed = zvector<int, LOAD_CAPACITY, LOAD_CAPACITY/2>;
-    using raii_zvector_half_fixed = zvector<RAIIVal<>, LOAD_CAPACITY, LOAD_CAPACITY/2>;
+    using raii_zvector_half_fixed = zvector<raii_object, LOAD_CAPACITY, LOAD_CAPACITY/2>;
     using int_zvector_full_fixed = zvector<int, LOAD_CAPACITY, LOAD_CAPACITY>;
-    using raii_zvector_full_fixed = zvector<RAIIVal<>, LOAD_CAPACITY, LOAD_CAPACITY>;
+    using raii_zvector_full_fixed = zvector<raii_object, LOAD_CAPACITY, LOAD_CAPACITY>;
 
-    using raii_svector = StaticVector<RAIIVal<>, LOAD_CAPACITY>;
+    using raii_svector = StaticVector<raii_object, LOAD_CAPACITY>;
     using int_svector = StaticVector<int, LOAD_CAPACITY>;
 
     LinerStressWrap(std::vector<int>, int, false, true);
@@ -680,37 +680,37 @@ s32 contiainer_stress_test()
     LinerStressWrap(int_svector, int, false, true);
 
 
-    LinerStressWrap(std::vector<int>, RAIIVal<>, false, false);
-    LinerStressWrap(int_zarray, RAIIVal<>, true, false);
-    LinerStressWrap(int_zvector_0_fixed, RAIIVal<>, true, false);
-    LinerStressWrap(int_zvector_half_fixed, RAIIVal<>, true, false);
-    LinerStressWrap(int_zvector_full_fixed, RAIIVal<>, true, false);
+    LinerStressWrap(std::vector<int>, raii_object, false, false);
+    LinerStressWrap(int_zarray, raii_object, true, false);
+    LinerStressWrap(int_zvector_0_fixed, raii_object, true, false);
+    LinerStressWrap(int_zvector_half_fixed, raii_object, true, false);
+    LinerStressWrap(int_zvector_full_fixed, raii_object, true, false);
 
-    LinerDestroyWrap<std::vector<int>, RAIIVal<>>();
-    LinerDestroyWrap<int_zarray, RAIIVal<>, true>();
-    LinerDestroyWrap<int_zvector_0_fixed, RAIIVal<>, true>();
-    LinerDestroyWrap<int_zvector_half_fixed, RAIIVal<>, true>();
-    LinerDestroyWrap<int_zvector_full_fixed, RAIIVal<>, true>();
+    LinerDestroyWrap<std::vector<int>, raii_object>();
+    LinerDestroyWrap<int_zarray, raii_object, true>();
+    LinerDestroyWrap<int_zvector_0_fixed, raii_object, true>();
+    LinerDestroyWrap<int_zvector_half_fixed, raii_object, true>();
+    LinerDestroyWrap<int_zvector_full_fixed, raii_object, true>();
 
-    LinerStressWrap(std::vector<RAIIVal<>>, RAIIVal<>, false, true);
-    LinerStressWrap(raii_zarray, RAIIVal<>, true, true);
-    LinerStressWrap(raii_zvector_0_fixed, RAIIVal<>, true, true);
-    LinerStressWrap(raii_zvector_half_fixed, RAIIVal<>, true, true);
-    LinerStressWrap(raii_zvector_full_fixed, RAIIVal<>, true, true);
+    LinerStressWrap(std::vector<raii_object>, raii_object, false, true);
+    LinerStressWrap(raii_zarray, raii_object, true, true);
+    LinerStressWrap(raii_zvector_0_fixed, raii_object, true, true);
+    LinerStressWrap(raii_zvector_half_fixed, raii_object, true, true);
+    LinerStressWrap(raii_zvector_full_fixed, raii_object, true, true);
     LinerStressWrap(raii_svector, int, false, true);
 
 
-    LinerStressWrap(std::vector<RAIIVal<>>, int, false, false);
+    LinerStressWrap(std::vector<raii_object>, int, false, false);
     LinerStressWrap(raii_zarray, int, true, false);
     LinerStressWrap(raii_zvector_0_fixed, int, true, false);
     LinerStressWrap(raii_zvector_half_fixed, int, true, false);
     LinerStressWrap(raii_zvector_full_fixed, int, true, false);
 
-    LinerDestroyWrap<std::vector<RAIIVal<>>, RAIIVal<>>();
-    LinerDestroyWrap<raii_zarray, RAIIVal<>, true>();
-    LinerDestroyWrap<raii_zvector_0_fixed, RAIIVal<>, true>();
-    LinerDestroyWrap<raii_zvector_half_fixed, RAIIVal<>, true>();
-    LinerDestroyWrap<raii_zvector_full_fixed, RAIIVal<>, true>();
+    LinerDestroyWrap<std::vector<raii_object>, raii_object>();
+    LinerDestroyWrap<raii_zarray, raii_object, true>();
+    LinerDestroyWrap<raii_zvector_0_fixed, raii_object, true>();
+    LinerDestroyWrap<raii_zvector_half_fixed, raii_object, true>();
+    LinerDestroyWrap<raii_zvector_full_fixed, raii_object, true>();
 
 
     LogDebug() << "================";
@@ -723,20 +723,20 @@ s32 contiainer_stress_test()
     LinerStressWrap(int_fixed_zlist_ext, int, true, true);
     LinerStressWrap(int_dyn_zlist_ext, int, true, true);
 
-    using raii_zlist = zlist<RAIIVal<>, LOAD_CAPACITY>;
-    using raii_fixed_zlist_ext = zlist_ext<RAIIVal<>, LOAD_CAPACITY, LOAD_CAPACITY>;
-    using raii_dyn_zlist_ext = zlist_ext<RAIIVal<>, LOAD_CAPACITY, 1>;
-    LinerStressWrap(std::deque<RAIIVal<>>, RAIIVal<>, false, true);
-    LinerStressWrap(std::list<RAIIVal<>>, RAIIVal<>, false, true);
-    LinerStressWrap(raii_zlist, RAIIVal<>, true, true);
-    LinerStressWrap(raii_fixed_zlist_ext, RAIIVal<>, true, true);
-    LinerStressWrap(raii_dyn_zlist_ext, RAIIVal<>, true, true);
+    using raii_zlist = zlist<raii_object, LOAD_CAPACITY>;
+    using raii_fixed_zlist_ext = zlist_ext<raii_object, LOAD_CAPACITY, LOAD_CAPACITY>;
+    using raii_dyn_zlist_ext = zlist_ext<raii_object, LOAD_CAPACITY, 1>;
+    LinerStressWrap(std::deque<raii_object>, raii_object, false, true);
+    LinerStressWrap(std::list<raii_object>, raii_object, false, true);
+    LinerStressWrap(raii_zlist, raii_object, true, true);
+    LinerStressWrap(raii_fixed_zlist_ext, raii_object, true, true);
+    LinerStressWrap(raii_dyn_zlist_ext, raii_object, true, true);
 
-    LinerDestroyWrap<std::deque<RAIIVal<>>, RAIIVal<>>();
-    LinerDestroyWrap<std::list<RAIIVal<>>, RAIIVal<>>();
-    LinerDestroyWrap<zlist<RAIIVal<>, LOAD_CAPACITY>, RAIIVal<>, true>();
-    LinerDestroyWrap<zlist_ext<RAIIVal<>, LOAD_CAPACITY, LOAD_CAPACITY>, RAIIVal<>, true>();
-    LinerDestroyWrap<zlist_ext<RAIIVal<>, LOAD_CAPACITY, 1>, RAIIVal<>, true>();
+    LinerDestroyWrap<std::deque<raii_object>, raii_object>();
+    LinerDestroyWrap<std::list<raii_object>, raii_object>();
+    LinerDestroyWrap<zlist<raii_object, LOAD_CAPACITY>, raii_object, true>();
+    LinerDestroyWrap<zlist_ext<raii_object, LOAD_CAPACITY, LOAD_CAPACITY>, raii_object, true>();
+    LinerDestroyWrap<zlist_ext<raii_object, LOAD_CAPACITY, 1>, raii_object, true>();
 
     LogDebug() << "================";
     for (u32 i = 0; i < LOAD_CAPACITY; i++)

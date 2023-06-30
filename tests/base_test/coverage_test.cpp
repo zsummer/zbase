@@ -14,8 +14,8 @@ static const u32 MAX_SIZE = 1000;
 int rand_array[MAX_SIZE];
 int sort_array[MAX_SIZE];
 
-RAIIVal<> rand_obj_array[MAX_SIZE];
-RAIIVal<> sort_obj_array[MAX_SIZE];
+raii_object rand_obj_array[MAX_SIZE];
+raii_object sort_obj_array[MAX_SIZE];
 
 
 template<class Target, class DataSets>
@@ -268,32 +268,32 @@ s32 ArrayBaseTest(Target& target, const DataSets& datasets)
         LogError() << " pop error";
     }
     ASSERT_TEST(CheckPopArray(target) == 0);
-    ASSERT_RAII_VAL("ArrayBaseTest");
+    ASSERT_RAII_EQUAL("ArrayBaseTest");
 
     ASSERT_TEST(CheckPushArray(target, datasets) == 0);
     ASSERT_TEST(CheckRandArray(target) == 0);
     ASSERT_TEST(CheckPopArray(target) == 0);
-    ASSERT_RAII_VAL("ArrayBaseTest");
+    ASSERT_RAII_EQUAL("ArrayBaseTest");
 
     ASSERT_TEST(CheckEmplacePushArray(target, datasets) == 0);
     ASSERT_TEST(CheckRandArray(target) == 0);
     ASSERT_TEST(CheckPopArray(target) == 0);
-    ASSERT_RAII_VAL("ArrayBaseTest");
+    ASSERT_RAII_EQUAL("ArrayBaseTest");
 
     ASSERT_TEST(CheckInsertEndArray(target, datasets) == 0);
     ASSERT_TEST(CheckRandArrayAt(target) == 0);
     ASSERT_TEST(CheckEraseArray(target) == 0);
-    ASSERT_RAII_VAL("ArrayBaseTest");
+    ASSERT_RAII_EQUAL("ArrayBaseTest");
 
     ASSERT_TEST(CheckInsertBeginArray(target, datasets) == 0);
     ASSERT_TEST(CheckRevertRandArrayAt(target) == 0);
     ASSERT_TEST(CheckEraseArray(target) == 0);
-    ASSERT_RAII_VAL("ArrayBaseTest");
+    ASSERT_RAII_EQUAL("ArrayBaseTest");
 
     ASSERT_TEST(CheckEmplaceInsertBeginArray(target, datasets) == 0);
     ASSERT_TEST(CheckRevertRandArrayAt(target) == 0);
     ASSERT_TEST(CheckEraseArray(target) == 0);
-    ASSERT_RAII_VAL("ArrayBaseTest");
+    ASSERT_RAII_EQUAL("ArrayBaseTest");
 
     ASSERT_TEST(CheckEmplaceInsertBeginArray(target, datasets) == 0);
     std::sort(target.begin(), target.end());
@@ -329,28 +329,28 @@ s32 ListBaseTest(Target& target, const DataSets& datasets)
     ASSERT_TEST(CheckRandArray(target) == 0);
     ASSERT_TEST(CheckRandArrayRevertIter(target) == 0);
     ASSERT_TEST(CheckPopArray(target) == 0);
-    ASSERT_RAII_VAL("ListBaseTest");
+    ASSERT_RAII_EQUAL("ListBaseTest");
 
     ASSERT_TEST(CheckEmplacePushArray(target, datasets) == 0);
     ASSERT_TEST(CheckRandArray(target) == 0);
     ASSERT_TEST(CheckPopArray(target) == 0);
-    ASSERT_RAII_VAL("ListBaseTest");
+    ASSERT_RAII_EQUAL("ListBaseTest");
 
     ASSERT_TEST(CheckInsertEndArray(target, datasets) == 0);
     ASSERT_TEST(CheckRandArray(target) == 0);
     ASSERT_TEST(CheckEraseArray(target) == 0);
-    ASSERT_RAII_VAL("ListBaseTest");
+    ASSERT_RAII_EQUAL("ListBaseTest");
 
     ASSERT_TEST(CheckInsertBeginArray(target, datasets) == 0);
     ASSERT_TEST(CheckRevertRandArray(target) == 0);
 
     ASSERT_TEST(CheckEraseArray(target) == 0);
-    ASSERT_RAII_VAL("ListBaseTest");
+    ASSERT_RAII_EQUAL("ListBaseTest");
 
     ASSERT_TEST(CheckEmplaceInsertBeginArray(target, datasets) == 0);
     ASSERT_TEST(CheckRevertRandArray(target) == 0);
     ASSERT_TEST(CheckEraseArray(target) == 0);
-    ASSERT_RAII_VAL("ListBaseTest");
+    ASSERT_RAII_EQUAL("ListBaseTest");
 
     ASSERT_TEST(CheckEmplaceInsertBeginArray(target, datasets) == 0);
     auto m1 = target.begin();
@@ -375,7 +375,7 @@ s32 array_test()
     {
         sort_obj_array[i] = sort_array[i];
     }
-    RAIIVal<>::reset();
+    raii_object::reset();
 
     if (true)
     {
@@ -409,15 +409,15 @@ s32 array_test()
 
     if (true)
     {
-        RAIIVal<>::reset();
-        std::vector<RAIIVal<>> target;
+        raii_object::reset();
+        std::vector<raii_object> target;
         ASSERT_TEST(ArrayBaseTest(target, rand_array) == 0);
     }
 
     if (true)
     {
-        RAIIVal<>::reset();
-        zarray<RAIIVal<>, MAX_SIZE> target;
+        raii_object::reset();
+        zarray<raii_object, MAX_SIZE> target;
         ASSERT_TEST(ArrayBaseTest(target, rand_array) == 0);
 
         
@@ -435,8 +435,8 @@ s32 array_test()
 
     if (true)
     {
-        RAIIVal<>::reset();
-        zvector<RAIIVal<>, MAX_SIZE, 0> target;
+        raii_object::reset();
+        zvector<raii_object, MAX_SIZE, 0> target;
         ASSERT_TEST(ArrayBaseTest(target, rand_array) == 0, "zvector");
 
         if (true)
@@ -453,8 +453,8 @@ s32 array_test()
 
     if (true)
     {
-        RAIIVal<>::reset();
-        zvector<RAIIVal<>, MAX_SIZE, MAX_SIZE> target;
+        raii_object::reset();
+        zvector<raii_object, MAX_SIZE, MAX_SIZE> target;
         ASSERT_TEST(ArrayBaseTest(target, rand_array) == 0, "zvector");
 
         if (true)
@@ -514,17 +514,17 @@ s32 array_test()
 
         if (true)
         {
-            RAIIVal<>& rv = sort_obj_array[0];
-            zarray<RAIIVal<>, 100> raii_array;
-            ASSERT_TEST_EQ(RAIIVal<>::now_live_count_, 0U, "");
+            raii_object& rv = sort_obj_array[0];
+            zarray<raii_object, 100> raii_array;
+            ASSERT_TEST_EQ(raii_object::now_live_count_, 0U, "");
             raii_array.push_back(rv);
-            ASSERT_TEST_EQ(RAIIVal<>::now_live_count_, 1U, "");
+            ASSERT_TEST_EQ(raii_object::now_live_count_, 1U, "");
             raii_array.insert(raii_array.begin(), rv);
-            ASSERT_TEST_EQ(RAIIVal<>::now_live_count_, 2U, "");
-            ASSERT_TEST_EQ(RAIIVal<>::construct_count_, RAIIVal<>::destroy_count_ + 2, "");
+            ASSERT_TEST_EQ(raii_object::now_live_count_, 2U, "");
+            ASSERT_TEST_EQ(raii_object::construct_count_, raii_object::destroy_count_ + 2, "");
             raii_array.clear();
-            ASSERT_TEST_EQ(RAIIVal<>::now_live_count_, 0U, "");
-            ASSERT_TEST_EQ(RAIIVal<>::construct_count_, RAIIVal<>::destroy_count_, "");
+            ASSERT_TEST_EQ(raii_object::now_live_count_, 0U, "");
+            ASSERT_TEST_EQ(raii_object::construct_count_, raii_object::destroy_count_, "");
         }
 
     }
@@ -540,17 +540,17 @@ s32 array_test()
 
         if (true)
         {
-            RAIIVal<>& rv = sort_obj_array[0];
-            zvector<RAIIVal<>, 100, 0> raii_array;
-            ASSERT_TEST_EQ(RAIIVal<>::now_live_count_, 0U, "");
+            raii_object& rv = sort_obj_array[0];
+            zvector<raii_object, 100, 0> raii_array;
+            ASSERT_TEST_EQ(raii_object::now_live_count_, 0U, "");
             raii_array.push_back(rv);
-            ASSERT_TEST_EQ(RAIIVal<>::now_live_count_, 1U, "");
+            ASSERT_TEST_EQ(raii_object::now_live_count_, 1U, "");
             raii_array.insert(raii_array.begin(), rv);
-            ASSERT_TEST_EQ(RAIIVal<>::now_live_count_, 2U, "");
-            ASSERT_TEST_EQ(RAIIVal<>::construct_count_, RAIIVal<>::destroy_count_ + 2, "");
+            ASSERT_TEST_EQ(raii_object::now_live_count_, 2U, "");
+            ASSERT_TEST_EQ(raii_object::construct_count_, raii_object::destroy_count_ + 2, "");
             raii_array.clear();
-            ASSERT_TEST_EQ(RAIIVal<>::now_live_count_, 0U, "");
-            ASSERT_TEST_EQ(RAIIVal<>::construct_count_, RAIIVal<>::destroy_count_, "");
+            ASSERT_TEST_EQ(raii_object::now_live_count_, 0U, "");
+            ASSERT_TEST_EQ(raii_object::construct_count_, raii_object::destroy_count_, "");
         }
 
     }
@@ -565,17 +565,17 @@ s32 array_test()
 
         if (true)
         {
-            RAIIVal<>& rv = sort_obj_array[0];
-            zvector<RAIIVal<>, 100, 100> raii_array;
-            ASSERT_TEST_EQ(RAIIVal<>::now_live_count_, 0U, "");
+            raii_object& rv = sort_obj_array[0];
+            zvector<raii_object, 100, 100> raii_array;
+            ASSERT_TEST_EQ(raii_object::now_live_count_, 0U, "");
             raii_array.push_back(rv);
-            ASSERT_TEST_EQ(RAIIVal<>::now_live_count_, 1U, "");
+            ASSERT_TEST_EQ(raii_object::now_live_count_, 1U, "");
             raii_array.insert(raii_array.begin(), rv);
-            ASSERT_TEST_EQ(RAIIVal<>::now_live_count_, 2U, "");
-            ASSERT_TEST_EQ(RAIIVal<>::construct_count_, RAIIVal<>::destroy_count_ + 2, "");
+            ASSERT_TEST_EQ(raii_object::now_live_count_, 2U, "");
+            ASSERT_TEST_EQ(raii_object::construct_count_, raii_object::destroy_count_ + 2, "");
             raii_array.clear();
-            ASSERT_TEST_EQ(RAIIVal<>::now_live_count_, 0U, "");
-            ASSERT_TEST_EQ(RAIIVal<>::construct_count_, RAIIVal<>::destroy_count_, "");
+            ASSERT_TEST_EQ(raii_object::now_live_count_, 0U, "");
+            ASSERT_TEST_EQ(raii_object::construct_count_, raii_object::destroy_count_, "");
         }
 
     }
@@ -795,17 +795,17 @@ static const int LOAD_CAPACITY = 1024 * 8;
 
 
 
-template<class T, class V = RAIIVal<>, bool IS_STATIC = false>
+template<class T, class V = raii_object, bool IS_STATIC = false>
 s32 LinerDestroyWrap()
 {
-    RAIIVal<>::reset();
+    raii_object::reset();
     T* c = new T;
     for (int i = 0; i < LOAD_CAPACITY; i++)
     {
         c->push_back(V(i));
     }
     delete c;
-    CheckRAIIValByType(T);
+    ASSERT_TNAME_RAII_EQUAL(T);
     return 0;
 }
 
@@ -815,10 +815,10 @@ s32 TestDynSpaceMemoryLeak()
 {
     for (int i = 0; i < M; i++)
     {
-        zlist_ext<RAIIVal<>, M, F>  z;
+        zlist_ext<raii_object, M, F>  z;
         for (int j = 0; j < i; j++)
         {
-            z.push_back(RAIIVal<>(i * 10000 + j));
+            z.push_back(raii_object(i * 10000 + j));
         }
     }
     return 0;
@@ -829,10 +829,10 @@ s32 TestStaticSpaceMemoryLeak()
 {
     for (int i = 0; i < M; i++)
     {
-        zlist<RAIIVal<>, M>  z;
+        zlist<raii_object, M>  z;
         for (int j = 0; j < i; j++)
         {
-            z.push_back(RAIIVal<>(i * 10000 + j));
+            z.push_back(raii_object(i * 10000 + j));
         }
     }
     return 0;
@@ -874,53 +874,53 @@ s32 destroy_test()
 
     if (true)
     {
-        ASSERT_RAII_VAL("empty  memory over test");
+        ASSERT_RAII_EQUAL("empty  memory over test");
         for (int i = 0; i < 1008; i++)
         {
-            zlist_ext<RAIIVal<>, 1000, 200>  z;
+            zlist_ext<raii_object, 1000, 200>  z;
             for (int j = 0; j < i; j++)
             {
-                z.push_back(RAIIVal<>(i * 10000 + j));
+                z.push_back(raii_object(i * 10000 + j));
             }
         }
-        ASSERT_RAII_VAL("zlist_ext  memory over test");
+        ASSERT_RAII_EQUAL("zlist_ext  memory over test");
         for (int i = 0; i < 1008; i++)
         {
-            zlist<RAIIVal<>, 1000>  z;
+            zlist<raii_object, 1000>  z;
             for (int j = 0; j < i; j++)
             {
-                z.push_back(RAIIVal<>(i * 10000 + j));
+                z.push_back(raii_object(i * 10000 + j));
             }
         }
-        ASSERT_RAII_VAL("zlist  memory over test");
+        ASSERT_RAII_EQUAL("zlist  memory over test");
         for (int i = 0; i < 1008; i++)
         {
-            zarray<RAIIVal<>, 1000>  z;
+            zarray<raii_object, 1000>  z;
             for (int j = 0; j < i; j++)
             {
-                z.push_back(RAIIVal<>(i * 10000 + j));
+                z.push_back(raii_object(i * 10000 + j));
             }
         }
-        ASSERT_RAII_VAL("zarray  memory over test");
+        ASSERT_RAII_EQUAL("zarray  memory over test");
 
         for (int i = 0; i < 1008; i++)
         {
-            zvector<RAIIVal<>, 1000, 1000>  z;
+            zvector<raii_object, 1000, 1000>  z;
             for (int j = 0; j < i; j++)
             {
-                z.push_back(RAIIVal<>(i * 10000 + j));
+                z.push_back(raii_object(i * 10000 + j));
             }
         }
-        ASSERT_RAII_VAL("zvector  memory over test");
+        ASSERT_RAII_EQUAL("zvector  memory over test");
         for (int i = 0; i < 1008; i++)
         {
-            zvector<RAIIVal<>, 1000, 0>  z;
+            zvector<raii_object, 1000, 0>  z;
             for (int j = 0; j < i; j++)
             {
-                z.push_back(RAIIVal<>(i * 10000 + j));
+                z.push_back(raii_object(i * 10000 + j));
             }
         }
-        ASSERT_RAII_VAL("zvector  memory over test");
+        ASSERT_RAII_EQUAL("zvector  memory over test");
     }
 
 
@@ -928,49 +928,42 @@ s32 destroy_test()
     LogDebug() << "================";
 
     using int_zarray = zarray<int, LOAD_CAPACITY>;
-    using raii_zarray = zarray<RAIIVal<>, LOAD_CAPACITY>;
+    using raii_zarray = zarray<raii_object, LOAD_CAPACITY>;
     using int_zvector_0_fixed = zvector<int, LOAD_CAPACITY, 0>;
-    using raii_zvector_0_fixed = zvector<RAIIVal<>, LOAD_CAPACITY, 0>;
+    using raii_zvector_0_fixed = zvector<raii_object, LOAD_CAPACITY, 0>;
     using int_zvector_half_fixed = zvector<int, LOAD_CAPACITY, LOAD_CAPACITY / 2>;
-    using raii_zvector_half_fixed = zvector<RAIIVal<>, LOAD_CAPACITY, LOAD_CAPACITY / 2>;
+    using raii_zvector_half_fixed = zvector<raii_object, LOAD_CAPACITY, LOAD_CAPACITY / 2>;
     using int_zvector_full_fixed = zvector<int, LOAD_CAPACITY, LOAD_CAPACITY>;
-    using raii_zvector_full_fixed = zvector<RAIIVal<>, LOAD_CAPACITY, LOAD_CAPACITY>;
+    using raii_zvector_full_fixed = zvector<raii_object, LOAD_CAPACITY, LOAD_CAPACITY>;
 
 
 
 
 
-    LinerDestroyWrap<std::vector<int>, RAIIVal<>>();
-    LinerDestroyWrap<int_zarray, RAIIVal<>, true>();
-    LinerDestroyWrap<int_zvector_0_fixed, RAIIVal<>, true>();
-    LinerDestroyWrap<int_zvector_half_fixed, RAIIVal<>, true>();
-    LinerDestroyWrap<int_zvector_full_fixed, RAIIVal<>, true>();
+    LinerDestroyWrap<std::vector<int>, raii_object>();
+    LinerDestroyWrap<int_zarray, raii_object, true>();
+    LinerDestroyWrap<int_zvector_0_fixed, raii_object, true>();
+    LinerDestroyWrap<int_zvector_half_fixed, raii_object, true>();
+    LinerDestroyWrap<int_zvector_full_fixed, raii_object, true>();
 
 
 
 
-    LinerDestroyWrap<std::vector<RAIIVal<>>, RAIIVal<>>();
-    LinerDestroyWrap<raii_zarray, RAIIVal<>, true>();
-    LinerDestroyWrap<raii_zvector_0_fixed, RAIIVal<>, true>();
-    LinerDestroyWrap<raii_zvector_half_fixed, RAIIVal<>, true>();
-    LinerDestroyWrap<raii_zvector_full_fixed, RAIIVal<>, true>();
+    LinerDestroyWrap<std::vector<raii_object>, raii_object>();
+    LinerDestroyWrap<raii_zarray, raii_object, true>();
+    LinerDestroyWrap<raii_zvector_0_fixed, raii_object, true>();
+    LinerDestroyWrap<raii_zvector_half_fixed, raii_object, true>();
+    LinerDestroyWrap<raii_zvector_full_fixed, raii_object, true>();
 
 
     LogDebug() << "================";
-    using int_zlist = zlist<int, LOAD_CAPACITY>;
-    using int_fixed_zlist_ext = zlist_ext<int, LOAD_CAPACITY, LOAD_CAPACITY>;
-    using int_dyn_zlist_ext = zlist_ext<int, LOAD_CAPACITY, 1>;
 
 
-    using raii_zlist = zlist<RAIIVal<>, LOAD_CAPACITY>;
-    using raii_fixed_zlist_ext = zlist_ext<RAIIVal<>, LOAD_CAPACITY, LOAD_CAPACITY>;
-    using raii_dyn_zlist_ext = zlist_ext<RAIIVal<>, LOAD_CAPACITY, 1>;
-
-    LinerDestroyWrap<std::deque<RAIIVal<>>, RAIIVal<>>();
-    LinerDestroyWrap<std::list<RAIIVal<>>, RAIIVal<>>();
-    LinerDestroyWrap<zlist<RAIIVal<>, LOAD_CAPACITY>, RAIIVal<>, true>();
-    LinerDestroyWrap<zlist_ext<RAIIVal<>, LOAD_CAPACITY, LOAD_CAPACITY>, RAIIVal<>, true>();
-    LinerDestroyWrap<zlist_ext<RAIIVal<>, LOAD_CAPACITY, 1>, RAIIVal<>, true>();
+    LinerDestroyWrap<std::deque<raii_object>, raii_object>();
+    LinerDestroyWrap<std::list<raii_object>, raii_object>();
+    LinerDestroyWrap<zlist<raii_object, LOAD_CAPACITY>, raii_object, true>();
+    LinerDestroyWrap<zlist_ext<raii_object, LOAD_CAPACITY, LOAD_CAPACITY>, raii_object, true>();
+    LinerDestroyWrap<zlist_ext<raii_object, LOAD_CAPACITY, 1>, raii_object, true>();
 
 
 

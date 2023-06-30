@@ -409,11 +409,11 @@ s32 SetStress(Map& m, const std::string& desc, bool is_static = false)
 #define MapStressWrap(T, V, is_static) \
 do\
 {\
-    RAIIVal<>::reset(); \
+    raii_object::reset(); \
     T* c = new T; \
     MapStress<T,V>(*c, #T, is_static); \
     delete c; \
-    CheckRAIIValByType(T);\
+    ASSERT_TNAME_RAII_EQUAL(T);\
 }\
 while(0)
 
@@ -423,36 +423,36 @@ while(0)
 #define MapStringStressWrap(T, V, is_static) \
 do\
 {\
-    RAIIVal<>::reset(); \
+    raii_object::reset(); \
     T* c = new T; \
     MapStringStress<T,V>(*c, #T, is_static); \
     delete c; \
-    CheckRAIIValByType(T);\
+    ASSERT_TNAME_RAII_EQUAL(T);\
 }\
 while(0)
 
 #define SetStressWrap(T, V, is_static) \
 do\
 {\
-    RAIIVal<>::reset(); \
+    raii_object::reset(); \
     T* c = new T; \
     SetStress<T,V>(*c, #T, is_static); \
     delete c; \
-    CheckRAIIValByType(T);\
+    ASSERT_TNAME_RAII_EQUAL(T);\
 }\
 while(0)
 
-template<class T, class V = RAIIVal<>, bool IS_STATIC = false>
+template<class T, class V = raii_object, bool IS_STATIC = false>
 s32 MapDestroyWrap()
 {
-    RAIIVal<>::reset();
+    raii_object::reset();
     T* c = new T;
     for (int i = 0; i < LOAD_CAPACITY; i++)
     {
         c->insert(std::make_pair(i, V(i)));
     }
     delete c;
-    CheckRAIIValByType(T);
+    ASSERT_TNAME_RAII_EQUAL(T);
     return 0;
 }
 
@@ -477,10 +477,10 @@ s32 contiainer_stress_test()
     using z_int_int_hash_map = zhash_map<int, int, LOAD_CAPACITY>;
     using z_int_int_hash_map_zhash = zhash_map<int, int, LOAD_CAPACITY, zhash<int>>;
 
-    using std_int_raii_map = std::map<int, RAIIVal<>>;
-    using std_int_raii_unordered_map = std::unordered_map<int, RAIIVal<>>;
-    using z_int_raii_hash_map = zhash_map<int, RAIIVal<>, LOAD_CAPACITY>;
-    using z_int_raii_hash_map_zhash = zhash_map<int, RAIIVal<>, LOAD_CAPACITY, zhash<int>>;
+    using std_int_raii_map = std::map<int, raii_object>;
+    using std_int_raii_unordered_map = std::unordered_map<int, raii_object>;
+    using z_int_raii_hash_map = zhash_map<int, raii_object, LOAD_CAPACITY>;
+    using z_int_raii_hash_map_zhash = zhash_map<int, raii_object, LOAD_CAPACITY, zhash<int>>;
 
     MapStressWrap(std_int_int_map, int, false);
     MapStressWrap(std_int_int_map_zallocator, int, false);
@@ -488,10 +488,10 @@ s32 contiainer_stress_test()
     MapStressWrap(z_int_int_hash_map, int, true);
     MapStressWrap(z_int_int_hash_map_zhash, int, true);
 
-    MapStressWrap(std_int_raii_map, RAIIVal<>, false);
-    MapStressWrap(std_int_raii_unordered_map, RAIIVal<>, false);
-    MapStressWrap(z_int_raii_hash_map, RAIIVal<>, true);
-    MapStressWrap(z_int_raii_hash_map_zhash, RAIIVal<>, true);
+    MapStressWrap(std_int_raii_map, raii_object, false);
+    MapStressWrap(std_int_raii_unordered_map, raii_object, false);
+    MapStressWrap(z_int_raii_hash_map, raii_object, true);
+    MapStressWrap(z_int_raii_hash_map_zhash, raii_object, true);
 
 
     using std_str_str_map = std::map<std::string, std::string>;
@@ -513,9 +513,9 @@ s32 contiainer_stress_test()
     SetStressWrap(z_int_hash_set_zhash, int, true);
 
 
-    MapDestroyWrap<std::map<int, RAIIVal<>>, RAIIVal<>, false>();
-    MapDestroyWrap<std::unordered_map<int, RAIIVal<>>, RAIIVal<>, false>();
-    MapDestroyWrap<zhash_map<int, RAIIVal<>, LOAD_CAPACITY>, RAIIVal<>, true>();
+    MapDestroyWrap<std::map<int, raii_object>, raii_object, false>();
+    MapDestroyWrap<std::unordered_map<int, raii_object>, raii_object, false>();
+    MapDestroyWrap<zhash_map<int, raii_object, LOAD_CAPACITY>, raii_object, true>();
     LogDebug() << "================";
 
     if (true)
