@@ -2,20 +2,27 @@
 
 
 #include "fn_log.h"
+#include "zprof.h"
+#include "test_common.h"
 #include "zarray.h"
 #include "zvector.h"
 #include <string>
 #include "zlist.h"
 #include "zlist_ext.h"
-#include "zcontain_test.h"
-#include "zlist_stress.h"
 #include "zprof.h"
-#include "static_vector.h"
 #include "zmalloc.h"
 #include "zallocator.h"
 
 
-
+template<class _Ty, size_t _Size>
+class StaticVector : public std::vector<_Ty>
+{
+public:
+    StaticVector()
+    {
+        std::vector<_Ty>::reserve(_Size);
+    }
+};
 
 #define Now() std::chrono::duration<double>(std::chrono::system_clock().now().time_since_epoch()).count()                                
 

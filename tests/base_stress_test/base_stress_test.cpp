@@ -23,8 +23,10 @@
 #include "zprof.h"
 #include "test_common.h"
 
-s32 coverage_test();
-s32 likely_test();
+s32 contiainer_stress_test();
+
+s32 sort_test();
+
 
 int main(int argc, char *argv[])
 {
@@ -41,9 +43,9 @@ int main(int argc, char *argv[])
 
     LogDebug() << " main begin test. ";
     volatile double cycles = 0.0f;
-    ASSERT_TEST(coverage_test() == 0);
-    ASSERT_TEST(likely_test() == 0);
-
+    ASSERT_TEST(sort_test() == 0);
+    ASSERT_TEST(contiainer_stress_test() == 0);
+    
 
     PROF_DO_MERGE();
     PROF_OUTPUT_REPORT();

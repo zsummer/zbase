@@ -42,6 +42,7 @@ jobs:
         cd ${{github.workspace}}/bin
         ./empty_test
         ./base_test
+        ./base_stress_test
         ./zbuddy_test
         ./malloc_test
         ./zforeach_base_test
