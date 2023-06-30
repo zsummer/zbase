@@ -1,6 +1,6 @@
 version:
-last_sha1(./src)=c62983dfcbd748769714f717dc865a89e8a47942
-last_date(./src)=2023-06-30 10:52:57 +0800
+last_sha1(./src)=0c5836fff05996f4e5bfa9a4eaf4280136d5554a
+last_date(./src)=2023-06-30 11:41:07 +0800
 
 git log -1 --stat ./src:
-commit c62983dfcbd748769714f717dc865a89e8a47942 Author: zsummer <yawei.zhang@foxmail.com> Date: Fri Jun 30 10:52:57 2023 +0800 zforeach src/include/zforeach.h | 137 +++++++++++++++++++++++++++--------------------- src/include/zmem_pool.h | 5 +- 2 files changed, 81 insertions(+), 61 deletions(-)
+commit 0c5836fff05996f4e5bfa9a4eaf4280136d5554a Author: zsummer <yawei.zhang@foxmail.com> Date: Fri Jun 30 11:41:07 2023 +0800 sign int src/include/zforeach.h | 2 +- 1 file changed, 1 insertion(+), 1 deletion(-)
