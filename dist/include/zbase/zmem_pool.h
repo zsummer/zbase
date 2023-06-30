@@ -82,7 +82,10 @@ public:
 
 public:
     inline chunk* chunk_ref(s32 chunk_id) { return  reinterpret_cast<chunk*>(space_addr_ + chunk_size_ * chunk_id); }
-    inline char* user_ref(s32 chunk_id) { return  &chunk_ref(chunk_id)->data_; }
+    template<class UserData>
+    inline UserData* user_data(s32 chunk_id) { return reinterpret_cast<UserData*>(&chunk_ref(chunk_id)->data_); }
+    template<class UserData>
+    inline UserData& at(s32 chunk_id) { return *user_data<UserData>(chunk_id); }
 
     inline s32   chunk_size() const { return chunk_size_; }
     inline s32   max_size()const { return chunk_count_; }
