@@ -92,6 +92,20 @@ using f64 = double;
 #endif
 
 
+/* type_traits:
+*
+* is_trivially_copyable: no
+    * memset: no
+    * memcpy: no
+* shm resume : no
+    * has vptr:     no
+    * static var:   no
+    * has heap ptr: no
+    * has code ptr: no
+    * has sys ptr: yes
+* thread safe: only utils metheds
+*
+*/
 
 
 class zfile

@@ -56,6 +56,22 @@ using f64 = double;
 //note: 不保证间隔绝对精准, 特别是首次触发,  在频繁发生软窗口变化时, 不保证间隔精准, 但保证每次触发的触发窗口边界内.  
 //note: 如有精确要求, 在root tick中手动解决(root tick跳帧) , 或者使用定时器,  这里最好是一些超时检测, 定时检测, 延迟处理等需求.  
 
+/* type_traits:
+*
+* is_trivially_copyable: safely in-process  
+    * memset: safely in-process  
+    * memcpy: safely in-process  
+* shm resume : safely on rebuild hook adrress
+    * has vptr:     no
+    * static var:   no
+    * has heap ptr: no
+    * has code ptr: yes (hook) 
+    * has sys ptr: no
+* thread safe: no
+*
+*/
+
+
 namespace zforeach_impl
 {
     struct subframe

@@ -86,6 +86,22 @@ private:
 };
 
 
+/* type_traits:  (when _Ty is is_trivially_copyable) 
+* 
+* is_trivially_copyable: safely;  
+    * memset: safely;  
+    * memcpy: safely;  
+* shm resume:  safely
+    * has vptr:     no
+    * static var:   no
+    * has heap ptr: no 
+    * has code ptr: no 
+    * has sys ptr:  no
+* thread safe: read safely  
+* 
+*/
+
+
 template<class _Ty, size_t _Size>
 class zarray
 {

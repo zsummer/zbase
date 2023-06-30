@@ -68,6 +68,8 @@ struct zshm_space_entry
 };
 
 
+
+
 //Òýµ¼   
 class zshm_boot
 {

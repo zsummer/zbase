@@ -160,6 +160,23 @@ struct zhash_get_key
     }
 };
 
+
+/* type_traits:
+*
+* is_trivially_copyable: no 
+    * memset: no 
+    * memcpy: no 
+* shm resume : safley on rebuild hash,getkey inst 
+    * has vptr:     no
+    * static var:   no
+    * has heap ptr: no
+    * has code ptr: yes (hash,getkey)
+    * has sys ptr: no
+* thread safe: no
+*
+*/
+
+
 /*
 * 支持obj和pod: 针对pod和非pod有静态模版分支 pod更快.
 * 固定长度, 其中桶数量为总长2倍. 即hash因子是0.5
