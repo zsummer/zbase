@@ -73,7 +73,7 @@ namespace zforeach_impl
         u32 foreach_cursor_; //locked cursor when soft window has change   
     };
 
-    static inline s32 init(subframe& sub, u64 userkey, u64 userdata, u32 begin_id, u32 end_id, subframe::Hook hook, u32 base_frame_len, u32 long_frame_len)
+    static inline s32 init(subframe& sub, u64 userkey, u64 userdata, u32 begin_id, u32 end_id, subframe::Hook hook, s32 base_frame_len, s32 long_frame_len)
     {
         memset(&sub, 0, sizeof(subframe));
         sub.sub_steps_ = 1;

@@ -30,17 +30,17 @@
 
 
 
-static constexpr s64 kMaxForeachs = 10;
+static constexpr s32 kMaxForeachs = 10;
 
 
 
-static s64 foreach_insts_;
-static s64 base_frame_len_;
+static s32 foreach_insts_;
+static s32 base_frame_len_;
 
 static s64 total_tick_count_;
-static s64 foreach_user_frame_len_[kMaxForeachs];
+static s32 foreach_user_frame_len_[kMaxForeachs];
 
-static s64 foreach_real_frame_len_[kMaxForeachs];
+static s32 foreach_real_frame_len_[kMaxForeachs];
 
 static s64 foreach_tick_count_[kMaxForeachs];
 
@@ -56,7 +56,7 @@ struct TickRecord
 struct Object
 {
     TickRecord record_[kMaxForeachs];
-    s32 OnTick(u32 tick_id, s64 now_ms)
+    s32 OnTick(u64 tick_id, s64 now_ms)
     {
         if (record_[tick_id].last_ != 0)
         {
@@ -75,7 +75,7 @@ struct Object
 };
 
 static Object* object_arrays_;
-static s64 object_count_;
+static s32 object_count_;
 
 
 
@@ -138,7 +138,7 @@ s32 base_test()
 
 
     zforeach< TestForeach> inst[kForeachInsts];
-    for (u32 i = 0; i < foreach_insts_; i++)
+    for (s32 i = 0; i < foreach_insts_; i++)
     {
         s32 ret = inst[i].init(i, 0, object_count_, base_frame_len_, foreach_user_frame_len_[i]);
         ASSERT_TEST(ret == 0);
@@ -148,9 +148,9 @@ s32 base_test()
     {
         PROF_DEFINE_AUTO_MULTI_ANON_RECORD(cost, kTickCount, "base frame ticks(9999obj)");
         s64 now_ms = 10000;
-        for (u32 i = 0; i < total_tick_count_; i++)
+        for (s32 i = 0; i < total_tick_count_; i++)
         {
-            for (u32 inst_id = 0; inst_id < foreach_insts_; inst_id++)
+            for (s32 inst_id = 0; inst_id < foreach_insts_; inst_id++)
             {
                 s32 ret = inst[inst_id].window_foreach(0, kObjects, now_ms);
                 ASSERT_TEST_NOLOG(ret == 0);
@@ -162,7 +162,7 @@ s32 base_test()
 
     ASSERT_TEST(has_error_ == 0);
 
-    s32 all_ticks = 0;
+    s64 all_ticks = 0;
     for (s32 i = 0; i < kObjects; i++)
     {
         for (s32 j = 0; j < foreach_insts_; j++)
@@ -216,7 +216,7 @@ s32 base_test2()
 
 
     zforeach< TestForeach> inst[kForeachInsts];
-    for (u32 i = 0; i < foreach_insts_; i++)
+    for (s32 i = 0; i < foreach_insts_; i++)
     {
         s32 ret = inst[i].init(i, 0, object_count_, base_frame_len_, foreach_user_frame_len_[i]);
         ASSERT_TEST(ret == 0);
@@ -226,9 +226,9 @@ s32 base_test2()
     {
         PROF_DEFINE_AUTO_MULTI_ANON_RECORD(cost, kTickCount, "base frame ticks(9999obj)");
         s64 now_ms = 10000;
-        for (u32 i = 0; i < total_tick_count_; i++)
+        for (s32 i = 0; i < total_tick_count_; i++)
         {
-            for (u32 inst_id = 0; inst_id < foreach_insts_; inst_id++)
+            for (s32 inst_id = 0; inst_id < foreach_insts_; inst_id++)
             {
                 s32 ret = inst[inst_id].window_foreach(0, kObjects, now_ms);
                 ASSERT_TEST_NOLOG(ret == 0);
@@ -240,7 +240,7 @@ s32 base_test2()
 
     ASSERT_TEST(has_error_ == 0);
 
-    s32 all_ticks = 0;
+    s64 all_ticks = 0;
     for (s32 i = 0; i < kObjects; i++)
     {
         for (s32 j = 0; j < foreach_insts_; j++)
@@ -293,7 +293,7 @@ s32 base_test3()
 
 
     zforeach< TestForeach> inst[kForeachInsts];
-    for (u32 i = 0; i < foreach_insts_; i++)
+    for (s32 i = 0; i < foreach_insts_; i++)
     {
         s32 ret = inst[i].init(i, 0, object_count_, base_frame_len_, foreach_user_frame_len_[i]);
         ASSERT_TEST(ret == 0);
@@ -303,9 +303,9 @@ s32 base_test3()
     {
         PROF_DEFINE_AUTO_MULTI_ANON_RECORD(cost, kTickCount, "base frame ticks(9999obj)");
         s64 now_ms = 10000;
-        for (u32 i = 0; i < total_tick_count_; i++)
+        for (s32 i = 0; i < total_tick_count_; i++)
         {
-            for (u32 inst_id = 0; inst_id < foreach_insts_; inst_id++)
+            for (s32 inst_id = 0; inst_id < foreach_insts_; inst_id++)
             {
                 s32 ret = inst[inst_id].window_foreach(0, kObjects, now_ms);
                 ASSERT_TEST_NOLOG(ret == 0);
@@ -317,7 +317,7 @@ s32 base_test3()
 
     ASSERT_TEST(has_error_ == 0);
 
-    s32 all_ticks = 0;
+    s64 all_ticks = 0;
     for (s32 i = 0; i < kObjects; i++)
     {
         for (s32 j = 0; j < foreach_insts_; j++)
