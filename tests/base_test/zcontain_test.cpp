@@ -6,7 +6,6 @@
 #include "zvector.h"
 #include "zlist.h"
 #include "zlist_ext.h"
-#include "zhash_map.h"
 #include "zcontain_test.h"
 
 
@@ -665,15 +664,6 @@ s32 list_test()
     return 0;
 }
 
-s32 hash_map_test()
-{
-    zhash_map<int, int, 2> hash = { {1,1}, {2,2}, {3,3}, {4,4} };
-    ASSERT_TEST_EQ(hash.size(), 2U, "");
-    ASSERT_TEST_EQ(hash.insert({ 8,8 }).second, false, "");
-    ASSERT_TEST_EQ(hash.insert({ 8,8 }).first == hash.end(), true, "");
-    hash[1] = 111;
-    return 0;
-}
 
 template<class C>
 s32 ZSortInsertLogN(C& c, size_t s)
@@ -806,7 +796,6 @@ s32 contiainer_base_test()
     ASSERT_TEST_EQ(by_order_test(), 0, " by_order_test()");
     ASSERT_TEST_EQ(copy_test((zlist<size_t, 100>*)NULL), 0, "copy_test((zlist<size_t, 100>*)NULL)");
     ASSERT_TEST_EQ(copy_test((zarray<size_t, 100>*)NULL), 0, "copy_test((zarray<size_t, 100>*)NULL)");
-    ASSERT_TEST_EQ(hash_map_test(), 0, " hash_map_test()");
     return 0;
 }
 

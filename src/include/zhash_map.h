@@ -161,18 +161,18 @@ struct zhash_get_key
 };
 
 
-/* type_traits:
+/* type_traits:  (when _Ty is is_trivially_copyable)
 *
-* is_trivially_copyable: no 
-    * memset: no 
-    * memcpy: no 
-* shm resume : safley on rebuild hash,getkey inst 
+* is_trivially_copyable: safely
+    * memset: no(need call reset);
+    * memcpy: safely;
+* shm resume:  safely
     * has vptr:     no
     * static var:   no
     * has heap ptr: no
-    * has code ptr: yes (hash,getkey)
-    * has sys ptr: no
-* thread safe: no
+    * has code ptr: no
+    * has sys ptr:  no
+* thread safe: read safely
 *
 */
 
@@ -212,8 +212,6 @@ public:
     };
     using iterator = zhash_map_iterator<node_type, value_type, INVALID_NODE_ID, HASH_COUNT>;
     using const_iterator = const iterator;
-    Hash hasher;
-    GetKey get_key;
 protected:
     size_type buckets_[HASH_COUNT];
     node_type node_pool_[INVALID_NODE_ID+1]; // dereference end() will panic;  it's user error.  
@@ -293,7 +291,7 @@ protected:
 
     std::pair<iterator, bool> insert_v(const value_type& val, bool assign)
     {
-        iterator finder = find(get_key(val));
+        iterator finder = find(GetKey()(val));
         if (finder != end())
         {
             if (assign)
@@ -303,7 +301,7 @@ protected:
             return { finder, false };
         }
 
-        auto ukey = hasher(get_key(val));
+        auto ukey = Hash()(GetKey()(val));
         size_type hash_id = (size_type)(ukey % HASH_COUNT);
 
         size_type new_node_id = pop_free();
@@ -393,10 +391,10 @@ public:
 
     iterator find(const key_type& key)
     {
-        auto ukey = hasher(key);
+        auto ukey = Hash()(key);
         size_type hash_id = (size_type)(ukey % HASH_COUNT);
         size_type node_id = buckets_[hash_id];
-        while (node_id != FREE_POOL_SIZE && get_key(rf(node_pool_[node_id])) != key)
+        while (node_id != FREE_POOL_SIZE && GetKey()(rf(node_pool_[node_id])) != key)
         {
             node_id = node_pool_[node_id].next;
         }
@@ -464,7 +462,7 @@ public:
 
     iterator erase(const key_type& key)
     {
-        auto ukey = hasher(key);
+        auto ukey = Hash()(key);
         size_type hash_id = (size_type)(ukey % HASH_COUNT);
         size_type pre_node_id = buckets_[hash_id];
         if (pre_node_id == FREE_POOL_SIZE)
@@ -473,7 +471,7 @@ public:
         }
 
         size_type node_id = FREE_POOL_SIZE;
-        if (get_key(rf(node_pool_[pre_node_id])) == key)
+        if (GetKey()(rf(node_pool_[pre_node_id])) == key)
         {
             node_id = pre_node_id;
             buckets_[hash_id] = node_pool_[pre_node_id].next;
@@ -483,7 +481,7 @@ public:
             size_type cur_node_id = pre_node_id;
             while (node_pool_[cur_node_id].next != FREE_POOL_SIZE)
             {
-                if (get_key(rf(node_pool_[node_pool_[cur_node_id].next])) != key)
+                if (GetKey()(rf(node_pool_[node_pool_[cur_node_id].next])) != key)
                 {
                     cur_node_id = node_pool_[cur_node_id].next;
                     continue;
