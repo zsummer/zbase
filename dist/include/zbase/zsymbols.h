@@ -121,7 +121,7 @@ public:
 
     const char* at(s32 name_id) const { return symbol_name(name_id); }
     const char* name(s32 name_id) const { return symbol_name(name_id); }
-
+    s32 add(const char* name, s32 name_len, bool reuse_same_name) { return add_symbol(name, name_len, reuse_same_name); }
 
     s32 add_symbol(const char* name, s32 name_len, bool reuse_same_name)
     {
@@ -178,34 +178,49 @@ public:
         symbol_head next_offset = exploit_ + new_symbol_len + head_size;
         memcpy(space_ + exploit_, &next_offset, sizeof(next_offset));
         memcpy(space_ + exploit_ + sizeof(next_offset), name, name_len + 1);
-
+        exploit_ += new_symbol_len;
         next_offset = 0;
         memcpy(space_ + exploit_, &next_offset, sizeof(next_offset));
         return id;
     }
 
+    s32 clone_from(const zsymbols& from)
+    {
+        if (space_ == nullptr)
+        {
+            return -1;
+        }
+        if (space_ == from.space_)
+        {
+            return -2;
+        }
+
+        if (from.space_ == nullptr || from.space_len_ < min_space_size)
+        {
+            return -3;
+        }
+
+        //support shrink  
+        if (space_len_ < from.exploit_ + head_size)
+        {
+            return -3;
+        }
+        memcpy(space_, from.space_, (s64)from.exploit_ + head_size);
+        exploit_ = from.exploit_;
+        return 0;
+    }
 };
 
 template<s32 TableLen>
-class zsymbols_static 
+class zsymbols_static :public zsymbols
 {
 public:
     zsymbols_static()
     {
         static_assert(TableLen > zsymbols::first_exploit_offset, "");
-        symbols_.attach(space_, TableLen);
-    }
-public:
-    const char* at(s32 name_id) const { return symbols_.symbol_name(name_id); }
-    const char* name(s32 name_id) const { return symbols_.symbol_name(name_id); }
-    const char* symbol_name(s32 name_id) const { return symbols_.symbol_name(name_id); }
-
-    u32 add_symbol(const char* name, s32 name_len, bool reuse_same_name)
-    {
-        return symbols_.add_symbol(name, name_len, reuse_same_name);
+        attach(space_, TableLen);
     }
 private:
-    zsymbols symbols_;
     char space_[TableLen];
 };
 
