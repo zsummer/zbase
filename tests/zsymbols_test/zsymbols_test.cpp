@@ -34,12 +34,27 @@ s32 zsymbols_test()
     {
         char buf[10];
         sprintf(buf, "%d", i);
-        u32 id = symbols.add_symbol(buf, 0, true);
+        u32 id = symbols.add(buf, 0, true);
         ASSERT_TEST(id != zsymbols::invalid_symbols_id);
         const char* name = symbols.at(id);
         ASSERT_TEST(strcmp(name, buf) == 0);
     }
+    s32 test_id = symbols.add("test", 0, true);
+    ASSERT_TEST(test_id != zsymbols::invalid_symbols_id);
+    ASSERT_TEST(test_id == symbols.add("test", 0, true));
 
+    for (u32 i = 0; i < 40; i++)
+    {
+        symbols.add("test", 0, false);
+    }
+    ASSERT_TEST(symbols.add("test", 0, false) == zsymbols::invalid_symbols_id);
+    ASSERT_TEST(symbols.add("test", 0, true) != zsymbols::invalid_symbols_id);
+
+    zsymbols_static<101> clone_test;
+    s32 ret = clone_test.clone_from(symbols);
+    ASSERT_TEST(ret == 0);
+    ASSERT_TEST(clone_test.add("test", 0, false) == zsymbols::invalid_symbols_id);
+    ASSERT_TEST(clone_test.add("test", 0, true) != zsymbols::invalid_symbols_id);
 
     return 0;
 }
