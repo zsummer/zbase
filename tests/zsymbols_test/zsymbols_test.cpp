@@ -30,27 +30,28 @@
 s32 zsymbols_test()
 {
     zsymbols_static<100> symbols;
-    for (u32 i = 0; i < 10; i++)
+    for (s32 i = 0; i < 10; i++)
     {
         char buf[10];
         sprintf(buf, "%d", i);
-        u32 id = symbols.add(buf, 0, true);
-        ASSERT_TEST(id != zsymbols::invalid_symbols_id);
+        s32 id = symbols.add(buf, 0, true);
+        ASSERT_TEST_NOLOG(id != zsymbols::invalid_symbols_id);
         const char* name = symbols.at(id);
-        ASSERT_TEST(strcmp(name, buf) == 0);
+        ASSERT_TEST_NOLOG(strcmp(name, buf) == 0);
     }
+
     s32 test_id = symbols.add("test", 0, true);
     ASSERT_TEST(test_id != zsymbols::invalid_symbols_id);
     ASSERT_TEST(test_id == symbols.add("test", 0, true));
 
-    for (u32 i = 0; i < 40; i++)
+    for (s32 i = 0; i < 50; i++)
     {
         symbols.add("test", 0, false);
     }
     ASSERT_TEST(symbols.add("test", 0, false) == zsymbols::invalid_symbols_id);
     ASSERT_TEST(symbols.add("test", 0, true) != zsymbols::invalid_symbols_id);
 
-    zsymbols_static<101> clone_test;
+    zsymbols_static<100> clone_test;
     s32 ret = clone_test.clone_from(symbols);
     ASSERT_TEST(ret == 0);
     ASSERT_TEST(clone_test.add("test", 0, false) == zsymbols::invalid_symbols_id);
@@ -59,20 +60,112 @@ s32 zsymbols_test()
     return 0;
 }
 
-
-
-s32 zsymbols_clone_test()
+s32 zsymbols_solid_test()
 {
-    
+    zsymbols_solid_static<100> symbols;
+    for (s32 i = 0; i < 10; i++)
+    {
+        char buf[10];
+        sprintf(buf, "%d", i);
+        s32 id = symbols.add(buf, 0, true);
+        ASSERT_TEST_NOLOG(id != zsymbols_solid::invalid_symbols_id);
+        const char* name = symbols.at(id);
+        ASSERT_TEST_NOLOG(strcmp(name, buf) == 0);
+    }
+    s32 test_id = symbols.add("test", 0, true);
+    ASSERT_TEST(test_id != zsymbols_solid::invalid_symbols_id);
+    ASSERT_TEST(test_id == symbols.add("test", 0, true));
+
+    for (s32 i = 0; i < 50; i++)
+    {
+        symbols.add("test", 0, false);
+    }
+    ASSERT_TEST(symbols.add("test", 0, false) == zsymbols_solid::invalid_symbols_id);
+    ASSERT_TEST(symbols.add("test", 0, true) != zsymbols_solid::invalid_symbols_id);
+
+    zsymbols_solid_static<100> clone_test;
+    s32 ret = clone_test.clone_from(symbols);
+    ASSERT_TEST(ret == 0);
+    ASSERT_TEST(clone_test.add("test", 0, false) == zsymbols_solid::invalid_symbols_id);
+    ASSERT_TEST(clone_test.add("test", 0, true) != zsymbols_solid::invalid_symbols_id);
 
     return 0;
 }
 
 
 
+
+
 s32 zsymbols_bench_test()
 {
+    static constexpr s32 symbols = 10000;
+    zsymbols_static<symbols * 10>* base = new zsymbols_static<symbols * 10>;
+    zsymbols_static<symbols * 10>* base_no_reuse = new zsymbols_static<symbols * 10>;
+    zarray<s32, symbols>* rands = new zarray<s32, symbols>;
+    for (s32 i = 0; i < symbols; i++)
+    {
+        char buf[50];
+        rands->push_back(rand());
+        sprintf(buf, "%d", rands->back());
+        s32 ret = base->add(buf, 0, true);
+        ASSERT_TEST_NOLOG(ret != zsymbols::invalid_symbols_id);
+    }
+
+    zsymbols_static<symbols * 10>* fast = new zsymbols_static<symbols * 10>;
+    zsymbols_solid_static<symbols * 10>* solid = new zsymbols_solid_static<symbols * 10>;
     
+    if (true)
+    {
+        //add  
+        if (true)
+        {
+            PROF_DEFINE_AUTO_MULTI_ANON_RECORD(cost, symbols, "noreuse");
+            for (auto id : *rands)
+            {
+                s32 symbol_id = base_no_reuse->add(base->at(id), 0, false);
+                ASSERT_TEST_NOLOG(symbol_id != zsymbols::invalid_symbols_id);
+            }
+        }
+        LogInfo() << "used bytes:" << base_no_reuse->exploit_;
+    }
+
+
+    if (true)
+    {
+        //add  
+        if (true)
+        {
+            PROF_DEFINE_AUTO_MULTI_ANON_RECORD(cost, symbols, "fast");
+            for (auto id : *rands)
+            {
+                s32 symbol_id = fast->add(base->at(id), 0, true);
+                ASSERT_TEST_NOLOG(symbol_id != zsymbols::invalid_symbols_id);
+            }
+        }
+        LogInfo() << "used bytes:" << fast->exploit_;
+    }
+
+    if (true)
+    {
+        //add  
+        if (true)
+        {
+            PROF_DEFINE_AUTO_MULTI_ANON_RECORD(cost, symbols, "solid");
+            for (auto id : *rands)
+            {
+                s32 symbol_id = solid->add(base->at(id), 0, true);
+                ASSERT_TEST_NOLOG(symbol_id != zsymbols_solid::invalid_symbols_id);
+            }
+        }
+        LogInfo() << "used bytes:" << solid->exploit_;
+    }
+
+    delete base;
+    delete base_no_reuse;
+    delete rands;
+    delete fast;
+    delete solid;
+
     return 0;
 }
 
@@ -88,7 +181,7 @@ int main(int argc, char *argv[])
     LogDebug() << " main begin test. ";
 
     ASSERT_TEST(zsymbols_test() == 0);
-    ASSERT_TEST(zsymbols_clone_test() == 0);
+    ASSERT_TEST(zsymbols_solid_test() == 0);
     ASSERT_TEST(zsymbols_bench_test() == 0);
 
     LogInfo() << "all test finish .";
