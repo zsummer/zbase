@@ -56,12 +56,10 @@ public:
     using symbol_head = u32;
 
     constexpr static s32 head_size = sizeof(symbol_head);
-    constexpr static s32 invalid_symbols_id = head_size;
-    constexpr static s32 invalid_symbols_section_size = head_size + sizeof("invalid symbol");
-    constexpr static s32 empty_symbols_id = invalid_symbols_section_size + head_size;
-    constexpr static s32 empty_symbols_secion_size = head_size + sizeof("");
+    constexpr static s32 invalid_symbols_id = 0;
+    constexpr static s32 invalid_symbols_section_size = sizeof("invalid symbol");
 
-    constexpr static s32 first_exploit_offset = invalid_symbols_section_size + empty_symbols_secion_size;
+    constexpr static s32 first_exploit_offset = invalid_symbols_section_size;
     constexpr static s32 min_space_size = first_exploit_offset + head_size;  
 
 public:
@@ -90,21 +88,14 @@ public:
 
         if (exploit_offset == 0)
         {
-
-            symbol_head next_offset = invalid_symbols_section_size + head_size;
-            memcpy(space_, &next_offset, sizeof(next_offset));
-            memcpy(space_ + sizeof(next_offset), "invalid symbol", sizeof("invalid symbol"));
-            exploit_ += sizeof(next_offset) + sizeof("invalid symbol");
-
-            next_offset = exploit_ + empty_symbols_secion_size + head_size;
+            memcpy(space_, "invalid symbol", sizeof("invalid symbol"));
+            exploit_ += sizeof("invalid symbol");
+            symbol_head next_offset = 0;
             memcpy(space_ + exploit_, &next_offset, sizeof(next_offset));
-            memcpy(space_ + exploit_ + sizeof(next_offset), "", sizeof(""));
-            exploit_ += sizeof(next_offset) + sizeof("");
-
-
-            next_offset = 0;
-            memcpy(space_ + exploit_, &next_offset, sizeof(next_offset));
-
+            if (exploit_ != min_space_size - head_size)
+            {
+                return -4;
+            }
         }
 
         return 0;
@@ -150,7 +141,7 @@ public:
 
         if (reuse_same_name)
         {
-            symbol_head next_offset = invalid_symbols_id;
+            symbol_head next_offset = first_exploit_offset + head_size;
             do
             {
                 next_offset = *(symbol_head*)&space_[next_offset - head_size];
@@ -174,14 +165,14 @@ public:
             return invalid_symbols_id;
         }
 
-        s32 id = exploit_ + head_size;
+        s32 symbol_id = exploit_ + head_size;
         symbol_head next_offset = exploit_ + new_symbol_len + head_size;
         memcpy(space_ + exploit_, &next_offset, sizeof(next_offset));
         memcpy(space_ + exploit_ + sizeof(next_offset), name, name_len + 1);
         exploit_ += new_symbol_len;
         next_offset = 0;
         memcpy(space_ + exploit_, &next_offset, sizeof(next_offset));
-        return id;
+        return symbol_id;
     }
 
     s32 clone_from(const zsymbols& from)
@@ -211,13 +202,166 @@ public:
     }
 };
 
+
+class zsymbols_solid
+{
+public:
+    constexpr static s32 invalid_symbols_id = 0;
+    constexpr static s32 invalid_symbols_section_size = sizeof("invalid symbol");
+    constexpr static s32 first_exploit_offset = invalid_symbols_section_size;
+    constexpr static s32 min_space_size = first_exploit_offset;
+
+public:
+    char* space_;
+    s32 space_len_;
+    s32 exploit_;
+
+    s32 attach(char* space, s32 space_len, s32 exploit_offset = 0)
+    {
+        if (space == nullptr)
+        {
+            return -1;
+        }
+        if (space_len < min_space_size)
+        {
+            return -2;
+        }
+        if (exploit_offset != 0 && exploit_offset < first_exploit_offset)
+        {
+            return -3;
+        }
+
+        space_ = space;
+        space_len_ = space_len;
+        exploit_ = exploit_offset;
+
+        if (exploit_offset == 0)
+        {
+            memcpy(space_, "invalid symbol", sizeof("invalid symbol"));
+            exploit_ += sizeof("invalid symbol");
+
+            memcpy(space_ + exploit_, "", sizeof(""));
+            exploit_ += sizeof("");
+        }
+
+        return 0;
+    }
+
+    const char* symbol_name(s32 name_id) const
+    {
+        if (name_id < space_len_)
+        {
+            return &space_[name_id];
+        }
+        return "";
+    }
+
+    const char* at(s32 name_id) const { return symbol_name(name_id); }
+    const char* name(s32 name_id) const { return symbol_name(name_id); }
+    s32 add(const char* name, s32 name_len, bool reuse_same_name) { return add_symbol(name, name_len, reuse_same_name); }
+
+    s32 add_symbol(const char* name, s32 name_len, bool reuse_same_name)
+    {
+        if (name == nullptr)
+        {
+            name = "";
+            name_len = 0;
+        }
+        if (name_len == 0)
+        {
+            name_len = (s32)strlen(name);
+        }
+        if (exploit_ < first_exploit_offset)
+        {
+            return invalid_symbols_id;
+        }
+        if (space_len_ < min_space_size)
+        {
+            return invalid_symbols_id;
+        }
+        if (space_ == nullptr)
+        {
+            return invalid_symbols_id;
+        }
+
+        s32 new_symbol_len = name_len + 1;
+        if (reuse_same_name)
+        {
+            s32 find_offset = first_exploit_offset;
+            while (find_offset + new_symbol_len <= space_len_)
+            {
+                if (space_[find_offset + new_symbol_len - 1] == '\0')
+                {
+                    if (strcmp(&space_[find_offset], name) == 0)
+                    {
+                        return find_offset;
+                    }
+                }
+                find_offset++;
+            }
+        }
+
+
+        if (exploit_ + new_symbol_len > space_len_)
+        {
+            return invalid_symbols_id;
+        }
+
+        s32 symbol_id = exploit_;
+        memcpy(space_ + exploit_, name, new_symbol_len);
+        exploit_ += new_symbol_len;
+
+        return symbol_id;
+    }
+
+    s32 clone_from(const zsymbols_solid& from)
+    {
+        if (space_ == nullptr)
+        {
+            return -1;
+        }
+        if (space_ == from.space_)
+        {
+            return -2;
+        }
+
+        if (from.space_ == nullptr || from.space_len_ < min_space_size)
+        {
+            return -3;
+        }
+
+        //support shrink  
+        if (space_len_ < from.exploit_)
+        {
+            return -3;
+        }
+        memcpy(space_, from.space_, (s64)from.exploit_);
+        exploit_ = from.exploit_;
+        return 0;
+    }
+};
+
+
 template<s32 TableLen>
 class zsymbols_static :public zsymbols
 {
 public:
     zsymbols_static()
     {
-        static_assert(TableLen > zsymbols::first_exploit_offset, "");
+        static_assert(TableLen >= zsymbols::min_space_size, "");
+        attach(space_, TableLen);
+    }
+private:
+    char space_[TableLen];
+};
+
+template<s32 TableLen>
+class zsymbols_solid_static :public zsymbols_solid
+{
+public:
+    zsymbols_solid_static()
+    {
+        static_assert(TableLen >= zsymbols_solid::min_space_size, "");
         attach(space_, TableLen);
     }
 private:
