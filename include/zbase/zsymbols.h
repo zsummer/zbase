@@ -50,7 +50,7 @@ using f64 = double;
 #endif
 
 
-class zsymbols
+class zsymbols_fast
 {
 public:
     using symbol_head = u32;
@@ -153,7 +153,6 @@ public:
                 {
                     return next_offset;
                 }
-
             } while (true);
         }
 
@@ -175,7 +174,7 @@ public:
         return symbol_id;
     }
 
-    s32 clone_from(const zsymbols& from)
+    s32 clone_from(const zsymbols_fast& from)
     {
         if (space_ == nullptr)
         {
@@ -292,10 +291,13 @@ public:
             {
                 if (space_[find_offset + new_symbol_len - 1] == '\0')
                 {
+                    //todo: optimize
                     if (strcmp(&space_[find_offset], name) == 0)
                     {
                         return find_offset;
                     }
+                    find_offset += new_symbol_len;
+                    continue;
                 }
                 find_offset++;
             }
@@ -343,10 +345,10 @@ public:
 
 
 template<s32 TableLen>
-class zsymbols_static :public zsymbols
+class zsymbols_fast_static :public zsymbols_fast
 {
 public:
-    zsymbols_static()
+    zsymbols_fast_static()
     {
         static_assert(TableLen >= zsymbols::min_space_size, "");
         attach(space_, TableLen);
@@ -368,5 +370,8 @@ private:
     char space_[TableLen];
 };
 
+using zsymbols = zsymbols_solid;
+template<s32 TableLen>
+using zsymbols_static = zsymbols_solid_static< TableLen>;
 
 #endif
