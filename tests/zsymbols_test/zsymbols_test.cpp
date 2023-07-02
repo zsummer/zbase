@@ -38,11 +38,13 @@ s32 zsymbols_test()
         ASSERT_TEST_NOLOG(id != zsymbols_fast_static<100>::invalid_symbols_id);
         const char* name = symbols.at(id);
         ASSERT_TEST_NOLOG(strcmp(name, buf) == 0);
+        ASSERT_TEST_NOLOG((s32)strlen(name) == symbols.len(id));
     }
 
     s32 test_id = symbols.add("test", 0, true);
     ASSERT_TEST(test_id != zsymbols_fast_static<100>::invalid_symbols_id);
     ASSERT_TEST(test_id == symbols.add("test", 0, true));
+    ASSERT_TEST((s32)strlen("test") == symbols.len(test_id));
 
     for (s32 i = 0; i < 50; i++)
     {
@@ -105,14 +107,15 @@ s32 zsymbols_bench_test()
     for (s32 i = 0; i < symbols; i++)
     {
         char buf[50];
-        rands->push_back(rand());
-        sprintf(buf, "%d", rands->back());
-        s32 ret = base->add(buf, 0, true);
-        ASSERT_TEST_NOLOG(ret != zsymbols::invalid_symbols_id);
+        s32 rand_val = rand()%100000;
+        sprintf(buf, "%d", rand_val);
+        s32 id = base->add(buf, 0, false);
+        rands->push_back(id);
+        ASSERT_TEST_NOLOG(id != zsymbols::invalid_symbols_id);
     }
-
-    zsymbols_fast_static<symbols * 10>* fast = new zsymbols_fast_static<symbols * 10>;
-    zsymbols_solid_static<symbols * 10>* solid = new zsymbols_solid_static<symbols * 10>;
+    LogInfo() << "test rand count:" << rands->size() <<", base string total size:" << base->exploit_;
+    zsymbols_fast_static<symbols * 20>* fast = new zsymbols_fast_static<symbols * 20>;
+    zsymbols_solid_static<symbols * 20>* solid = new zsymbols_solid_static<symbols * 20>;
     
     if (true)
     {
