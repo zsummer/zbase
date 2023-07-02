@@ -99,8 +99,8 @@ s32 zsymbols_solid_test()
 s32 zsymbols_bench_test()
 {
     static constexpr s32 symbols = 10000;
-    zsymbols_static<symbols * 10>* base = new zsymbols_static<symbols * 10>;
-    zsymbols_static<symbols * 10>* base_no_reuse = new zsymbols_static<symbols * 10>;
+    zsymbols_static<symbols * 20>* base = new zsymbols_static<symbols * 20>;
+    zsymbols_static<symbols * 20>* base_no_reuse = new zsymbols_static<symbols * 20>;
     zarray<s32, symbols>* rands = new zarray<s32, symbols>;
     for (s32 i = 0; i < symbols; i++)
     {
@@ -123,7 +123,7 @@ s32 zsymbols_bench_test()
             for (auto id : *rands)
             {
                 s32 symbol_id = base_no_reuse->add(base->at(id), 0, false);
-                ASSERT_TEST_NOLOG(symbol_id != zsymbols_static<symbols * 10>::invalid_symbols_id);
+                ASSERT_TEST_NOLOG(symbol_id != zsymbols_static<symbols * 20>::invalid_symbols_id);
             }
         }
         LogInfo() << "used bytes:" << base_no_reuse->exploit_;
