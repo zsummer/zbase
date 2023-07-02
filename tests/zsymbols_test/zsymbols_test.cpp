@@ -107,7 +107,7 @@ s32 zsymbols_bench_test()
     for (s32 i = 0; i < symbols; i++)
     {
         char buf[50];
-        s32 rand_val = rand()%100000;
+        s32 rand_val = rand()%1000000;
         sprintf(buf, "%d", rand_val);
         s32 id = base->add(buf, 0, false);
         rands->push_back(id);
@@ -115,8 +115,9 @@ s32 zsymbols_bench_test()
     }
     LogInfo() << "test rand count:" << rands->size() <<", base string total size:" << base->exploit_;
     zsymbols_fast_static<symbols * 20>* fast = new zsymbols_fast_static<symbols * 20>;
+    zarray<s32, symbols>* fast_ids = new zarray<s32, symbols>;
     zsymbols_solid_static<symbols * 20>* solid = new zsymbols_solid_static<symbols * 20>;
-    
+    zarray<s32, symbols>* solid_ids = new zarray<s32, symbols>;
     if (true)
     {
         //add  
@@ -143,10 +144,24 @@ s32 zsymbols_bench_test()
             {
                 s32 symbol_id = fast->add(base->at(id), 0, true);
                 ASSERT_TEST_NOLOG(symbol_id != zsymbols::invalid_symbols_id);
+                fast_ids->push_back(symbol_id);
             }
         }
         LogInfo() << "used bytes:" << fast->exploit_;
     }
+    if (true)
+    {
+        PROF_DEFINE_AUTO_MULTI_ANON_RECORD(cost, symbols, "fast at");
+        char buf[50];
+        volatile u32 se = 0;
+        for (auto id : *fast_ids)
+        {
+            const char* p = fast->at(id);
+            memcpy(buf, p, fast->len(id));
+            se += (u32)buf[0];
+        }
+    }
+
 
     if (true)
     {
@@ -157,10 +172,24 @@ s32 zsymbols_bench_test()
             for (auto id : *rands)
             {
                 s32 symbol_id = solid->add(base->at(id), 0, true);
-                ASSERT_TEST_NOLOG(symbol_id != zsymbols_solid_static<symbols * 10>::invalid_symbols_id);
+                ASSERT_TEST_NOLOG(symbol_id != zsymbols_solid_static<symbols * 20>::invalid_symbols_id);
+                solid_ids->push_back(symbol_id);
             }
         }
         LogInfo() << "used bytes:" << solid->exploit_;
+    }
+    if (true)
+    {
+
+        PROF_DEFINE_AUTO_MULTI_ANON_RECORD(cost, symbols, "solid at");
+        char buf[50];
+        volatile u32 se = 0;
+        for (auto id : *solid_ids)
+        {
+            const char* p = solid->at(id);
+            memcpy(buf, p, strlen(p)+1);
+            se += (u32)buf[0];
+        }
     }
 
     delete base;
