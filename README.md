@@ -5,7 +5,10 @@
 from zbase
 
 # Feature:  
-
+代码风格: stl likely 
+框架层级: base/utils   
+应用目标: 高性能, 共享内存RESUME   
+ 
 
 #  Example  
 

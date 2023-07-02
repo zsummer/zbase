@@ -50,6 +50,28 @@ using f64 = double;
 #endif
 
 
+/* type_traits:
+*
+* is_trivially_copyable: in part
+    * memset: uninit or no attach any array_data;
+    * memcpy: uninit or no attach any array_data;
+* shm resume : safely, require heap address fixed
+    * has vptr:     no
+    * static var:   no
+    * has heap ptr: yes  (attach memory)
+    * has code ptr: no
+    * has sys ptr:  no
+* thread safe: read safe
+*
+*/
+
+
+//两套实现均提供相同的读符号名的O(1)小常数性能, 并且在追加符号名时候 不复用已有符号名时性能为O(M) M为写入符号名的长度    
+//大规模的符号名映射(万级以上符号名) 要留意开启reuse后的add开销; (预烧录建议总是开启reuse) 
+//短字符串优先solid方案, 考虑CPU cache 和 head长度的内存开销 的性价比.     
+//长字符串建议fast  提供字符串长度信息    
+//考虑常见使用场景,  默认使用solid + reuse方案.  
+
 class zsymbols_fast
 {
 public:
