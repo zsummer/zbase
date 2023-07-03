@@ -97,7 +97,7 @@ s32 zsymbols_bench_test()
     for (s32 i = 0; i < symbols; i++)
     {
         char buf[50];
-        s32 rand_val = rand()%1000000;
+        s32 rand_val = rand()/ (rand()%1000 + 1);
         sprintf(buf, "%d", rand_val);
         s32 id = base->add(buf, 0, false);
         rands->push_back(id);
@@ -113,14 +113,14 @@ s32 zsymbols_bench_test()
         //add  
         if (true)
         {
-            PROF_DEFINE_AUTO_MULTI_ANON_RECORD(cost, symbols, "noreuse");
+            PROF_DEFINE_AUTO_MULTI_ANON_RECORD(cost, symbols, "no reuse add");
             for (auto id : *rands)
             {
                 s32 symbol_id = base_no_reuse->add(base->at(id), 0, false);
                 ASSERT_TEST_NOLOG(symbol_id != zsymbols_static<symbols * 20>::invalid_symbols_id);
             }
         }
-        LogInfo() << "used bytes:" << base_no_reuse->exploit_;
+        
     }
 
 
@@ -129,7 +129,7 @@ s32 zsymbols_bench_test()
         //add  
         if (true)
         {
-            PROF_DEFINE_AUTO_MULTI_ANON_RECORD(cost, symbols, "fast");
+            PROF_DEFINE_AUTO_MULTI_ANON_RECORD(cost, symbols, "fast reuse add");
             for (auto id : *rands)
             {
                 s32 symbol_id = fast->add(base->at(id), 0, true);
@@ -137,8 +137,25 @@ s32 zsymbols_bench_test()
                 fast_ids->push_back(symbol_id);
             }
         }
-        LogInfo() << "used bytes:" << fast->exploit_;
+        
     }
+
+    if (true)
+    {
+        //add  
+        if (true)
+        {
+            PROF_DEFINE_AUTO_MULTI_ANON_RECORD(cost, symbols, "solid reuse add");
+            for (auto id : *rands)
+            {
+                s32 symbol_id = solid->add(base->at(id), 0, true);
+                ASSERT_TEST_NOLOG(symbol_id != zsymbols_solid_static<symbols * 20>::invalid_symbols_id);
+                solid_ids->push_back(symbol_id);
+            }
+        }
+        
+    }
+
     if (true)
     {
         PROF_DEFINE_AUTO_MULTI_ANON_RECORD(cost, symbols, "fast at");
@@ -150,23 +167,6 @@ s32 zsymbols_bench_test()
             memcpy(buf, p, fast->len(id));
             se += (u32)buf[0];
         }
-    }
-
-
-    if (true)
-    {
-        //add  
-        if (true)
-        {
-            PROF_DEFINE_AUTO_MULTI_ANON_RECORD(cost, symbols, "solid");
-            for (auto id : *rands)
-            {
-                s32 symbol_id = solid->add(base->at(id), 0, true);
-                ASSERT_TEST_NOLOG(symbol_id != zsymbols_solid_static<symbols * 20>::invalid_symbols_id);
-                solid_ids->push_back(symbol_id);
-            }
-        }
-        LogInfo() << "used bytes:" << solid->exploit_;
     }
     if (true)
     {
@@ -181,7 +181,9 @@ s32 zsymbols_bench_test()
             se += (u32)buf[0];
         }
     }
-
+    LogInfo() << "base_no_reuse used bytes:" << base_no_reuse->exploit_;
+    LogInfo() << "fast used bytes:" << fast->exploit_;
+    LogInfo() << "solid used bytes:" << solid->exploit_;
     delete base;
     delete base_no_reuse;
     delete rands;
