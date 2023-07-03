@@ -54,6 +54,7 @@ class zmem_pool
 {
 public:
     s32 user_size_;
+    s32 user_name_;
     s32 chunk_size_;
     s32 chunk_count_;
     s32 chunk_exploit_offset_;
@@ -99,7 +100,7 @@ public:
     inline s32   full()const { return chunk_used_count_ == chunk_count_; }
 
 
-    inline s32 init(s32 user_size, s32 total_count, void* space_addr, s64  space_size)
+    inline s32 init(s32 user_size, s32 user_name, s32 total_count, void* space_addr, s64  space_size)
     {
         static_assert(sizeof(zmem_pool) % sizeof(s64) == 0, "");
         static_assert(align_size(0) == align_size(8), "");
@@ -123,6 +124,7 @@ public:
             return -4;
         }
         user_size_ = user_size;
+        user_name_ = user_name;
         chunk_size_ = FENCE_SIZE + align_size(user_size);
         chunk_count_ = total_count;
         chunk_exploit_offset_ = 0;
@@ -234,9 +236,9 @@ template<s32 USER_SIZE, s32 TOTAL_COUNT>
 class zmemory_static_pool
 {
 public:
-    inline s32 init()
+    inline s32 init(s32 user_name)
     {
-        return pool_.init(USER_SIZE, TOTAL_COUNT, space_, SPACE_SIZE);
+        return pool_.init(USER_SIZE, user_name, TOTAL_COUNT, space_, SPACE_SIZE);
     }
 
     inline void* exploit() { return pool_.exploit(); }
@@ -271,7 +273,7 @@ public:
     using zsuper = zmemory_static_pool<sizeof(_Ty), TotalCount>;
     zmem_obj_pool()
     {
-        zsuper::init();
+        zsuper::init(0);
     }
 
     template<class... Args >
