@@ -59,5 +59,8 @@ jobs:
         ./zshm_boot_test start heap  
         ./zshm_ptr_test 
         ./zsymbols_test
+        ./zstream_test
+        ./zclock_test
+        
 
       
