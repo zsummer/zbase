@@ -252,56 +252,89 @@ public:
         return array_data_[index / kBitWide] & 1ULL << (index % kBitWide);
     }
 
+    u32 pick_next_impl(u32 bit_id, u32 end_index)
+    {
+        u32 index = bit_id / kBitWide;
+
+        while (index < end_index)
+        {
+            if (array_data_[index] == 0)
+            {
+                index++;
+                continue;
+            }
+            u32 result_bit_id = index * kBitWide + bit_ffsll(array_data_[index]);
+            array_data_[index] &= array_data_[index] - 1;
+            return result_bit_id;
+        }
+        return bit_count_;
+    }
+
+
+    //bit_id need user add 1;  
+    u32 peek_next_impl(u32 bit_id, u32 end_index)
+    {
+        u32 index = bit_id / kBitWide;
+        u32 mod_id = bit_id % kBitWide;
+        if (index < end_index && array_data_[index] != 0 && mod_id != 0)
+        {
+            u64 unit = array_data_[index];
+            u64 mask = (1ULL << mod_id) - 1;
+            unit &= ~mask;
+            if (unit == 0)
+            {
+                index++;
+            }
+            else
+            {
+                u32 result_bit_id = index * kBitWide + bit_ffsll(unit);
+                return result_bit_id;
+            }
+        }
+
+        while (index < end_index)
+        {
+            if (array_data_[index] == 0)
+            {
+                index++;
+                continue;
+            }
+            u32 result_bit_id = index * kBitWide + bit_ffsll(array_data_[index]);
+            return result_bit_id;
+        }
+        return bit_count_;
+    }
  
     u32 pick_next_with_win(u32 bit_id)
     {
-        u32 index = bit_id / kBitWide;
-        
-        while (index < win_max_)
-        {
-            if (array_data_[index] == 0)
-            {
-                index++;
-                continue;
-            }
-#ifdef WIN32
-            unsigned long bit_index = 0;
-            _BitScanForward64(&bit_index, array_data_[index]);
-            u32 result_bit_id = index * kBitWide + (u32)bit_index;
-#else
-            u32 result_bit_id = index * kBitWide + __builtin_ffsll(array_data_[index]) - 1;
-#endif // WIN32
-            array_data_[index] &= array_data_[index] - 1;
-            return result_bit_id;
-        }
-        return bit_count_;
+        return pick_next_impl(bit_id, win_max_);
     }
-
     u32 pick_next(u32 bit_id)
     {
-        u32 index = bit_id / kBitWide;
-
-        while (index < array_size_)
-        {
-            if (array_data_[index] == 0)
-            {
-                index++;
-                continue;
-            }
-#ifdef WIN32
-            unsigned long bit_index = 0;
-            _BitScanForward64(&bit_index, array_data_[index]);
-            u32 result_bit_id = index * kBitWide + (u32)bit_index;
-#else
-            u32 result_bit_id = index * kBitWide + __builtin_ffsll(array_data_[index]) - 1;
-#endif // WIN32
-            array_data_[index] &= array_data_[index] - 1;
-            return result_bit_id;
-        }
-        return bit_count_;
+        return pick_next_impl(bit_id, array_size_);
+    }
+    u32 peek_next_with_win(u32 bit_id)
+    {
+        return peek_next_impl(bit_id, win_max_);
+    }
+    u32 peek_next(u32 bit_id)
+    {
+        return peek_next_impl(bit_id, array_size_);
     }
 
 
+private:
+    //not zero 
+    u32 bit_ffsll(u64 val)
+    {
+#ifdef WIN32
+        unsigned long bit_index = 0;
+        _BitScanForward64(&bit_index, val);
+        return (u32)bit_index;
+#else
+       return __builtin_ffsll(array_data_[index]) - 1;
+#endif // WIN32
+    }
 };
 
 template<u32 _BitCount>
