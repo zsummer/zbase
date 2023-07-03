@@ -326,16 +326,11 @@ s32 base_test3()
 
 int main(int argc, char *argv[])
 {
-    PROF_INIT("inner prof");
-    PROF_SET_OUTPUT(&FNLogFunc);
+    ztest_init();
 
     PROF_DEFINE_AUTO_ANON_RECORD(delta, "self use mem in main func begin and exit");
     PROF_OUTPUT_SELF_MEM("self use mem in main func begin and exit");
-    if (true)
-    {
-        PROF_DEFINE_AUTO_ANON_RECORD(guard, "start fnlog use");
-        FNLog::FastStartDebugLogger();
-    }
+
 
     LogDebug() << " main begin test. ";
     

@@ -126,10 +126,19 @@ while(0)
     ASSERT_TEST_NOLOG((v1)==(v2), (v1) , " ",  (v2), ##__VA_ARGS__);\
 }
 
-static inline void FNLogFunc(const ProfSerializer& serializer)
+static inline void fnlog_output(const ProfSerializer& serializer)
 {
     LOG_STREAM_DEFAULT_LOGGER(0, FNLog::PRIORITY_DEBUG, 0, 0, FNLog::LOG_PREFIX_NULL).write_buffer(serializer.buff(), (int)serializer.offset());
 }
+
+static inline int ztest_init()
+{
+    FNLog::FastStartDebugLogger();
+    PROF_INIT("ztest");
+    PROF_SET_OUTPUT(&fnlog_output);
+    return 0;
+}
+
 
 
 #if defined(__GCC__) && (OI)

@@ -172,9 +172,7 @@ s32 shm_ptr_stress_test()
 
 int main(int argc, char *argv[])
 {
-    FNLog::FastStartDebugLogger();
-    PROF_INIT("zshm_ptr");
-    PROF_SET_OUTPUT(&FNLogFunc);
+    ztest_init();
 
     ASSERT_TEST(shm_ptr_base_test() == 0);
     ASSERT_TEST(shm_ptr_fixed_test() == 0);

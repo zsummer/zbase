@@ -530,7 +530,7 @@ PROF_ALWAYS_INLINE double prof_get_time_frequency<PROF_CONNTER_CHRONO_SYS>()
 }
 
 template<ProfCounterType T>
-PROF_ALWAYS_INLINE double prof_get_time_inverse_frequency()
+PROF_ALWAYS_INLINE double get_inverse_frequency()
 {
     static double inverse_frequency_per_ns = 1.0 / (prof_get_time_frequency<T>() <= 0.0 ? 1.0 : prof_get_time_frequency<T>());
     return inverse_frequency_per_ns;
@@ -578,7 +578,7 @@ public:
     long long start_val() { return start_val_; }
 
     long long cycles() { return cycles_; }
-    PROF_ALWAYS_INLINE long long duration_ns() { return (long long)(cycles_ * prof_get_time_inverse_frequency<T>()); }
+    PROF_ALWAYS_INLINE long long duration_ns() { return (long long)(cycles_ * get_inverse_frequency<T>()); }
     double duration_second() { return (double)duration_ns() / (1000.0 * 1000.0 * 1000.0); }
 
     void set_start_val(long long val) { start_val_ = val; }
@@ -1500,12 +1500,12 @@ int ProfRecord<INST, RESERVE, DECLARE>::init(const char* title)
     init_timestamp_ = time(NULL);
 
     particle_for_ns_[PROF_COUNTER_NULL] = 0;
-    particle_for_ns_[PROF_COUNTER_SYS] = prof_get_time_inverse_frequency<PROF_COUNTER_SYS>();
-    particle_for_ns_[PROF_COUNTER_CLOCK] = prof_get_time_inverse_frequency<PROF_COUNTER_CLOCK>();
-    particle_for_ns_[PROF_CONNTER_CHRONO] = prof_get_time_inverse_frequency<PROF_CONNTER_CHRONO>();
-    particle_for_ns_[PROF_CONNTER_CHRONO_STEADY] = prof_get_time_inverse_frequency<PROF_CONNTER_CHRONO_STEADY>();
-    particle_for_ns_[PROF_CONNTER_CHRONO_SYS] = prof_get_time_inverse_frequency<PROF_CONNTER_CHRONO_SYS>();
-    particle_for_ns_[PROF_COUNTER_RDTSC] = prof_get_time_inverse_frequency<PROF_COUNTER_RDTSC>();
+    particle_for_ns_[PROF_COUNTER_SYS] = get_inverse_frequency<PROF_COUNTER_SYS>();
+    particle_for_ns_[PROF_COUNTER_CLOCK] = get_inverse_frequency<PROF_COUNTER_CLOCK>();
+    particle_for_ns_[PROF_CONNTER_CHRONO] = get_inverse_frequency<PROF_CONNTER_CHRONO>();
+    particle_for_ns_[PROF_CONNTER_CHRONO_STEADY] = get_inverse_frequency<PROF_CONNTER_CHRONO_STEADY>();
+    particle_for_ns_[PROF_CONNTER_CHRONO_SYS] = get_inverse_frequency<PROF_CONNTER_CHRONO_SYS>();
+    particle_for_ns_[PROF_COUNTER_RDTSC] = get_inverse_frequency<PROF_COUNTER_RDTSC>();
     particle_for_ns_[PROF_COUNTER_RDTSC_BTB] = particle_for_ns_[PROF_COUNTER_RDTSC];
     particle_for_ns_[PROF_COUNTER_RDTSCP] = particle_for_ns_[PROF_COUNTER_RDTSC];
     particle_for_ns_[PROF_COUNTER_RDTSC_MFENCE] = particle_for_ns_[PROF_COUNTER_RDTSC];

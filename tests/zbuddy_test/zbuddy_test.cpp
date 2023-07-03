@@ -191,9 +191,7 @@ s32 zbuddy_stress_test()
 
 int main(int argc, char *argv[])
 {
-    FNLog::FastStartDebugLogger();
-    PROF_INIT("zbuddy");
-    PROF_SET_OUTPUT(&FNLogFunc);
+    ztest_init();
 
     ASSERT_TEST(zbuddy_base_macro_test() == 0);
     ASSERT_TEST(zbuddy_base_test() == 0);

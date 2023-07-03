@@ -163,9 +163,7 @@ s32 shm_loader_stress_test()
 
 int main(int argc, char *argv[])
 {
-    FNLog::FastStartDebugLogger();
-    PROF_INIT("shm_loader");
-    PROF_SET_OUTPUT(&FNLogFunc);
+    ztest_init();
 
     ASSERT_TEST(shm_loader_base_test() == 0);
     ASSERT_TEST(shm_loader_stress_test() == 0);

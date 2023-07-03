@@ -813,9 +813,7 @@ s32 boot_base_test(const std::string& option)
 
 int main(int argc, char *argv[])
 {
-    FNLog::FastStartDebugLogger();
-    PROF_INIT("zshm_boot");
-    PROF_SET_OUTPUT(&FNLogFunc);
+    ztest_init();
 
     std::string option;
     if (argc <= 1)
