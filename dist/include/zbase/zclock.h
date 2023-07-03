@@ -8,6 +8,7 @@
 
 
 //from zprof; Copyright one author  
+//more test info to view zprof wiki  
 
 #ifndef  ZCLOCK_H
 #define ZCLOCK_H
@@ -601,6 +602,7 @@ public:
 public:
     static s64 now_ms() { return std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count(); }
     static double now() { return std::chrono::duration<double>(std::chrono::system_clock().now().time_since_epoch()).count(); }
+    static zclock_impl::vmdata get_vmdata() { return zclock_impl::get_vmdata(); }
 };
 
 

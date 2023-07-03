@@ -1,6 +1,6 @@
 version:
-last_sha1(./src)=b92010ac96e81e8cd746ad8db25c517cf039f623
-last_date(./src)=2023-07-03 12:55:36 +0800
+last_sha1(./src)=99ead1bb3d0a8ab3ec9ab8fe6d9276bd8f1818c1
+last_date(./src)=2023-07-03 15:42:27 +0800
 
 git log -1 --stat ./src:
-commit b92010ac96e81e8cd746ad8db25c517cf039f623 Author: zsummer <yawei.zhang@foxmail.com> Date: Mon Jul 3 12:55:17 2023 +0800 ztest; zclock src/include/zclock.h | 621 +++++++++++++++++++++++++++++++++++++++++++++++++++ src/include/ztest.h | 148 ++++++++++++ 2 files changed, 769 insertions(+)
+commit 99ead1bb3d0a8ab3ec9ab8fe6d9276bd8f1818c1 Author: zsummer <yawei.zhang@foxmail.com> Date: Mon Jul 3 15:42:14 2023 +0800 update comment src/include/zclock.h | 2 ++ 1 file changed, 2 insertions(+)
