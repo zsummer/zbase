@@ -101,6 +101,57 @@ s32 zbitset_test()
 }
 
 
+s32 zbitset_peek_test()
+{
+    for (s32 loop = 0; loop < 100; loop++)
+    {
+        u64 array_data[100];
+        zbitset bs;
+        bs.attach(array_data, 100, true);
+        zarray<u32, 1000> checks;
+        for (u32 i = 0; i < 800; i++)
+        {
+            bs.set_with_win(rand()%6400);
+            ASSERT_TEST_NOLOG(bs.has_error() == 0);
+        }
+
+        u32 bit_id = bs.first_bit() - 1;
+        while ((bit_id = bs.peek_next_with_win(bit_id + 1)) < bs.bit_count())
+        {
+            checks.push_back(bit_id);
+        }
+
+        ASSERT_TEST_NOLOG(checks.size() <= 800);
+        bit_id = bs.first_bit() - 1;
+        s32 idx = 0;
+        while ((bit_id = bs.peek_next_with_win(bit_id + 1)) < bs.bit_count())
+        {
+            ASSERT_TEST_NOLOG(checks.at(idx) == bit_id);
+            idx++;
+        }
+
+
+        bit_id = bs.first_bit() - 1;
+        idx = 0;
+        while ((bit_id = bs.peek_next(bit_id + 1)) < bs.bit_count())
+        {
+            ASSERT_TEST_NOLOG(checks.at(idx) == bit_id);
+            idx++;
+        }
+
+        bit_id = 0;
+        idx = 0;
+        while ((bit_id = bs.pick_next(bit_id)) < bs.bit_count())
+        {
+            ASSERT_TEST_NOLOG(checks.at(idx) == bit_id);
+            idx++;
+        }
+
+
+    }
+    return 0;
+
+}
 
 s32 zbitset_test_clone_test()
 {
@@ -167,17 +218,28 @@ s32 zbitset_test_clone_test()
 
 s32 zbitset_bench_win()
 {
-    u64 array_[100];
-    constexpr u32 bit_count = zbitset::max_bit_count(100);
+    u64 array_[1000];
+    constexpr u32 bit_count = zbitset::max_bit_count(1000);
     zbitset bs;
-    bs.attach(array_, 100, true);
+    bs.attach(array_, 1000, true);
 
     if (true)
     {
-        PROF_DEFINE_AUTO_MULTI_ANON_RECORD(cost, bit_count / 2,"set_with_win * 3200");
+        PROF_DEFINE_AUTO_MULTI_ANON_RECORD(cost, bit_count / 2,"set_with_win * 32000");
         for (u32 i = 0; i < bit_count / 2; i++)
         {
             bs.set_with_win(rand() % bit_count);
+        }
+    }
+
+    if (true)
+    {
+        PROF_DEFINE_AUTO_ANON_RECORD(cost, "peek_next_with_win");
+        volatile u32 add = 0;
+        u32 bit_id = bs.first_bit() -1;
+        while ((bit_id = bs.peek_next_with_win(bit_id+1)) < bs.bit_count())
+        {
+            add++;
         }
     }
 
@@ -198,19 +260,31 @@ s32 zbitset_bench_win()
 
 s32 zbitset_bench()
 {
-    u64 array_[100];
-    constexpr u32 bit_count = zbitset::max_bit_count(100);
+    u64 array_[1000];
+    constexpr u32 bit_count = zbitset::max_bit_count(1000);
     zbitset bs;
-    bs.attach(array_, 100, true);
+    bs.attach(array_, 1000, true);
 
     if (true)
     {
-        PROF_DEFINE_AUTO_MULTI_ANON_RECORD(cost, bit_count / 2, "set * 3200");
+        PROF_DEFINE_AUTO_MULTI_ANON_RECORD(cost, bit_count / 2, "set * 32000");
         for (u32 i = 0; i < bit_count / 2; i++)
         {
             bs.set(rand() % bit_count);
         }
     }
+
+    if (true)
+    {
+        PROF_DEFINE_AUTO_ANON_RECORD(cost, "peek_next");
+        volatile u32 add = 0;
+        u32 bit_id = -1;
+        while ((bit_id = bs.peek_next(bit_id + 1)) < bs.bit_count())
+        {
+            add++;
+        }
+    }
+
 
     if (true)
     {
@@ -288,6 +362,7 @@ int main(int argc, char *argv[])
     LogDebug() << " main begin test. ";
 
     ASSERT_TEST(zbitset_test() == 0);
+    ASSERT_TEST(zbitset_peek_test() == 0);
     ASSERT_TEST(zbitset_test_clone_test() == 0);
     ASSERT_TEST(zbitset_bench_win() == 0);
     ASSERT_TEST(zbitset_bench() == 0);
