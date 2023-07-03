@@ -174,7 +174,7 @@ s32 zsymbols_bench_test()
         for (auto id : *fast_ids)
         {
             const char* p = fast->at(id);
-            memcpy(buf, p, fast->len(id));
+            memcpy(buf, p, fast->len(id) + 1);
             se += (u32)buf[0];
         }
     }
@@ -187,7 +187,7 @@ s32 zsymbols_bench_test()
         for (auto id : *solid_ids)
         {
             const char* p = solid->at(id);
-            memcpy(buf, p, strlen(p)+1);
+            memcpy(buf, p, solid->len(id) + 1);
             se += (u32)buf[0];
         }
     }
