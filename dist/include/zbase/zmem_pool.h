@@ -83,6 +83,12 @@ public:
             s64 fence_;
             char data_;
         };
+        struct //todo  
+        {
+            s32 sfence_;
+            s32 used_ : 1;
+            s32 id_ : 31;
+        };
     };
 
 public:
@@ -137,7 +143,50 @@ public:
         return 0;
     }
 
+    s32 check_health(void* obj, bool is_used)
+    {
+        char* addr = (char*)obj - FENCE_SIZE;
+        s64 offset = addr - space_addr_;
+        if (offset < 0)
+        {
+            return -1;
+        }
+        if (offset + chunk_size_ > space_size_)
+        {
+            return -2;
+        }
+        if (offset % chunk_size_ != 0)
+        {
+            return -3;
+        }
+        if (offset + chunk_size_ > chunk_exploit_offset_)
+        {
+            return -4;
+        }
 
+
+
+        chunk* head = (chunk*)addr;
+        if (is_used)
+        {
+            if (head->fence_ != FENCE_8)
+            {
+                return -5;
+            }
+        }
+
+        if (head->small_fence_ != FENCE_4)
+        {
+            return -6;
+        }
+
+        head = (chunk*)(addr + chunk_size_);
+        if (head->small_fence_ != FENCE_4)
+        {
+            return -7;
+        }
+        return 0;
+    }
 
     inline void* exploit()
     {
