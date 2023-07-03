@@ -66,10 +66,9 @@ public:
     using symbol_head = s32;
     constexpr static s32 head_size = sizeof(symbol_head);
     constexpr static s32 invalid_symbols_id = 0;
-    constexpr static s32 invalid_symbols_section_size = head_size;
 
-    constexpr static s32 first_exploit_offset = invalid_symbols_section_size;
-    constexpr static s32 min_space_size = invalid_symbols_section_size;    
+    constexpr static s32 first_exploit_offset = head_size;
+    constexpr static s32 min_space_size = head_size;
 
 public:
     char* space_;
@@ -232,8 +231,7 @@ class zsymbols_solid
 {
 public:
     constexpr static s32 invalid_symbols_id = 0;
-    constexpr static s32 invalid_symbols_section_size = sizeof("invalid symbol");
-    constexpr static s32 first_exploit_offset = invalid_symbols_section_size;
+    constexpr static s32 first_exploit_offset = sizeof("invalid symbol");
     constexpr static s32 min_space_size = first_exploit_offset;
 
 public:
@@ -264,9 +262,6 @@ public:
         {
             memcpy(space_, "invalid symbol", sizeof("invalid symbol"));
             exploit_ += sizeof("invalid symbol");
-
-            memcpy(space_ + exploit_, "", sizeof(""));
-            exploit_ += sizeof("");
         }
 
         return 0;
@@ -280,7 +275,14 @@ public:
         }
         return "";
     }
-
+    s32 len(s32 name_id) const
+    {
+        if (name_id >= first_exploit_offset && name_id < exploit_)
+        {
+            return (s32)strlen(&space_[name_id]);
+        }
+        return 0;
+    }
     
     s32 add(const char* name, s32 name_len, bool reuse_same_name) 
     {
