@@ -211,6 +211,20 @@ public:
         exploit_ = from.exploit_;
         return 0;
     }
+
+    template<class _Ty>
+    static inline std::string readable_class_name()
+    {
+#ifdef WIN32
+        return typeid(_Ty).name();
+#else
+        int status = 0;
+        char* p = abi::__cxa_demangle(typeid(_Ty).name(), 0, 0, &status);
+        std::string dname = p;
+        free(p);
+        return dname;
+#endif
+    }
 };
 
 
@@ -350,6 +364,22 @@ public:
         exploit_ = from.exploit_;
         return 0;
     }
+
+    template<class _Ty>
+    static inline std::string readable_class_name()
+    {
+#ifdef WIN32
+        return typeid(_Ty).name();
+#else
+        int status = 0;
+        char* p = abi::__cxa_demangle(typeid(_Ty).name(), 0, 0, &status);
+        std::string dname = p;
+        free(p);
+        return dname;
+#endif
+    }
+
+
 };
 
 
