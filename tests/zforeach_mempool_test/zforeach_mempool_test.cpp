@@ -123,7 +123,7 @@ s32 base_test()
     foreach_tick_count_[4] = total_tick_count_ / (foreach_real_frame_len_[4]/ base_frame_len_);
     
     s64 space_size = zmem_pool::calculate_space_size(sizeof(Object), kObjects);
-    s32 ret = object_pool_.init(sizeof(Object), kObjects, new char[space_size], space_size);
+    s32 ret = object_pool_.init(sizeof(Object), 0, kObjects, new char[space_size], space_size);
     ASSERT_TEST(ret == 0);
     memset(object_pool_.space_addr_, 0, object_pool_.space_size_);
 
