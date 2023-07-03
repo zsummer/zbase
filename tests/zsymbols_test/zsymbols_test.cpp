@@ -17,6 +17,10 @@
 #include "test_common.h"
 #include "zsymbols.h"
 
+
+
+
+
 s32 zsymbols_test()
 {
     zsymbols_fast_static<100> symbols;
@@ -48,6 +52,12 @@ s32 zsymbols_test()
     ASSERT_TEST(ret == 0);
     ASSERT_TEST(clone_test.add("test", 0, false) == zsymbols_fast_static<100>::invalid_symbols_id);
     ASSERT_TEST(clone_test.add("test", 0, true) != zsymbols_fast_static<100>::invalid_symbols_id);
+
+
+
+    ASSERT_TEST(zsymbols_fast::readable_class_name<zsymbols_fast>().find("zsymbols_fast") != std::string::npos, zsymbols::readable_class_name<zsymbols_fast>());
+    ASSERT_TEST(zsymbols_solid::readable_class_name<zsymbols_solid>().find("zsymbols_solid") != std::string::npos, zsymbols::readable_class_name<zsymbols_solid>());
+
 
     return 0;
 }
