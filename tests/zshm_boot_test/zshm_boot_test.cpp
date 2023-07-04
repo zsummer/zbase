@@ -128,8 +128,8 @@ public:
         
 #else
         params.use_fixed_address_ = true;
-        params.space_addr_ = 0x00006AAAAAAAAAAAULL;
-        params.space_addr_ = 0x0000700000000000ULL;
+        params.space_ = 0x00006AAAAAAAAAAAULL;
+        params.space_ = 0x0000700000000000ULL;
 #endif // WIN32
 
         params.spaces_[ShmSpace::kFrame].size_ = SPACE_ALIGN(sizeof(Frame));
@@ -163,7 +163,7 @@ public:
         }
         ShmInstance() = (char*)shm_space;
 
-        SpaceEntry().space_addr_ = (u64)shm_space;
+        SpaceEntry().space_ = (u64)shm_space;
 
         BuildObject<Frame>(space<Frame, ShmSpace::kFrame>());
         zbuddy* buddy_ptr = space<zbuddy, ShmSpace::kBuddy>();
@@ -207,7 +207,7 @@ public:
         }
         ShmInstance() = (char*)shm_space;
 
-        SpaceEntry().space_addr_ = (u64)shm_space;
+        SpaceEntry().space_ = (u64)shm_space;
         Frame* m = space<Frame, ShmSpace::kFrame>();
         RebuildVPTR<Frame>(m);
 

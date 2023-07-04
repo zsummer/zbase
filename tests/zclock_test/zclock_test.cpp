@@ -19,19 +19,19 @@
 
 s32 zclock_test()
 {
-    zclock_base<zclock_impl::kClockSys>             c01;
-    zclock_base<zclock_impl::kClockClock>           c02;
-    zclock_base<zclock_impl::kClockChrono>          c03;
-    zclock_base<zclock_impl::kClockSteadyChrono>    c04;
-    zclock_base<zclock_impl::kClockSysChrono>       c05;
-    zclock_base<zclock_impl::kClockPureRDTSC>       c06;
-    zclock_base<zclock_impl::kClockVolatileRDTSC>   c07;
-    zclock_base<zclock_impl::kClockFenceRDTSC>      c08;
-    zclock_base<zclock_impl::kClockBTBFenceRDTSC>   c09;
-    zclock_base<zclock_impl::kClockRDTSCP>          c10;
-    zclock_base<zclock_impl::kClockMFenceRDTSC>     c11;
-    zclock_base<zclock_impl::kClockBTBMFenceRDTSC>  c12;
-    zclock_base<zclock_impl::kClockLockRDTSC>       c13;
+    zclock_base<zclock_impl::T_CLOCK_SYS>             c01;
+    zclock_base<zclock_impl::T_CLOCK_CLOCK>           c02;
+    zclock_base<zclock_impl::T_CLOCK_CHRONO>          c03;
+    zclock_base<zclock_impl::T_CLOCK_STEADY_CHRONO>    c04;
+    zclock_base<zclock_impl::T_CLOCK_SYS_CHRONO>       c05;
+    zclock_base<zclock_impl::T_CLOCK_PURE_RDTSC>       c06;
+    zclock_base<zclock_impl::T_CLOCK_VOLATILE_RDTSC>   c07;
+    zclock_base<zclock_impl::T_CLOCK_FENCE_RDTSC>      c08;
+    zclock_base<zclock_impl::T_CLOCK_BTB_FENCE_RDTSC>   c09;
+    zclock_base<zclock_impl::T_CLOCK_RDTSCP>          c10;
+    zclock_base<zclock_impl::T_CLOCK_MFENCE_RDTSC>     c11;
+    zclock_base<zclock_impl::T_CLOCK_BTB_MFENCE_RDTSC>  c12;
+    zclock_base<zclock_impl::T_CLOCK_LOCK_RDTSC>       c13;
 
     c01.start();
     c02.start();
@@ -82,7 +82,7 @@ s32 zclock_test()
     return 0;
 }
 
-template<zclock_impl::clock_type ctype>
+template<zclock_impl::ClockEnum ctype>
 s32 zclock_cost_test(const std::string& desc)
 {
     zclock_base<ctype> c;
@@ -102,19 +102,19 @@ s32 zclock_cost_test(const std::string& desc)
 s32 zclock_bench_test()
 {
 #define bench(x)  zclock_cost_test<x>(#x)
-    bench(zclock_impl::kClockSys);
-    bench(zclock_impl::kClockClock);
-    bench(zclock_impl::kClockChrono);
-    bench(zclock_impl::kClockSteadyChrono);
-    bench(zclock_impl::kClockSysChrono);
-    bench(zclock_impl::kClockPureRDTSC);
-    bench(zclock_impl::kClockVolatileRDTSC);
-    bench(zclock_impl::kClockFenceRDTSC);
-    bench(zclock_impl::kClockBTBFenceRDTSC);
-    bench(zclock_impl::kClockRDTSCP);
-    bench(zclock_impl::kClockMFenceRDTSC);
-    bench(zclock_impl::kClockBTBMFenceRDTSC);
-    bench(zclock_impl::kClockLockRDTSC);
+    bench(zclock_impl::T_CLOCK_SYS);
+    bench(zclock_impl::T_CLOCK_CLOCK);
+    bench(zclock_impl::T_CLOCK_CHRONO);
+    bench(zclock_impl::T_CLOCK_STEADY_CHRONO);
+    bench(zclock_impl::T_CLOCK_SYS_CHRONO);
+    bench(zclock_impl::T_CLOCK_PURE_RDTSC);
+    bench(zclock_impl::T_CLOCK_VOLATILE_RDTSC);
+    bench(zclock_impl::T_CLOCK_FENCE_RDTSC);
+    bench(zclock_impl::T_CLOCK_BTB_FENCE_RDTSC);
+    bench(zclock_impl::T_CLOCK_RDTSCP);
+    bench(zclock_impl::T_CLOCK_MFENCE_RDTSC);
+    bench(zclock_impl::T_CLOCK_BTB_MFENCE_RDTSC);
+    bench(zclock_impl::T_CLOCK_LOCK_RDTSC);
     return 0;
 }
 

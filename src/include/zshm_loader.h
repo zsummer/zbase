@@ -106,40 +106,40 @@ using f64 = double;
 
 namespace zshm_errno
 {
-	enum zshm_errno_enum :s32
+	enum ZSHM_ERRNO_TYPE :s32
 	{
-		kSuccess = 0,
-		kNoInit,
-		kParamError,
-		kNoShmMapping,
-		kInvalidShmMapping,
-		kCreateShmMappingFailed,
-		kAttachShmMappingFailed,
-		kCreateFileFailed,
-		kCreateFileMappingFailed,
-		kAttachFileMappingFailed,
-		kShmVersionMismatch,
+		E_SUCCESS = 0,
+		E_NO_INIT,
+		E_INVALID_PARAM,
+		E_NO_SHM_MAPPING,
+		E_INVALID_SHM_MAPPING,
+		E_CREATE_SHM_MAPPING_FAILED,
+		E_ATTACH_SHM_MAPPING_FAILED,
+		E_CREATE_FILE_FAILED,
+		E_CREATE_FILE_MAPPING_FAILED,
+		E_ATTACH_FILE_MAPPING_FAILED,
+		E_SHM_VERSION_MISMATCH,
 
-		kMaxError,
+		E_MAX_ERROR,
 	};
 
-#define zshm_errno_to_string(code) case code: return #code; 
+#define ZSHM_ERRNO_TO_STRING(code) case code: return #code; 
 
 	static const char* str(s32 error_code)
 	{
 		switch (error_code)
 		{
-			zshm_errno_to_string(kSuccess);
-			zshm_errno_to_string(kNoInit);
-			zshm_errno_to_string(kParamError);
-			zshm_errno_to_string(kNoShmMapping);
-			zshm_errno_to_string(kInvalidShmMapping);
-			zshm_errno_to_string(kCreateShmMappingFailed);
-			zshm_errno_to_string(kAttachShmMappingFailed);
-			zshm_errno_to_string(kCreateFileFailed);
-			zshm_errno_to_string(kCreateFileMappingFailed);
-			zshm_errno_to_string(kAttachFileMappingFailed);
-			zshm_errno_to_string(kShmVersionMismatch);
+			ZSHM_ERRNO_TO_STRING(E_SUCCESS);
+			ZSHM_ERRNO_TO_STRING(E_NO_INIT);
+			ZSHM_ERRNO_TO_STRING(E_INVALID_PARAM);
+			ZSHM_ERRNO_TO_STRING(E_NO_SHM_MAPPING);
+			ZSHM_ERRNO_TO_STRING(E_INVALID_SHM_MAPPING);
+			ZSHM_ERRNO_TO_STRING(E_CREATE_SHM_MAPPING_FAILED);
+			ZSHM_ERRNO_TO_STRING(E_ATTACH_SHM_MAPPING_FAILED);
+			ZSHM_ERRNO_TO_STRING(E_CREATE_FILE_FAILED);
+			ZSHM_ERRNO_TO_STRING(E_CREATE_FILE_MAPPING_FAILED);
+			ZSHM_ERRNO_TO_STRING(E_ATTACH_FILE_MAPPING_FAILED);
+			ZSHM_ERRNO_TO_STRING(E_SHM_VERSION_MISMATCH);
 		}
 
 		return "unknown error";
@@ -179,7 +179,7 @@ public:
 	{
 		if (shm_key_ == 0)
 		{
-			return zshm_errno::kNoInit;
+			return zshm_errno::E_NO_INIT;
 		}
 
 		std::string str_key = std::to_string(shm_key_);
@@ -188,7 +188,7 @@ public:
 		HANDLE handle = ::CreateFile(str_key.c_str(), GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
 		if (handle == INVALID_HANDLE_VALUE)
 		{
-			return zshm_errno::kNoShmMapping;
+			return zshm_errno::E_NO_SHM_MAPPING;
 		}
 
 
@@ -196,19 +196,19 @@ public:
 		if (!GetFileSizeEx(handle, &file_size))
 		{
 			::CloseHandle(handle);
-			return zshm_errno::kInvalidShmMapping;
+			return zshm_errno::E_INVALID_SHM_MAPPING;
 		}
 
 		if ((s64)file_size.QuadPart != shm_mem_size_)
 		{
 			::CloseHandle(handle);
-			return zshm_errno::kInvalidShmMapping;
+			return zshm_errno::E_INVALID_SHM_MAPPING;
 		}
 
 
 		::CloseHandle(handle);
 #endif
-		return zshm_errno::kSuccess;
+		return zshm_errno::E_SUCCESS;
 	}
 
 
@@ -217,7 +217,7 @@ public:
 	{
 		if (shm_key_ == 0)
 		{
-			return zshm_errno::kNoInit;
+			return zshm_errno::E_NO_INIT;
 		}
 
 		std::string str_key = std::to_string(shm_key_);
@@ -225,7 +225,7 @@ public:
 		HANDLE handle = ::CreateFile(str_key.c_str(), GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
 		if (handle == INVALID_HANDLE_VALUE)
 		{
-			return zshm_errno::kNoShmMapping;
+			return zshm_errno::E_NO_SHM_MAPPING;
 		}
 
 
@@ -233,20 +233,20 @@ public:
 		if (!GetFileSizeEx(handle, &file_size))
 		{
 			::CloseHandle(handle);
-			return zshm_errno::kInvalidShmMapping;
+			return zshm_errno::E_INVALID_SHM_MAPPING;
 		}
 
 		if ((s64)file_size.QuadPart != shm_mem_size_)
 		{
 			::CloseHandle(handle);
-			return zshm_errno::kInvalidShmMapping;
+			return zshm_errno::E_INVALID_SHM_MAPPING;
 		}
 
 		HANDLE mapping_handle = CreateFileMapping(handle, NULL, PAGE_READWRITE, 0, 0, NULL);
 		if (mapping_handle == NULL)
 		{
 			::CloseHandle(handle);
-			return zshm_errno::kAttachFileMappingFailed;
+			return zshm_errno::E_ATTACH_FILE_MAPPING_FAILED;
 		}
 
 		::CloseHandle(handle);
@@ -256,7 +256,7 @@ public:
 		{
 			volatile DWORD dw = GetLastError();
 			(void)dw;
-			return zshm_errno::kAttachShmMappingFailed;
+			return zshm_errno::E_ATTACH_SHM_MAPPING_FAILED;
 		}
 
 		CloseHandle(mapping_handle);
@@ -270,7 +270,7 @@ public:
 	{
 		if (shm_key_ == 0)
 		{
-			return zshm_errno::kNoInit;
+			return zshm_errno::E_NO_INIT;
 		}
 
 		std::string str_key = std::to_string(shm_key_);
@@ -278,7 +278,7 @@ public:
 		HANDLE handle = ::CreateFile(str_key.c_str(), GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
 		if (handle == INVALID_HANDLE_VALUE)
 		{
-			return zshm_errno::kCreateFileFailed;
+			return zshm_errno::E_CREATE_FILE_FAILED;
 		}
 
 		LARGE_INTEGER file_size;
@@ -288,7 +288,7 @@ public:
 		if (mapping_handle == NULL)
 		{
 			::CloseHandle(handle);
-			return zshm_errno::kCreateFileMappingFailed;
+			return zshm_errno::E_CREATE_FILE_MAPPING_FAILED;
 		}
 		::CloseHandle(handle);
 
@@ -298,7 +298,7 @@ public:
 		{
 			volatile DWORD dw = GetLastError();
 			(void)dw;
-			return zshm_errno::kAttachShmMappingFailed;
+			return zshm_errno::E_ATTACH_SHM_MAPPING_FAILED;
 		}
 		CloseHandle(mapping_handle);
 		shm_mnt_addr_ = addr;
@@ -379,20 +379,20 @@ public:
 	{
 		if (shm_key_ == 0)
 		{
-			return zshm_errno::kNoInit;
+			return zshm_errno::E_NO_INIT;
 		}
 #ifndef WIN32
 		int idx = shmget(shm_key_, 0, 0);
 		if (idx < 0 && errno == ENOENT)
 		{
-			return zshm_errno::kNoShmMapping;
+			return zshm_errno::E_NO_SHM_MAPPING;
 		}
 		if (idx < 0)
 		{
-			return zshm_errno::kInvalidShmMapping;
+			return zshm_errno::E_INVALID_SHM_MAPPING;
 		}
 #endif
-		return zshm_errno::kSuccess;
+		return zshm_errno::E_SUCCESS;
 	}
 
 
@@ -400,23 +400,23 @@ public:
 	{
 		if (shm_key_ == 0)
 		{
-			return zshm_errno::kNoInit;
+			return zshm_errno::E_NO_INIT;
 		}
 #ifndef WIN32
 		int idx = shmget(shm_key_, 0, 0);
 		if (idx < 0 && errno == ENOENT)
 		{
-			return zshm_errno::kNoShmMapping;
+			return zshm_errno::E_NO_SHM_MAPPING;
 		}
 		if (idx < 0)
 		{
-			return zshm_errno::kInvalidShmMapping;
+			return zshm_errno::E_INVALID_SHM_MAPPING;
 		}
 
 		void* addr = shmat(idx, (void*)expect_addr, 0);
 		if (addr == nullptr || addr == (void*)-1)
 		{
-			return zshm_errno::kAttachShmMappingFailed;
+			return zshm_errno::E_ATTACH_SHM_MAPPING_FAILED;
 		}
 		shm_index_ = idx;
 		shm_mnt_addr_ = addr;
@@ -428,7 +428,7 @@ public:
 	{
 		if (shm_key_ == 0)
 		{
-			return zshm_errno::kNoInit;
+			return zshm_errno::E_NO_INIT;
 		}
 #ifndef WIN32
 		//可读写共享  
@@ -436,14 +436,14 @@ public:
 		s32 idx = shmget(shm_key_, shm_mem_size_, IPC_CREAT | IPC_EXCL | 0600);
 		if (idx < 0)
 		{
-			return zshm_errno::kCreateShmMappingFailed;
+			return zshm_errno::E_CREATE_SHM_MAPPING_FAILED;
 		}
 		
 
 		void* addr = shmat(idx, (void*)expect_addr, 0);
 		if (addr == nullptr || addr == (void*)-1)
 		{
-			return zshm_errno::kAttachShmMappingFailed;
+			return zshm_errno::E_ATTACH_SHM_MAPPING_FAILED;
 		}
 		shm_index_ = idx;
 		shm_mnt_addr_ = addr;
@@ -487,11 +487,11 @@ public:
 		int idx = shmget(shm_key, 0, 0);
 		if (idx < 0 && errno == ENOENT)
 		{
-			return zshm_errno::kNoShmMapping;
+			return zshm_errno::E_NO_SHM_MAPPING;
 		}
 		if (idx < 0)
 		{
-			return zshm_errno::kInvalidShmMapping;
+			return zshm_errno::E_INVALID_SHM_MAPPING;
 		}
 		if (real_addr != nullptr)
 		{
@@ -528,12 +528,12 @@ private:
 public:
 	s32 check()
 	{
-		return zshm_errno::kNoShmMapping;
+		return zshm_errno::E_NO_SHM_MAPPING;
 	}
 
 	s32 attach(u64 expect_addr = 0)
 	{
-		return zshm_errno::kNoShmMapping;
+		return zshm_errno::E_NO_SHM_MAPPING;
 	}
 
 	s32 create(u64 expect_addr = 0)
@@ -546,7 +546,7 @@ public:
 #endif // WIN32
 		if (addr == nullptr)
 		{
-			return zshm_errno::kCreateShmMappingFailed;
+			return zshm_errno::E_CREATE_SHM_MAPPING_FAILED;
 		}
 		shm_mnt_addr_ = addr;
 		return 0;

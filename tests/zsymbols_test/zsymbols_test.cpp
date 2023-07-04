@@ -29,14 +29,14 @@ s32 zsymbols_test()
         char buf[10];
         sprintf(buf, "%d", i);
         s32 id = symbols.add(buf, 0, true);
-        ASSERT_TEST_NOLOG(id != zsymbols_fast_static<100>::invalid_symbols_id);
+        ASSERT_TEST_NOLOG(id != zsymbols_fast_static<100>::INVALID_SYMBOLS_ID);
         const char* name = symbols.at(id);
         ASSERT_TEST_NOLOG(strcmp(name, buf) == 0);
         ASSERT_TEST_NOLOG((s32)strlen(name) == symbols.len(id));
     }
 
     s32 test_id = symbols.add("test", 0, true);
-    ASSERT_TEST(test_id != zsymbols_fast_static<100>::invalid_symbols_id);
+    ASSERT_TEST(test_id != zsymbols_fast_static<100>::INVALID_SYMBOLS_ID);
     ASSERT_TEST(test_id == symbols.add("test", 0, true));
     ASSERT_TEST((s32)strlen("test") == symbols.len(test_id));
 
@@ -44,14 +44,14 @@ s32 zsymbols_test()
     {
         symbols.add("test", 0, false);
     }
-    ASSERT_TEST(symbols.add("test", 0, false) == zsymbols_fast_static<100>::invalid_symbols_id);
-    ASSERT_TEST(symbols.add("test", 0, true) != zsymbols_fast_static<100>::invalid_symbols_id);
+    ASSERT_TEST(symbols.add("test", 0, false) == zsymbols_fast_static<100>::INVALID_SYMBOLS_ID);
+    ASSERT_TEST(symbols.add("test", 0, true) != zsymbols_fast_static<100>::INVALID_SYMBOLS_ID);
 
     zsymbols_fast_static<100> clone_test;
     s32 ret = clone_test.clone_from(symbols);
     ASSERT_TEST(ret == 0);
-    ASSERT_TEST(clone_test.add("test", 0, false) == zsymbols_fast_static<100>::invalid_symbols_id);
-    ASSERT_TEST(clone_test.add("test", 0, true) != zsymbols_fast_static<100>::invalid_symbols_id);
+    ASSERT_TEST(clone_test.add("test", 0, false) == zsymbols_fast_static<100>::INVALID_SYMBOLS_ID);
+    ASSERT_TEST(clone_test.add("test", 0, true) != zsymbols_fast_static<100>::INVALID_SYMBOLS_ID);
 
 
 
@@ -70,26 +70,26 @@ s32 zsymbols_solid_test()
         char buf[10];
         sprintf(buf, "%d", i);
         s32 id = symbols.add(buf, 0, true);
-        ASSERT_TEST_NOLOG(id != zsymbols_solid_static<100>::invalid_symbols_id);
+        ASSERT_TEST_NOLOG(id != zsymbols_solid_static<100>::INVALID_SYMBOLS_ID);
         const char* name = symbols.at(id);
         ASSERT_TEST_NOLOG(strcmp(name, buf) == 0);
     }
     s32 test_id = symbols.add("test", 0, true);
-    ASSERT_TEST(test_id != zsymbols_solid_static<100>::invalid_symbols_id);
+    ASSERT_TEST(test_id != zsymbols_solid_static<100>::INVALID_SYMBOLS_ID);
     ASSERT_TEST(test_id == symbols.add("test", 0, true));
 
     for (s32 i = 0; i < 50; i++)
     {
         symbols.add("test", 0, false);
     }
-    ASSERT_TEST(symbols.add("test", 0, false) == zsymbols_solid_static<100>::invalid_symbols_id);
-    ASSERT_TEST(symbols.add("test", 0, true) != zsymbols_solid_static<100>::invalid_symbols_id);
+    ASSERT_TEST(symbols.add("test", 0, false) == zsymbols_solid_static<100>::INVALID_SYMBOLS_ID);
+    ASSERT_TEST(symbols.add("test", 0, true) != zsymbols_solid_static<100>::INVALID_SYMBOLS_ID);
 
     zsymbols_solid_static<100> clone_test;
     s32 ret = clone_test.clone_from(symbols);
     ASSERT_TEST(ret == 0);
-    ASSERT_TEST(clone_test.add("test", 0, false) == zsymbols_solid_static<100>::invalid_symbols_id);
-    ASSERT_TEST(clone_test.add("test", 0, true) != zsymbols_solid_static<100>::invalid_symbols_id);
+    ASSERT_TEST(clone_test.add("test", 0, false) == zsymbols_solid_static<100>::INVALID_SYMBOLS_ID);
+    ASSERT_TEST(clone_test.add("test", 0, true) != zsymbols_solid_static<100>::INVALID_SYMBOLS_ID);
 
     return 0;
 }
@@ -111,7 +111,7 @@ s32 zsymbols_bench_test()
         sprintf(buf, "%d", rand_val);
         s32 id = base->add(buf, 0, false);
         rands->push_back(id);
-        ASSERT_TEST_NOLOG(id != zsymbols::invalid_symbols_id);
+        ASSERT_TEST_NOLOG(id != zsymbols::INVALID_SYMBOLS_ID);
     }
     LogInfo() << "test rand count:" << rands->size() <<", base string total size:" << base->exploit_;
     zsymbols_fast_static<symbols * 20>* fast = new zsymbols_fast_static<symbols * 20>;
@@ -127,7 +127,7 @@ s32 zsymbols_bench_test()
             for (auto id : *rands)
             {
                 s32 symbol_id = base_no_reuse->add(base->at(id), 0, false);
-                ASSERT_TEST_NOLOG(symbol_id != zsymbols_static<symbols * 20>::invalid_symbols_id);
+                ASSERT_TEST_NOLOG(symbol_id != zsymbols_static<symbols * 20>::INVALID_SYMBOLS_ID);
             }
         }
         
@@ -143,7 +143,7 @@ s32 zsymbols_bench_test()
             for (auto id : *rands)
             {
                 s32 symbol_id = fast->add(base->at(id), 0, true);
-                ASSERT_TEST_NOLOG(symbol_id != zsymbols::invalid_symbols_id);
+                ASSERT_TEST_NOLOG(symbol_id != zsymbols::INVALID_SYMBOLS_ID);
                 fast_ids->push_back(symbol_id);
             }
         }
@@ -159,7 +159,7 @@ s32 zsymbols_bench_test()
             for (auto id : *rands)
             {
                 s32 symbol_id = solid->add(base->at(id), 0, true);
-                ASSERT_TEST_NOLOG(symbol_id != zsymbols_solid_static<symbols * 20>::invalid_symbols_id);
+                ASSERT_TEST_NOLOG(symbol_id != zsymbols_solid_static<symbols * 20>::INVALID_SYMBOLS_ID);
                 solid_ids->push_back(symbol_id);
             }
         }

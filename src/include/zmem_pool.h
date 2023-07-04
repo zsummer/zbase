@@ -111,8 +111,8 @@ public:
         static_assert(align_size(0) == align_size(8), "");
         static_assert(align_size(7) == align_size(8), "");
 
-        s64 min_space_size = calculate_space_size(obj_size, total_count);
-        if (space_size < min_space_size)
+        s64 MIN_SPACE_SIZE = calculate_space_size(obj_size, total_count);
+        if (space_size < MIN_SPACE_SIZE)
         {
             return -1;
         }

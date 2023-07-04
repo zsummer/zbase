@@ -49,7 +49,7 @@ struct zshm_space
 //desc  
 struct zshm_space_entry
 {
-	u64 space_addr_;
+	u64 space_;
 	u64 shm_key_;
 	s32 use_heap_;
 	s32 use_fixed_address_;
@@ -72,18 +72,18 @@ public:
 		entry = nullptr;
 		zshm_loader loader(params.use_heap_, params.shm_key_, params.whole_space_.size_);
 		s32 ret = loader.check();
-		if (ret != zshm_errno::kNoShmMapping)
+		if (ret != zshm_errno::E_NO_SHM_MAPPING)
 		{
 			return ret;
 		}
-		ret = loader.create(params.space_addr_);
+		ret = loader.create(params.space_);
 		if (ret != 0)
 		{
 			return ret;
 		}
 		memcpy(loader.shm_mnt_addr(), &params, sizeof(params));
 		entry = static_cast<zshm_space_entry*>(loader.shm_mnt_addr());
-		entry->space_addr_ = (u64)(loader.shm_mnt_addr());
+		entry->space_ = (u64)(loader.shm_mnt_addr());
 
 		return 0;
 	}
@@ -97,25 +97,25 @@ public:
 		{
 			return ret;
 		}
-		ret = loader.attach(params.space_addr_);
+		ret = loader.attach(params.space_);
 		if (ret != 0)
 		{
 			return ret;
 		}
 
 		entry = static_cast<zshm_space_entry*>(loader.shm_mnt_addr());
-		entry->space_addr_ = (u64)(loader.shm_mnt_addr());
+		entry->space_ = (u64)(loader.shm_mnt_addr());
 
 		//check version  
 		if (memcmp(&entry->whole_space_, &params.whole_space_, sizeof(params.whole_space_)) != 0)
 		{
 			entry = nullptr;
-			return zshm_errno::kShmVersionMismatch;
+			return zshm_errno::E_SHM_VERSION_MISMATCH;
 		}
 		if (memcmp(&entry->spaces_, &params.spaces_, sizeof(params.spaces_)) != 0)
 		{
 			entry = nullptr;
-			return zshm_errno::kShmVersionMismatch;
+			return zshm_errno::E_SHM_VERSION_MISMATCH;
 		}
 
 		return 0;
@@ -123,7 +123,7 @@ public:
 
 	static s32 destroy_frame(const zshm_space_entry& params)
 	{
-		return zshm_loader::external_destroy(params.shm_key_, params.use_heap_, (void*)params.space_addr_, params.whole_space_.size_);
+		return zshm_loader::external_destroy(params.shm_key_, params.use_heap_, (void*)params.space_, params.whole_space_.size_);
 	}
 
 private:
