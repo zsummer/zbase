@@ -287,7 +287,7 @@ s32 zmalloc_stress()
             alloc_count += 2;
         }
         PROF_OUTPUT_MULTI_COUNT_CPU("rand zmalloc/zfree(0~2k)", alloc_count + free_count, cost.stop_and_save().cycles());
-        zstate->check_health();
+        zstate->check_panic();
         if (true)
         {
             LogDebug() << "zmalloc state log:";
@@ -385,7 +385,7 @@ s32 zmalloc_stress()
         char buf[80];
         sprintf(buf, "zmalloc[%llu~%llu) bat", begin_size, end_size);
         PROF_OUTPUT_MULTI_COUNT_CPU(buf, buffers->size(), cost.cycles());
-        zstate->check_health();
+        zstate->check_panic();
         PROF_START_COUNTER(cost);
         for (auto p : *buffers)
         {
@@ -393,7 +393,7 @@ s32 zmalloc_stress()
         }
         PROF_OUTPUT_MULTI_COUNT_CPU("zfree bat", buffers->size(), cost.stop_and_save().cycles());
         buffers->clear();
-        zstate->check_health();
+        zstate->check_panic();
     }
     zstate->clear_cache();
     PROF_OUTPUT_SELF_MEM("z malloc finish");
@@ -482,18 +482,18 @@ s32 zmalloc_stress()
             }
             buffers->push_back(p);
         }
-        zstate->check_health();
+        zstate->check_panic();
         LogDebug() << "check global_zmalloc alloc[" << begin_size << "~" << end_size << ") success";
         for (auto p : *buffers)
         {
             global_zfree(p);
         }
-        zstate->check_health();
+        zstate->check_panic();
         LogDebug() << "check global_zmalloc free[" << begin_size << "~" << end_size << ") success";
         buffers->clear();
     }
     void* pz = global_zmalloc(0);
-    zstate->check_health();
+    zstate->check_panic();
     global_zfree(pz);
 
 
@@ -638,7 +638,7 @@ s32 zmalloc_base_test()
         zmalloc::instance().debug_state_log(new_log);
         zmalloc::instance().debug_color_log(new_log, 0, (zmalloc::CHUNK_COLOR_MASK_WITH_LEVEL + 1) / 2);
         zstate->clear_cache();
-        zstate->check_health();
+        zstate->check_panic();
         ASSERT_TEST_NOLOG(zstate->used_block_count_ == 0, "");
     }
 
@@ -657,7 +657,7 @@ s32 zmalloc_base_test()
         zmalloc::instance().debug_state_log(new_log);
         zmalloc::instance().debug_color_log(new_log, 0, (zmalloc::CHUNK_COLOR_MASK_WITH_LEVEL + 1) / 2);
         zstate->clear_cache();
-        zstate->check_health();
+        zstate->check_panic();
         ASSERT_TEST_NOLOG(zstate->used_block_count_ == 0, "");
     }
 
@@ -681,7 +681,7 @@ s32 zmalloc_base_test()
         zmalloc::instance().debug_state_log(new_log);
         zmalloc::instance().debug_color_log(new_log, 0, (zmalloc::CHUNK_COLOR_MASK_WITH_LEVEL + 1) / 2);
         zstate->clear_cache();
-        zstate->check_health();
+        zstate->check_panic();
         ASSERT_TEST_NOLOG(zstate->used_block_count_ == 0, "");
     }
     if (true)
@@ -716,7 +716,7 @@ s32 zmalloc_base_test()
         zmalloc::instance().debug_state_log(new_log);
         zmalloc::instance().debug_color_log(new_log, 0, (zmalloc::CHUNK_COLOR_MASK_WITH_LEVEL + 1) / 2);
         zstate->clear_cache();
-        zstate->check_health();
+        zstate->check_panic();
         ASSERT_TEST_NOLOG(zstate->used_block_count_ == 0, "");
     }
     return 0;

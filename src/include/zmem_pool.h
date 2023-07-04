@@ -35,6 +35,9 @@ using f64 = double;
 #endif
 
 
+//#define ZDEBUG_UNINIT_MEMORY
+//#define ZDEBUG_DEATH_MEMORY
+
 /* type_traits:
 *
 * is_trivially_copyable: in part

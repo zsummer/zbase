@@ -42,4 +42,6 @@ jobs:
         cd ${{github.workspace}}/bin
         ./base_test
         ./malloc_test
+        ./zmem_pool_test
+        ./zhash_map_test
       

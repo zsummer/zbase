@@ -180,7 +180,7 @@ public:
         memset(malloc_ptr, 0, zmalloc::zmalloc_size());
         malloc_ptr->set_global(malloc_ptr);
         malloc_ptr->set_block_callback(&AllocLarge, &FreeLarge);
-        malloc_ptr->check_health();
+        malloc_ptr->check_panic();
 
 
         ret = space<Frame, ShmSpace::kFrame>()->Start();
@@ -224,7 +224,7 @@ public:
         zmalloc* malloc_ptr = space<zmalloc, ShmSpace::kMalloc>();
         malloc_ptr->set_global(malloc_ptr);
         malloc_ptr->set_block_callback(&AllocLarge, &FreeLarge);
-        malloc_ptr->check_health();
+        malloc_ptr->check_panic();
 
         ret = space<Frame, ShmSpace::kFrame>()->Resume();
         if (ret != 0)
@@ -533,7 +533,7 @@ s32 zmalloc_stress()
             alloc_count += 2;
         }
         PROF_OUTPUT_MULTI_COUNT_CPU("rand zmalloc/zfree(0~2k)", alloc_count + free_count, cost.stop_and_save().cycles());
-        zstate->check_health();
+        zstate->check_panic();
         if (true)
         {
             LogDebug() << "zmalloc state log:";
@@ -631,7 +631,7 @@ s32 zmalloc_stress()
         char buf[80];
         sprintf(buf, "zmalloc[%llu~%llu) bat", begin_size, end_size);
         PROF_OUTPUT_MULTI_COUNT_CPU(buf, buffers->size(), cost.cycles());
-        zstate->check_health();
+        zstate->check_panic();
         PROF_START_COUNTER(cost);
         for (auto p : *buffers)
         {
@@ -639,7 +639,7 @@ s32 zmalloc_stress()
         }
         PROF_OUTPUT_MULTI_COUNT_CPU("zfree bat", buffers->size(), cost.stop_and_save().cycles());
         buffers->clear();
-        zstate->check_health();
+        zstate->check_panic();
     }
     zstate->clear_cache();
     PROF_OUTPUT_SELF_MEM("z malloc finish");
@@ -698,18 +698,18 @@ s32 zmalloc_stress()
             }
             buffers->push_back(p);
         }
-        zstate->check_health();
+        zstate->check_panic();
         LogDebug() << "check global_zmalloc alloc[" << begin_size << "~" << end_size << ") success";
         for (auto p : *buffers)
         {
             global_zfree(p);
         }
-        zstate->check_health();
+        zstate->check_panic();
         LogDebug() << "check global_zmalloc free[" << begin_size << "~" << end_size << ") success";
         buffers->clear();
     }
     void* pz = global_zmalloc(0);
-    zstate->check_health();
+    zstate->check_panic();
     global_zfree(pz);
 
 
