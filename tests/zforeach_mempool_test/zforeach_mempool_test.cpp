@@ -125,7 +125,7 @@ s32 base_test()
     s64 space_size = zmem_pool::calculate_space_size(sizeof(Object), kObjects);
     s32 ret = object_pool_.init(sizeof(Object), 0, kObjects, new char[space_size], space_size);
     ASSERT_TEST(ret == 0);
-    memset(object_pool_.space_addr_, 0, object_pool_.space_size_);
+    memset(object_pool_.space_, 0, object_pool_.space_size_);
 
     zforeach<TestForeach> inst[kForeachInsts];
     for (s32 i = 0; i < foreach_insts_; i++)
@@ -165,7 +165,7 @@ s32 base_test()
         
     }
     LogInfo() << " all ticks:" << all_ticks;
-    delete object_pool_.space_addr_;
+    delete object_pool_.space_;
     return 0;
 }
 
