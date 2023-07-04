@@ -199,7 +199,8 @@ public:
     inline u64  free_memory(void* addr);
         
 
-    inline void check_health();
+    inline s32 check_health();
+    inline void check_panic();
     inline void clear_cache();
     template<class StreamLog>
     inline void debug_state_log(StreamLog logwrap);
@@ -282,7 +283,7 @@ public:
     inline static void check_free_chunk_list(zmalloc& zstate, free_chunk_type* c);
     inline static void check_block_list(block_type* block_list, u32 block_list_size, u32 max_list_size);
     inline static void check_block(zmalloc& zstate);
-    inline static void check_bitmap(zmalloc& zstate);
+    inline static void check_bitmap(zmalloc& zstate, bool to_panic);
     inline static void check_align(void* addr);
     inline static void panic(bool expr, const char * str);
 public:
@@ -339,7 +340,7 @@ public:
 #define zmalloc_check_free_chunk_list(state, c) zmalloc::check_free_chunk_list(state, c)
 #define zmalloc_check_color_counter(state, c)   check_color_counter(state, c)
 #define zmalloc_check_block(state) zmalloc::check_block(state)
-#define zmalloc_check_bitmap(state) zmalloc::check_bitmap(state)
+#define zmalloc_check_bitmap(state) zmalloc::check_bitmap(state, true)
 #define zmalloc_check_align(addr) zmalloc::check_align(addr)
 
 #else
@@ -1056,15 +1057,24 @@ u64  zmalloc::merge_and_release(free_chunk_type* chunk, u32 level, u64 bytes)
     return bytes;
 }
 
+s32 zmalloc::check_health()
+{
+    if (!inited_)
+    {
+        return -1;
+    }
+    check_bitmap(instance(), false);
+    return runtime_errors_;
+}
 
-void zmalloc::check_health()
+void zmalloc::check_panic()
 {
     if (!inited_)
     {
         return;
     }
     check_block(instance());
-    check_bitmap(instance());
+    check_bitmap(instance(), true);
     if (runtime_errors_ > 0)
     {
         panic(false, "has runtime_errors");
@@ -1423,7 +1433,7 @@ void zmalloc::check_block(zmalloc& zstate)
     //LogInfo() << "check all block success. block count:" << block_count << ", total chunk:" << c_count <<", free chunk:" << fc_count;
 }
 
-void zmalloc::check_bitmap(zmalloc& zstate)
+void zmalloc::check_bitmap(zmalloc& zstate, bool to_panic)
 {
     for (u32 small_type = 0; small_type < 2; small_type++)
     {
@@ -1432,16 +1442,63 @@ void zmalloc::check_bitmap(zmalloc& zstate)
             free_chunk_type* zmalloc_free_chunk_cast = zstate.bin_[small_type][bin_id].next_node;
             if (zmalloc_free_chunk_cast != &zstate.bin_end_[small_type][bin_id])
             {
-                panic(zmalloc_has_bitmap(zstate.bitmap_[small_type], bin_id), "has bitmap");
+                bool ok = zmalloc_has_bitmap(zstate.bitmap_[small_type], bin_id);
+                if (!ok)
+                {
+                    if (to_panic)
+                    {
+                        panic(ok, "has bitmap");
+                    }
+                    else
+                    {
+                        zstate.runtime_errors_++;
+                    }
+                }
+                
             }
             else
             {
-                panic(!zmalloc_has_bitmap(zstate.bitmap_[small_type], bin_id), "has bitmap");
+                bool ok = !zmalloc_has_bitmap(zstate.bitmap_[small_type], bin_id);
+                if (!ok)
+                {
+                    if (to_panic)
+                    {
+                        panic(ok, "has bitmap");
+                    }
+                    else
+                    {
+                        zstate.runtime_errors_++;
+                    }
+                }
             }
             while (zmalloc_free_chunk_cast != &zstate.bin_end_[small_type][bin_id])
             {
-                panic(zmalloc_free_chunk_cast->bin_id == bin_id, "bin id");
-                panic(!zmalloc_chunk_in_use(zmalloc_free_chunk_cast), "free");
+                bool ok = zmalloc_free_chunk_cast->bin_id == bin_id;
+                if (!ok)
+                {
+                    if (to_panic)
+                    {
+                        panic(ok, "bin id");
+                    }
+                    else
+                    {
+                        zstate.runtime_errors_++;
+                    }
+                }
+
+     
+                ok = !zmalloc_chunk_in_use(zmalloc_free_chunk_cast);
+                if (!ok)
+                {
+                    if (to_panic)
+                    {
+                        panic(ok, "free");
+                    }
+                    else
+                    {
+                        zstate.runtime_errors_++;
+                    }
+                }
                 zmalloc_free_chunk_cast = zmalloc_free_chunk_cast->next_node;
             }
         }
