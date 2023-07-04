@@ -53,71 +53,70 @@ using f64 = double;
 class zmem_pool
 {
 public:
-    s32 user_size_;
-    s32 user_name_;
+    s32 obj_size_;
+    s32 name_id_;
+    s32 obj_count_;
+    s32 exploit_;
     s32 chunk_size_;
-    s32 chunk_count_;
-    s32 chunk_exploit_offset_;
-    s32 chunk_used_count_;
-    s32 chunk_free_id_;
-    char* space_addr_;
+    s32 used_count_;
+    s32 free_id_;
+    char* space_;
     s64  space_size_;
-    static constexpr s32 FENCE_4 = 0xbeafbeaf;
-    static constexpr s64 FENCE_8 = 0xbeafbeafbeafbeaf;
-    static constexpr s32 FENCE_SIZE = 8;
-    static constexpr s32 ALIGN_SIZE = FENCE_SIZE;
+    static constexpr u32 FENCE_4 = 0xbeafbeaf;
+    static constexpr s32 HEAD_SIZE = 8;
+    static constexpr u64 HEAD_USED = (1ULL << 63) | FENCE_4;
+    static constexpr u64 HEAD_UNUSED = FENCE_4;
+    static constexpr s32 ALIGN_SIZE = HEAD_SIZE;
 
     //8×Ö½Ú¶ÔÆë 
     static constexpr s32 align_size(s32 input_size) { return ((input_size == 0 ? 1 : input_size) + ALIGN_SIZE - 1) / ALIGN_SIZE * ALIGN_SIZE; }
-    constexpr static s64 calculate_space_size(s32 user_size, s32 total_count) { return (FENCE_SIZE + align_size(user_size)) * 1ULL * total_count + FENCE_SIZE; }
+    constexpr static s64 calculate_space_size(s32 obj_size, s32 total_count) { return (HEAD_SIZE + align_size(obj_size)) * 1ULL * total_count + HEAD_SIZE; }
 public:
     union chunk
     {
         struct
         {
-            s32 small_fence_;
-            s32 free_id_;
+            u32 fence_;
+            u32 free_id_: 31;
+            u32 used_ : 1;
+            char data_[8];
         };
         struct
         {
-            s64 fence_;
-            char data_;
+            u64 head_;
+            char _[8];
         };
-        struct //todo  
-        {
-            s32 sfence_;
-            s32 used_ : 1;
-            s32 id_ : 31;
-        };
+
+
     };
 
 public:
-    inline chunk* chunk_ref(s32 chunk_id) { return  reinterpret_cast<chunk*>(space_addr_ + chunk_size_ * chunk_id); }
+    inline chunk* chunk_ref(s32 chunk_id) { return  reinterpret_cast<chunk*>(space_ + chunk_size_ * chunk_id); }
     template<class UserData>
     inline UserData* user_data(s32 chunk_id) { return reinterpret_cast<UserData*>(&chunk_ref(chunk_id)->data_); }
     template<class UserData>
     inline UserData& at(s32 chunk_id) { return *user_data<UserData>(chunk_id); }
 
     inline s32   chunk_size() const { return chunk_size_; }
-    inline s32   max_size()const { return chunk_count_; }
-    inline s32   window_size() const { return chunk_exploit_offset_; } //history's largest end id for used.     
-    inline s32   size()const { return chunk_used_count_; }
-    inline s32   empty()const { return chunk_used_count_ == 0; }
-    inline s32   full()const { return chunk_used_count_ == chunk_count_; }
+    inline s32   max_size()const { return obj_count_; }
+    inline s32   window_size() const { return exploit_; } //history's largest end id for used.     
+    inline s32   size()const { return used_count_; }
+    inline s32   empty()const { return used_count_ == 0; }
+    inline s32   full()const { return used_count_ == obj_count_; }
 
 
-    inline s32 init(s32 user_size, s32 user_name, s32 total_count, void* space_addr, s64  space_size)
+    inline s32 init(s32 obj_size, s32 name_id, s32 total_count, void* space, s64  space_size)
     {
         static_assert(sizeof(zmem_pool) % sizeof(s64) == 0, "");
         static_assert(align_size(0) == align_size(8), "");
         static_assert(align_size(7) == align_size(8), "");
 
-        s64 min_space_size = calculate_space_size(user_size, total_count);
-        if (space_size < min_space_size)
+        s64 MIN_SPACE_SIZE = calculate_space_size(obj_size, total_count);
+        if (space_size < MIN_SPACE_SIZE)
         {
             return -1;
         }
-        if (space_addr == nullptr)
+        if (space == nullptr)
         {
             return -2;
         }
@@ -125,28 +124,29 @@ public:
         {
             return -3;
         }
-        if ((u64) space_addr  % FENCE_SIZE != 0)
+        if ((u64) space  % HEAD_SIZE != 0)
         {
             return -4;
         }
-        user_size_ = user_size;
-        user_name_ = user_name;
-        chunk_size_ = FENCE_SIZE + align_size(user_size);
-        chunk_count_ = total_count;
-        chunk_exploit_offset_ = 0;
-        chunk_used_count_ = 0;
-        chunk_free_id_ = chunk_count_;
-        space_addr_ = (char*)space_addr;
+        obj_size_ = obj_size;
+        name_id_ = name_id;
+        chunk_size_ = HEAD_SIZE + align_size(obj_size);
+        obj_count_ = total_count;
+        exploit_ = 0;
+        used_count_ = 0;
+        free_id_ = obj_count_;
+        space_ = (char*)space;
         space_size_ = space_size;
-        chunk* end_chunk = (chunk*)(space_addr_ + chunk_size_ * chunk_exploit_offset_);
-        end_chunk->fence_ = FENCE_8;
+        chunk* end_chunk = (chunk*)(space_ + chunk_size_ * exploit_);
+        //end_chunk->fence_ = FENCE_4;
+        end_chunk->head_ = HEAD_UNUSED;
         return 0;
     }
 
-    s32 check_health(void* obj, bool is_used)
+    s32 health(void* obj, bool is_used) const 
     {
-        char* addr = (char*)obj - FENCE_SIZE;
-        s64 offset = addr - space_addr_;
+        char* addr = (char*)obj - HEAD_SIZE;
+        s64 offset = addr - space_;
         if (offset < 0)
         {
             return -1;
@@ -159,29 +159,24 @@ public:
         {
             return -3;
         }
-        if (offset + chunk_size_ > chunk_exploit_offset_)
+        if (offset + chunk_size_ > chunk_size_ * exploit_)
         {
             return -4;
         }
 
-
-
         chunk* head = (chunk*)addr;
-        if (is_used)
+        if (is_used && ! head->used_)
         {
-            if (head->fence_ != FENCE_8)
-            {
-                return -5;
-            }
+            return -5;
         }
 
-        if (head->small_fence_ != FENCE_4)
+        if (head->fence_ != FENCE_4)
         {
             return -6;
         }
 
         head = (chunk*)(addr + chunk_size_);
-        if (head->small_fence_ != FENCE_4)
+        if (head->fence_ != FENCE_4)
         {
             return -7;
         }
@@ -190,45 +185,62 @@ public:
 
     inline void* exploit()
     {
-        if (chunk_free_id_ != chunk_count_)
+        if (free_id_ != obj_count_)
         {
-            chunk* c = chunk_ref(chunk_free_id_);
-            chunk_free_id_ = c->free_id_;
-            chunk_used_count_++;
+            chunk* c = chunk_ref(free_id_);
+            free_id_ = c->free_id_;
+            used_count_++;
 
-            c->fence_ = FENCE_8;
-            chunk_ref(chunk_free_id_)->small_fence_ = FENCE_4;
+            c->head_ = HEAD_USED;
+            //c->fence_ = FENCE_4;
+            //c->used_ = 1;
+            //c->free_id_ = 0;
+
 #ifdef ZDEBUG_UNINIT_MEMORY
-            memset(&c->data_, 0xfd, chunk_size_ - FENCE_8);
+            memset(&c->data_, 0xfd, chunk_size_ - HEAD_SIZE);
 #endif // ZDEBUG_UNINIT_MEMORY
             return &c->data_;
         }
-        if (chunk_exploit_offset_ < chunk_count_)
+        if (exploit_ < obj_count_)
         {
-            chunk* c = chunk_ref(chunk_exploit_offset_ ++);
-            chunk_used_count_++;
-
-            c->fence_ = FENCE_8;
-            chunk_ref(chunk_exploit_offset_)->fence_ = FENCE_8;
+            chunk* c = chunk_ref(exploit_ ++);
+            used_count_++;
+            c->head_ = HEAD_USED;
+            //c->fence_ = FENCE_4;
+            //c->used_ = 1;
+            //c->free_id_ = 0;
+            chunk_ref(exploit_)->fence_ = FENCE_4;
 #ifdef ZDEBUG_UNINIT_MEMORY
-            memset(&c->data_, 0xfd, chunk_size_ - FENCE_8);
+            memset(&c->data_, 0xfd, chunk_size_ - HEAD_SIZE);
 #endif // ZDEBUG_UNINIT_MEMORY
             return &c->data_;
         }
         return NULL;
     }
 
-    inline void back(void* addr)
+    inline s32 back(void* obj)
     {
+        /*
+        s32 ret = health(obj, true);
+        if (ret != 0)
+        {
+            //memory leak when health check fail  
+            return ret;
+        }
+        */
+        //check success 
+        char* addr = (char*)obj - HEAD_SIZE;
+        chunk* c = (chunk*)addr;
+        c->head_ = HEAD_UNUSED;
+        //c->fence_ = FENCE_4;
+        //c->used_ = 0;
+        c->free_id_ = free_id_;
+        free_id_ = (s32)((addr - space_)/chunk_size_);
+        used_count_--;
 #ifdef ZDEBUG_DEATH_MEMORY
-        memset(addr, 0xfd, chunk_size_);
+        memset(obj, 0xfd, chunk_size_ - HEAD_SIZE);
 #endif // ZDEBUG_DEATH_MEMORY
-        s32 id = (s32)((char*)addr - space_addr_) / chunk_size_;
-        chunk* c = chunk_ref(id);
-        c->small_fence_ = FENCE_4;
-        c->free_id_ = chunk_free_id_;
-        chunk_free_id_ = id;
-        chunk_used_count_--;
+        return 0;
     }
 
     template<class _Ty>
@@ -285,14 +297,14 @@ template<s32 USER_SIZE, s32 TOTAL_COUNT>
 class zmemory_static_pool
 {
 public:
-    inline s32 init(s32 user_name)
+    inline s32 init(s32 name_id)
     {
-        return pool_.init(USER_SIZE, user_name, TOTAL_COUNT, space_, SPACE_SIZE);
+        return pool_.init(USER_SIZE, name_id, TOTAL_COUNT, space_, SPACE_SIZE);
     }
 
     inline void* exploit() { return pool_.exploit(); }
-    inline void back(void* addr) { return pool_.back(addr); }
-
+    inline s32 back(void* obj) { return pool_.back(obj); }
+    inline s32 health(void* obj, bool is_used) const { return pool_.health(obj, is_used); }
 
     inline s32   chunk_size() const { return pool_.chunk_size(); }
     inline s32   max_size()const { return pool_.max_size(); }
