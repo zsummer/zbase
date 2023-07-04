@@ -63,15 +63,15 @@ using f64 = double;
 class zbitset
 {
 public:
-    static constexpr u32 kByteSize = sizeof(u64);
-    static constexpr u32 kBitWide = kByteSize * 8;
-    static constexpr u32 kBitWideMask = kBitWide - 1;
+    static constexpr u32 BYTE_SIZE = sizeof(u64);
+    static constexpr u32 BIT_WIDE = BYTE_SIZE * 8;
+    static constexpr u32 BIT_WIDE_MASK = BIT_WIDE - 1;
 
 
-    static constexpr u64 kBaseMask = (u64)0 - (u64)1;
+    static constexpr u64 BASE_MASK = (u64)0 - (u64)1;
 
-    static constexpr u32 ceil_array_size(u32 bit_count) { return (bit_count + kBitWideMask) / kBitWide; }
-    static constexpr u32 max_bit_count(u32 array_size) { return kBitWide * array_size; }
+    static constexpr u32 ceil_array_size(u32 bit_count) { return (bit_count + BIT_WIDE_MASK) / BIT_WIDE; }
+    static constexpr u32 max_bit_count(u32 array_size) { return BIT_WIDE * array_size; }
 
 
 public:
@@ -91,9 +91,10 @@ private:
 public:
     u64* array_data() const { return array_data_; }
     u32 array_size() const { return array_size_; }
+    u32 array_bytes() const { return array_size_ * BYTE_SIZE; }
     u32 bit_count() const { return bit_count_; }
     u32 has_error() const { return has_error_; }
-    u32 first_bit() const { return win_min_ < bit_count_ ? win_min_ * kBitWide : 0; }
+    u32 first_bit() const { return win_min_ < bit_count_ ? win_min_ * BIT_WIDE : 0; }
     u32 win_size() const { return win_max_ > win_min_ ? win_max_ - win_min_ : 0; }
     u32 dirty_count() const { return dirty_count_; }
     bool empty() const { return dirty_count_ == 0; }
@@ -183,7 +184,7 @@ public:
             has_error_++;
             return;
         }
-        array_data_[index / kBitWide] |= 1ULL << (index % kBitWide) ;
+        array_data_[index / BIT_WIDE] |= 1ULL << (index % BIT_WIDE) ;
         dirty_count_++;
     }
 
@@ -198,7 +199,7 @@ public:
 
         set(index);
 
-        u32 array_id = index / kBitWide;
+        u32 array_id = index / BIT_WIDE;
         //less 10ns 
         if (array_id < win_min_)
         {
@@ -217,7 +218,7 @@ public:
         {
             return;
         }
-        array_data_[index / kBitWide] &= ~(1ULL << (index % kBitWide));
+        array_data_[index / BIT_WIDE] &= ~(1ULL << (index % BIT_WIDE));
         dirty_count_++;
     }
 
@@ -230,7 +231,7 @@ public:
 
         unset(index);
 
-        u32 array_id = index / kBitWide;
+        u32 array_id = index / BIT_WIDE;
         //less 10ns 
         if (array_id < win_min_)
         {
@@ -249,12 +250,12 @@ public:
         {
             return false;
         }
-        return array_data_[index / kBitWide] & 1ULL << (index % kBitWide);
+        return array_data_[index / BIT_WIDE] & 1ULL << (index % BIT_WIDE);
     }
 
     u32 pick_next_impl(u32 bit_id, u32 end_index)
     {
-        u32 index = bit_id / kBitWide;
+        u32 index = bit_id / BIT_WIDE;
 
         while (index < end_index)
         {
@@ -263,7 +264,7 @@ public:
                 index++;
                 continue;
             }
-            u32 result_bit_id = index * kBitWide + bit_ffsll(array_data_[index]);
+            u32 result_bit_id = index * BIT_WIDE + bit_ffsll(array_data_[index]);
             array_data_[index] &= array_data_[index] - 1;
             return result_bit_id;
         }
@@ -274,8 +275,8 @@ public:
     //bit_id need user add 1;  
     u32 peek_next_impl(u32 bit_id, u32 end_index)
     {
-        u32 index = bit_id / kBitWide;
-        u32 mod_id = bit_id % kBitWide;
+        u32 index = bit_id / BIT_WIDE;
+        u32 mod_id = bit_id % BIT_WIDE;
         if (index < end_index && array_data_[index] != 0 && mod_id != 0)
         {
             u64 unit = array_data_[index];
@@ -287,7 +288,7 @@ public:
             }
             else
             {
-                u32 result_bit_id = index * kBitWide + bit_ffsll(unit);
+                u32 result_bit_id = index * BIT_WIDE + bit_ffsll(unit);
                 return result_bit_id;
             }
         }
@@ -299,7 +300,7 @@ public:
                 index++;
                 continue;
             }
-            u32 result_bit_id = index * kBitWide + bit_ffsll(array_data_[index]);
+            u32 result_bit_id = index * BIT_WIDE + bit_ffsll(array_data_[index]);
             return result_bit_id;
         }
         return bit_count_;
@@ -332,7 +333,7 @@ private:
         _BitScanForward64(&bit_index, val);
         return (u32)bit_index;
 #else
-       return __builtin_ffsll(array_data_[index]) - 1;
+       return __builtin_ffsll(val) - 1;
 #endif // WIN32
     }
 };
