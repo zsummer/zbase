@@ -484,6 +484,11 @@ public:
 	static s32 external_destroy(u64 shm_key, void* real_addr, s64 mem_size)
 	{
 #ifndef WIN32
+		if (real_addr != nullptr)
+		{
+			shmdt(real_addr);
+		}
+
 		int idx = shmget(shm_key, 0, 0);
 		if (idx < 0 && errno == ENOENT)
 		{
@@ -492,10 +497,6 @@ public:
 		if (idx < 0)
 		{
 			return zshm_errno::E_INVALID_SHM_MAPPING;
-		}
-		if (real_addr != nullptr)
-		{
-			shmdt(real_addr);
 		}
 		shmctl(idx, IPC_RMID, nullptr);
 #endif
