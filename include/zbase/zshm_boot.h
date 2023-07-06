@@ -74,6 +74,10 @@ public:
 		s32 ret = loader.check();
 		if (ret != zshm_errno::E_NO_SHM_MAPPING)
 		{
+			if (ret == 0)
+			{
+				ret = zshm_errno::E_HAS_SHM_MAPPING;
+			}
 			return ret;
 		}
 		ret = loader.create(params.fixed_);
