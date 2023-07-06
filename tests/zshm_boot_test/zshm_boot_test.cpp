@@ -128,8 +128,8 @@ public:
         
 #else
         params.use_fixed_ = true;
-        params.space_ = 0x00006AAAAAAAAAAAULL;
-        params.space_ = 0x0000700000000000ULL;
+        params.fixed_ = 0x00006AAAAAAAAAAAULL;
+        params.fixed_ = 0x0000700000000000ULL;
 #endif // WIN32
 
         params.subs_[ShmSpace::kFrame].size_ = SPACE_ALIGN(sizeof(Frame));
