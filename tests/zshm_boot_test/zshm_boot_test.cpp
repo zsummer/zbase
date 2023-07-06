@@ -72,14 +72,14 @@ public:
         return g_instance_ptr;
     }
 
-    static inline zshm_space_entry& SpaceEntry()
+    static inline zshm_space& SpaceEntry()
     {
-        return *(zshm_space_entry*)(ShmInstance());
+        return *(zshm_space*)(ShmInstance());
     }
     template <class T, u32 ID>
     static inline T* space()
     {
-        return (T*)(ShmInstance() + SpaceEntry().spaces_[ID].offset_);
+        return (T*)(ShmInstance() + SpaceEntry().subs_[ID].offset_);
     }
 private:
     template<class T, class ... Args>
@@ -119,7 +119,7 @@ private:
         return free_bytes;
     }
 public:
-    static inline s32 InitSpaceFromConfig(zshm_space_entry& params, bool isUseHeap)
+    static inline s32 InitSpaceFromConfig(zshm_space& params, bool isUseHeap)
     {
         memset(&params, 0, sizeof(params));
         params.shm_key_ = 198709;
@@ -127,21 +127,21 @@ public:
 #ifdef WIN32
         
 #else
-        params.use_fixed_address_ = true;
+        params.use_fixed_ = true;
         params.space_ = 0x00006AAAAAAAAAAAULL;
         params.space_ = 0x0000700000000000ULL;
 #endif // WIN32
 
-        params.spaces_[ShmSpace::kFrame].size_ = SPACE_ALIGN(sizeof(Frame));
-        params.spaces_[ShmSpace::kBuddy].size_ = SPACE_ALIGN(zbuddy::zbuddy_size(kDynSpaceOrder));
-        params.spaces_[ShmSpace::kMalloc].size_ = SPACE_ALIGN(zmalloc::zmalloc_size());
-        params.spaces_[ShmSpace::kDyn].size_ = SPACE_ALIGN(zbuddy_shift_size(kDynSpaceOrder + kPageOrder));
+        params.subs_[ShmSpace::kFrame].size_ = SPACE_ALIGN(sizeof(Frame));
+        params.subs_[ShmSpace::kBuddy].size_ = SPACE_ALIGN(zbuddy::zbuddy_size(kDynSpaceOrder));
+        params.subs_[ShmSpace::kMalloc].size_ = SPACE_ALIGN(zmalloc::zmalloc_size());
+        params.subs_[ShmSpace::kDyn].size_ = SPACE_ALIGN(zbuddy_shift_size(kDynSpaceOrder + kPageOrder));
 
-        params.whole_space_.size_ += SPACE_ALIGN(sizeof(params));
+        params.whole_.size_ += SPACE_ALIGN(sizeof(params));
         for (u32 i = 0; i < ZSHM_MAX_SPACES; i++)
         {
-            params.spaces_[i].offset_ = params.whole_space_.size_;
-            params.whole_space_.size_ += params.spaces_[i].size_;
+            params.subs_[i].offset_ = params.whole_.size_;
+            params.whole_.size_ += params.subs_[i].size_;
         }
         return 0;
     }
@@ -149,12 +149,12 @@ public:
 
     static inline s32 BuildShm(bool isUseHeap)
     {
-        zshm_space_entry params;
+        zshm_space params;
         InitSpaceFromConfig(params, isUseHeap);
         
 
         zshm_boot booter;
-        zshm_space_entry* shm_space = nullptr;
+        zshm_space* shm_space = nullptr;
         s32 ret = booter.build_frame(params, shm_space);
         if (ret != 0 || shm_space == nullptr)
         {
@@ -163,13 +163,13 @@ public:
         }
         ShmInstance() = (char*)shm_space;
 
-        SpaceEntry().space_ = (u64)shm_space;
+        SpaceEntry().fixed_ = (u64)shm_space;
 
         BuildObject<Frame>(space<Frame, ShmSpace::kFrame>());
         zbuddy* buddy_ptr = space<zbuddy, ShmSpace::kBuddy>();
-        memset(buddy_ptr, 0, params.spaces_[ShmSpace::kBuddy].size_);
+        memset(buddy_ptr, 0, params.subs_[ShmSpace::kBuddy].size_);
         buddy_ptr->set_global(buddy_ptr);
-        zbuddy::build_zbuddy(buddy_ptr, params.spaces_[ShmSpace::kBuddy].size_, kDynSpaceOrder, &ret);
+        zbuddy::build_zbuddy(buddy_ptr, params.subs_[ShmSpace::kBuddy].size_, kDynSpaceOrder, &ret);
         if (ret != 0 )
         {
             LogError() << "";
@@ -195,10 +195,10 @@ public:
 
     static inline s32 ResumeShm(bool isUseHeap)
     {
-        zshm_space_entry params;
+        zshm_space params;
         InitSpaceFromConfig(params, isUseHeap);
         zshm_boot booter;
-        zshm_space_entry* shm_space = nullptr;
+        zshm_space* shm_space = nullptr;
         s32 ret = booter.resume_frame(params, shm_space);
         if (ret != 0 || shm_space == nullptr)
         {
@@ -207,14 +207,14 @@ public:
         }
         ShmInstance() = (char*)shm_space;
 
-        SpaceEntry().space_ = (u64)shm_space;
+        SpaceEntry().fixed_ = (u64)shm_space;
         Frame* m = space<Frame, ShmSpace::kFrame>();
         RebuildVPTR<Frame>(m);
 
 
         zbuddy* buddy_ptr = space<zbuddy, ShmSpace::kBuddy>();
         buddy_ptr->set_global(buddy_ptr);
-        zbuddy::rebuild_zbuddy(buddy_ptr, params.spaces_[ShmSpace::kBuddy].size_, kDynSpaceOrder, &ret);
+        zbuddy::rebuild_zbuddy(buddy_ptr, params.subs_[ShmSpace::kBuddy].size_, kDynSpaceOrder, &ret);
         if (ret != 0 )
         {
             LogError() << "";
@@ -242,10 +242,10 @@ public:
             LogError() << "";
             return -1;
         }
-        zshm_space_entry params;
+        zshm_space params;
         InitSpaceFromConfig(params, isUseHeap);
         zshm_boot booter;
-        zshm_space_entry* shm_space = nullptr;
+        zshm_space* shm_space = nullptr;
         s32 ret = booter.resume_frame(params, shm_space);
         if (ret != 0 || shm_space == nullptr)
         {
