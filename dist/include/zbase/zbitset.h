@@ -273,7 +273,7 @@ public:
 
 
     //bit_id need user add 1;  
-    u32 peek_next_impl(u32 bit_id, u32 end_index)
+    u32 peek_next_impl(u32 bit_id, u32 end_index) const
     {
         u32 index = bit_id / BIT_WIDE;
         u32 mod_id = bit_id % BIT_WIDE;
@@ -314,11 +314,11 @@ public:
     {
         return pick_next_impl(bit_id, array_size_);
     }
-    u32 peek_next_with_win(u32 bit_id)
+    u32 peek_next_with_win(u32 bit_id) const
     {
         return peek_next_impl(bit_id, win_max_);
     }
-    u32 peek_next(u32 bit_id)
+    u32 peek_next(u32 bit_id) const 
     {
         return peek_next_impl(bit_id, array_size_);
     }
@@ -326,7 +326,7 @@ public:
 
 private:
     //not zero 
-    u32 bit_ffsll(u64 val)
+    u32 bit_ffsll(u64 val) const
     {
 #ifdef WIN32
         unsigned long bit_index = 0;

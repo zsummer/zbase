@@ -1,6 +1,6 @@
 version:
-last_sha1(./src)=0eca802b8a32cc37ff5faab1c6278c7e252c72ab
-last_date(./src)=2023-07-06 14:12:53 +0800
+last_sha1(./src)=e56b7982f73c15755d2cb075613f68c25581c6d3
+last_date(./src)=2023-07-06 15:36:55 +0800
 
 git log -1 --stat ./src:
-commit 0eca802b8a32cc37ff5faab1c6278c7e252c72ab Author: zsummer <yawei.zhang@foxmail.com> Date: Thu Jul 6 14:12:53 2023 +0800 naming update src/include/zshm_boot.h | 44 ++++++++++++++++++++++---------------------- src/include/zshm_loader.h | 9 +++++---- 2 files changed, 27 insertions(+), 26 deletions(-)
+commit e56b7982f73c15755d2cb075613f68c25581c6d3 Author: zsummer <yawei.zhang@foxmail.com> Date: Thu Jul 6 15:36:55 2023 +0800 add shm more error info src/include/zbitset.h | 8 ++++---- src/include/zshm_boot.h | 4 ++++ src/include/zshm_loader.h | 2 ++ 3 files changed, 10 insertions(+), 4 deletions(-)
