@@ -58,6 +58,7 @@ class zmem_pool
 public:
     s32 obj_size_;
     s32 name_id_;
+    u64 obj_vptr_;
     s32 obj_count_;
     s32 exploit_;
     s32 chunk_size_;
@@ -70,6 +71,8 @@ public:
     static constexpr u64 HEAD_USED = (1ULL << 63) | FENCE_4;
     static constexpr u64 HEAD_UNUSED = FENCE_4;
     static constexpr s32 ALIGN_SIZE = HEAD_SIZE;
+
+    static_assert(ALIGN_SIZE >= 8, "min vptr size");
 
     //8字节对齐 
     static constexpr s32 align_size(s32 input_size) { return ((input_size == 0 ? 1 : input_size) + ALIGN_SIZE - 1) / ALIGN_SIZE * ALIGN_SIZE; }
@@ -89,16 +92,24 @@ public:
             u64 head_;
             char _[8];
         };
-
-
     };
 
 public:
-    inline chunk* chunk_ref(s32 chunk_id) { return  reinterpret_cast<chunk*>(space_ + chunk_size_ * chunk_id); }
-    template<class UserData>
-    inline UserData* user_data(s32 chunk_id) { return reinterpret_cast<UserData*>(&chunk_ref(chunk_id)->data_); }
-    template<class UserData>
-    inline UserData& at(s32 chunk_id) { return *user_data<UserData>(chunk_id); }
+    inline chunk* ref(s32 chunk_id) { return  reinterpret_cast<chunk*>(space_ + chunk_size_ * chunk_id); }
+    inline char* at(s32 chunk_id) { return  &ref(chunk_id)->data_[0]; }
+    inline char* fixed(s32 chunk_id) 
+    { 
+        static_assert(ALIGN_SIZE >= 8, "min vptr size");
+        char* p = at(chunk_id);
+        if (obj_vptr_ != *(u64*)p)
+        {
+            *(u64*)p = obj_vptr_;
+        }
+        return  p;
+    }
+    template<class _Ty>
+    inline _Ty* cast(s32 chunk_id) { return reinterpret_cast<_Ty*>(fixed(chunk_id)); }
+
 
     inline s32   chunk_size() const { return chunk_size_; }
     inline s32   max_size()const { return obj_count_; }
@@ -107,8 +118,21 @@ public:
     inline s32   empty()const { return used_count_ == 0; }
     inline s32   full()const { return used_count_ == obj_count_; }
 
+    template <class _Ty>
+    inline s32 init_with_object(s32 name_id, s32 total_count, void* space, s64  space_size)
+    {
+        u64 vptr = 0;
+        if (std::is_polymorphic<_Ty>::value)
+        {
+            _Ty* p = new _Ty();
+            vptr = *(u64*)p;
+            delete p;
+        }
+        s32 ret = init(sizeof(_Ty), name_id, vptr, total_count, space, space_size);
+        return ret;
+    }
 
-    inline s32 init(s32 obj_size, s32 name_id, s32 total_count, void* space, s64  space_size)
+    inline s32 init(s32 obj_size, s32 name_id, u64 obj_vptr, s32 total_count, void* space, s64  space_size)
     {
         static_assert(sizeof(zmem_pool) % sizeof(s64) == 0, "");
         static_assert(align_size(0) == align_size(8), "");
@@ -133,6 +157,7 @@ public:
         }
         obj_size_ = obj_size;
         name_id_ = name_id;
+        obj_vptr_ = obj_vptr;
         chunk_size_ = HEAD_SIZE + align_size(obj_size);
         obj_count_ = total_count;
         exploit_ = 0;
@@ -186,11 +211,44 @@ public:
         return 0;
     }
 
+
+    /*
+    * 恢复虚表(多态下) 
+    * 多态只支持单继承, 保证只有一个虚表, 以简化恢复虚表的复杂度.   
+    * 这里限制exploit窗口和使用标记 减少恢复的量级  
+    * 先修复obj_vptr_指针值  再执行该函数  
+    */
+    s32 resume()
+    {
+        if (obj_vptr_ == 0)
+        {
+            //no vptr;  
+            return 0;
+        }
+        s32 fixed_count = 0;
+        for (s32 i = 0; i < exploit_; i++)
+        {
+            chunk* c = ref(i);
+            if (!c->used_)
+            {
+                continue;
+            }
+            fixed(i);
+            fixed_count++;
+        }
+        if (fixed_count != used_count_)
+        {
+            return -1;
+        }
+        return 0;
+    }
+
+
     inline void* exploit()
     {
         if (free_id_ != obj_count_)
         {
-            chunk* c = chunk_ref(free_id_);
+            chunk* c = ref(free_id_);
             free_id_ = c->free_id_;
             used_count_++;
 
@@ -206,13 +264,13 @@ public:
         }
         if (exploit_ < obj_count_)
         {
-            chunk* c = chunk_ref(exploit_ ++);
+            chunk* c = ref(exploit_ ++);
             used_count_++;
             c->head_ = HEAD_USED;
             //c->fence_ = FENCE_4;
             //c->used_ = 1;
             //c->free_id_ = 0;
-            chunk_ref(exploit_)->fence_ = FENCE_4;
+            ref(exploit_)->fence_ = FENCE_4;
 #ifdef ZDEBUG_UNINIT_MEMORY
             memset(&c->data_, 0xfd, chunk_size_ - HEAD_SIZE);
 #endif // ZDEBUG_UNINIT_MEMORY
@@ -300,9 +358,9 @@ template<s32 USER_SIZE, s32 TOTAL_COUNT>
 class zmemory_static_pool
 {
 public:
-    inline s32 init(s32 name_id)
+    inline s32 init(s32 name_id, u64 vptr)
     {
-        return pool_.init(USER_SIZE, name_id, TOTAL_COUNT, space_, SPACE_SIZE);
+        return pool_.init(USER_SIZE, name_id, vptr, TOTAL_COUNT, space_, SPACE_SIZE);
     }
 
     inline void* exploit() { return pool_.exploit(); }
@@ -337,7 +395,14 @@ public:
     using zsuper = zmemory_static_pool<sizeof(_Ty), TotalCount>;
     zmem_obj_pool()
     {
-        zsuper::init(0);
+        u64 vptr = 0;
+        if (std::is_polymorphic<_Ty>::value)
+        {
+            _Ty* p = new _Ty();
+            vptr = *(u64*)p;
+            delete p;
+        }
+        zsuper::init(0, vptr);
     }
 
     template<class... Args >

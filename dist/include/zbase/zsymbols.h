@@ -37,6 +37,10 @@ using f64 = double;
 #define ZBASE_ALIAS
 #endif
 
+#ifndef WIN32
+#include <cxxabi.h>
+#endif // !WIN32
+
 
 /* type_traits:
 *
