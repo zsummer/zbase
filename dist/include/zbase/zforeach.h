@@ -194,7 +194,11 @@ public:
         subframe_.hook_ = &zforeach<_THookObj>::global_hook;
         return 0;
     }
-
+    inline s32 resume()
+    {
+        subframe_.hook_ = &zforeach<_THookObj>::global_hook;
+        return 0;
+    }
     inline s32 window_foreach(u32 win_begin, u32 win_end, s64 now_ms)
     { 
         //hard bound auto fixed.   
