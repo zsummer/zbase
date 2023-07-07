@@ -126,7 +126,7 @@ namespace zshm_errno
 
 #define ZSHM_ERRNO_TO_STRING(code) case code: return #code; 
 
-	static const char* str(s32 error_code)
+	static inline const char* str(s32 error_code)
 	{
 		switch (error_code)
 		{
