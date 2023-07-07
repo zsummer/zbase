@@ -82,7 +82,9 @@ public:
     template<class _Ty = InstType>
     typename std::enable_if<std::is_polymorphic<_Ty>::value, _Ty>::type* fix_vptr()
     {
-        u64 vtable_adress = s_vptr_val;
+        //这里使用局部静态变量, 局部变量call_once时机在首次调用;  
+        //** 因此可以避免resume框架中底层内存分配器未准备好时, 因修复带有动态内存分配的虚表对象而产生问题  
+        static u64 vtable_adress = get_vtable_address<_Ty>();
         //O2下直接范围obj_会因strict-aliasing假定导致上层直接cache旧的vtable 
         //(1) volatile阻止strict-aliasing 
         u64 obj_vtable_adrees = *reinterpret_cast<u64*>(reinterpret_cast<char*>(obj_));
@@ -109,7 +111,6 @@ private:
 
     //helpers  
 private:
-    static u64 s_vptr_val;
     template<class _Ty>
     struct zshm_is_big_polymorphic
     {
@@ -169,8 +170,6 @@ private:
 
 };
 
-template<class InstType>
-u64 zshm_ptr<InstType>::s_vptr_val = zshm_ptr<InstType>::get_vtable_address<InstType>();
 
 #endif
 
