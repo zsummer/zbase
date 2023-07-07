@@ -1,6 +1,6 @@
 version:
-last_sha1(./src)=77e536ba447145d2925f11e2d7e620f4ef51f605
-last_date(./src)=2023-07-07 17:29:17 +0800
+last_sha1(./src)=6934c1674a8c9aae86a07366085532e854755269
+last_date(./src)=2023-07-07 21:08:18 +0800
 
 git log -1 --stat ./src:
-commit 77e536ba447145d2925f11e2d7e620f4ef51f605 Author: zsummer <yawei.zhang@foxmail.com> Date: Fri Jul 7 17:29:17 2023 +0800 resume src/include/zforeach.h | 6 +++++- 1 file changed, 5 insertions(+), 1 deletion(-)
+commit 6934c1674a8c9aae86a07366085532e854755269 Author: zsummer <yawei.zhang@foxmail.com> Date: Fri Jul 7 21:07:47 2023 +0800 zshm_ptr used std::call_once; src/include/zshm_ptr.h | 7 +++---- 1 file changed, 3 insertions(+), 4 deletions(-)
