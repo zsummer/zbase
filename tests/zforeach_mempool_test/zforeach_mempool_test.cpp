@@ -73,11 +73,12 @@ static zmem_pool object_pool_;
 class TestForeach
 {
 public:
+    
     inline s32 hook(const zforeach_impl::subframe& sub, u32 begin_id, u32 end_id, s64 now_ms)
     {
         for (u32 i = begin_id; i < end_id; i++)
         {
-            Object* obj = object_pool_.user_data<Object>(i);
+            Object* obj = object_pool_.cast<Object>(i);
             obj->OnTick(sub.userkey_, now_ms);
             if (has_error_ != 0)
             {
@@ -123,7 +124,7 @@ s32 base_test()
     foreach_tick_count_[4] = total_tick_count_ / (foreach_real_frame_len_[4]/ base_frame_len_);
     
     s64 space_size = zmem_pool::calculate_space_size(sizeof(Object), kObjects);
-    s32 ret = object_pool_.init(sizeof(Object), 0, kObjects, new char[space_size], space_size);
+    s32 ret = object_pool_.init_with_object<Object>(0, kObjects, new char[space_size], space_size);
     ASSERT_TEST(ret == 0);
     memset(object_pool_.space_, 0, object_pool_.space_size_);
 
@@ -157,7 +158,7 @@ s32 base_test()
     {
         for (s32 j = 0; j < foreach_insts_; j++)
         {
-            s64 real = object_pool_.at<Object>(i).record_[j].tick_count_;
+            s64 real = object_pool_.cast<Object>(i)->record_[j].tick_count_;
             s64 expect = foreach_tick_count_[j];
             all_ticks += real;
             ASSERT_TEST_NOLOG(real == expect, "real:", real, ", expect:", expect);
