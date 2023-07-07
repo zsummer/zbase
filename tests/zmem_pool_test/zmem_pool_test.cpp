@@ -240,8 +240,39 @@ s32 resume_test()
             ASSERT_TEST_NOLOG(*(u64*)p == zmem_pool::get_vptr<LeafNode>());
             ASSERT_TEST_NOLOG(p->ouput() == 2);
         }
-        
     }
+
+    if (true)
+    {
+        zmem_pool ds;
+        char pd[zmem_pool::calculate_space_size(sizeof(s32), NODE_COUNT)];
+        ds.init(sizeof(s32), 0, 0, NODE_COUNT, &pd[0], zmem_pool::calculate_space_size(sizeof(s32), NODE_COUNT));
+        zarray<s32*, NODE_COUNT> store;
+
+        for (s32 i = 0; i < NODE_COUNT; i++)
+        {
+            s32* p = ds.create<s32>(i);
+            ASSERT_TEST_NOLOG(p != NULL, "");
+            *p = i;
+            store.push_back(p);
+        }
+        for (s32 i = 0; i < NODE_COUNT; i++)
+        {
+            ASSERT_TEST_NOLOG(*store[i] == i, "");
+            ASSERT_TEST_NOLOG(*ds.cast<s32>(i) == i, " expect:", i , ", geted:", *ds.cast<s32>(i));
+        }
+        ASSERT_TEST(ds.full(), "");
+        ASSERT_TEST(ds.exploit() == NULL, "");
+        for (auto p : store)
+        {
+            ASSERT_TEST_NOLOG(ds.health(p, true) == 0);
+            ASSERT_TEST_NOLOG(ds.back(p) == 0);
+        }
+        store.clear();
+        ASSERT_TEST(ds.empty(), "");
+ 
+    }
+
     return 0;
 }
 
