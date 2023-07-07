@@ -1,6 +1,6 @@
 version:
-last_sha1(./src)=e56b7982f73c15755d2cb075613f68c25581c6d3
-last_date(./src)=2023-07-06 15:36:55 +0800
+last_sha1(./src)=bd3ee93866b0350249fa9bd1f07b8d6950ea1d62
+last_date(./src)=2023-07-07 11:07:34 +0800
 
 git log -1 --stat ./src:
-commit e56b7982f73c15755d2cb075613f68c25581c6d3 Author: zsummer <yawei.zhang@foxmail.com> Date: Thu Jul 6 15:36:55 2023 +0800 add shm more error info src/include/zbitset.h | 8 ++++---- src/include/zshm_boot.h | 4 ++++ src/include/zshm_loader.h | 2 ++ 3 files changed, 10 insertions(+), 4 deletions(-)
+commit bd3ee93866b0350249fa9bd1f07b8d6950ea1d62 Author: zsummer <yawei.zhang@foxmail.com> Date: Fri Jul 7 11:07:19 2023 +0800 mempool support resume src/include/zmem_pool.h | 93 +++++++++++++++++++++++++++++++++++++++++-------- src/include/zsymbols.h | 4 +++ 2 files changed, 83 insertions(+), 14 deletions(-)
