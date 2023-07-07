@@ -161,6 +161,7 @@ namespace zforeach_impl
         {
             sub.foreach_cursor_ = cur_end_id;
         }
+        //如果发生异常 resume后会开始下一轮   
 
         sub.hook_(sub, cur_begin_id, cur_end_id, now_ms);
         return 0;
@@ -169,17 +170,28 @@ namespace zforeach_impl
 }
 
 
-template<class foreach_inst>
+template<class _THookObj>
 class zforeach
 {
 public:
+    zforeach_impl::subframe subframe_;
+    _THookObj foreach_inst_;
+    static_assert(!std::is_polymorphic<_THookObj>::value, "zforeach not resume _THookObj vptr. so don't use polymorphic class.");
+public:
     inline s32 init(u64 userkey, u32 begin_id, u32 end_id, u32 base_frame_len, u32 long_frame_len)
     {
-        s32 ret = zforeach_impl::init(subframe_, userkey, (u64)(void*)this, begin_id, end_id, &zforeach<foreach_inst>::global_hook, base_frame_len, long_frame_len);
+        s32 ret = zforeach_impl::init(subframe_, userkey, (u64)(void*)this, begin_id, end_id, &zforeach<_THookObj>::global_hook, base_frame_len, long_frame_len);
         if (ret != 0)
         {
             return ret;
         }
+        return 0;
+    }
+
+    inline s32 resume(const _THookObj& inst)
+    {
+        foreach_inst_ = inst;
+        subframe_.hook_ = &zforeach<_THookObj>::global_hook;
         return 0;
     }
 
@@ -191,12 +203,11 @@ public:
         return zforeach_impl::window_foreach(subframe_, now_ms);
     }
 
-    zforeach_impl::subframe subframe_;
-    foreach_inst foreach_inst_;
+
 private:
     static inline s32 global_hook(const zforeach_impl::subframe& sub, u32 begin_id, u32 end_id, s64 now_ms)
     {
-        zforeach<foreach_inst>* inst = reinterpret_cast<zforeach<foreach_inst>*>(sub.userdata_);
+        zforeach<_THookObj>* inst = reinterpret_cast<zforeach<_THookObj>*>(sub.userdata_);
         if (inst == NULL)
         {
             return -1;

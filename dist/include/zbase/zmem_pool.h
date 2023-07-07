@@ -77,6 +77,30 @@ public:
     //8字节对齐 
     static constexpr s32 align_size(s32 input_size) { return ((input_size == 0 ? 1 : input_size) + ALIGN_SIZE - 1) / ALIGN_SIZE * ALIGN_SIZE; }
     constexpr static s64 calculate_space_size(s32 obj_size, s32 total_count) { return (HEAD_SIZE + align_size(obj_size)) * 1ULL * total_count + HEAD_SIZE; }
+
+    //utils: 
+    template<class _Ty>
+    static inline u64 get_vptr()
+    {
+        if (std::is_polymorphic<_Ty>::value)
+        {
+            auto get_vptr_lambda = []()
+            {
+                _Ty* p = new _Ty();
+                u64 vptr = 0;
+                //char* can safly clean warn: strict-aliasing rules  
+                memcpy(&vptr, (char*)p, sizeof(vptr));
+                delete p;
+                return vptr;
+            };
+            //similar behavior can be obtained for arbitrary functions with std::call_once;  from C++11;  
+            static u64 vptr = get_vptr_lambda();
+            return vptr;
+        }
+        return 0;
+    }
+
+
 public:
     union chunk
     {
@@ -101,7 +125,7 @@ public:
     { 
         static_assert(ALIGN_SIZE >= 8, "min vptr size");
         char* p = at(chunk_id);
-        if (obj_vptr_ != *(u64*)p)
+        if (obj_vptr_ != 0 && obj_vptr_ != *(u64*)p)
         {
             *(u64*)p = obj_vptr_;
         }
@@ -121,13 +145,7 @@ public:
     template <class _Ty>
     inline s32 init_with_object(s32 name_id, s32 total_count, void* space, s64  space_size)
     {
-        u64 vptr = 0;
-        if (std::is_polymorphic<_Ty>::value)
-        {
-            _Ty* p = new _Ty();
-            vptr = *(u64*)p;
-            delete p;
-        }
+        u64 vptr = get_vptr<_Ty>();
         s32 ret = init(sizeof(_Ty), name_id, vptr, total_count, space, space_size);
         return ret;
     }
@@ -218,13 +236,14 @@ public:
     * 这里限制exploit窗口和使用标记 减少恢复的量级  
     * 先修复obj_vptr_指针值  再执行该函数  
     */
-    s32 resume()
+    s32 resume(u64 vptr)
     {
-        if (obj_vptr_ == 0)
+        if (obj_vptr_ == 0 || vptr == 0)
         {
             //no vptr;  
             return 0;
         }
+        obj_vptr_ = vptr;
         s32 fixed_count = 0;
         for (s32 i = 0; i < exploit_; i++)
         {
@@ -362,6 +381,11 @@ public:
     {
         return pool_.init(USER_SIZE, name_id, vptr, TOTAL_COUNT, space_, SPACE_SIZE);
     }
+    s32 resume(u64 vptr)
+    {
+        pool_.resume(vptr);
+        return 0;
+    }
 
     inline void* exploit() { return pool_.exploit(); }
     inline s32 back(void* obj) { return pool_.back(obj); }
@@ -395,16 +419,13 @@ public:
     using zsuper = zmemory_static_pool<sizeof(_Ty), TotalCount>;
     zmem_obj_pool()
     {
-        u64 vptr = 0;
-        if (std::is_polymorphic<_Ty>::value)
-        {
-            _Ty* p = new _Ty();
-            vptr = *(u64*)p;
-            delete p;
-        }
+        u64 vptr = zmem_pool::get_vptr<_Ty>();
         zsuper::init(0, vptr);
     }
-
+    s32 resume()
+    {
+        return zsuper::resume(zmem_pool::get_vptr<_Ty>());
+    }
     template<class... Args >
     inline _Ty* create(Args&&... args) { return zsuper::template create<_Ty, Args ...>(std::forward<Args>(args) ...); }
 

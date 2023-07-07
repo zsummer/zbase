@@ -79,8 +79,8 @@ public:
     }
 
 
-    template<class Ty = InstType>
-    typename std::enable_if<std::is_polymorphic<Ty>::value, Ty>::type* fix_vptr()
+    template<class _Ty = InstType>
+    typename std::enable_if<std::is_polymorphic<_Ty>::value, _Ty>::type* fix_vptr()
     {
         u64 vtable_adress = s_vptr_val;
         //O2下直接范围obj_会因strict-aliasing假定导致上层直接cache旧的vtable 
@@ -97,8 +97,8 @@ public:
     }
 
     
-    template<class Ty = InstType>
-    typename std::enable_if<!std::is_polymorphic<Ty>::value, Ty>::type* fix_vptr()
+    template<class _Ty = InstType>
+    typename std::enable_if<!std::is_polymorphic<_Ty>::value, _Ty>::type* fix_vptr()
     {
         //not polymorphic: do nothing  
         return obj_;
@@ -110,43 +110,56 @@ private:
     //helpers  
 private:
     static u64 s_vptr_val;
-    template<class Ty>
+    template<class _Ty>
     struct zshm_is_big_polymorphic
     {
-        static const bool value = std::is_polymorphic<Ty>::value && sizeof(Ty) > 1024;
+        static const bool value = std::is_polymorphic<_Ty>::value && sizeof(_Ty) > 1024;
     };
 
-    template<class Ty>
+    template<class _Ty>
     struct zshm_is_small_polymorphic
     {
-        static const bool value = std::is_polymorphic<Ty>::value && sizeof(Ty) <= 1024;
+        static const bool value = std::is_polymorphic<_Ty>::value && sizeof(_Ty) <= 1024;
     };
 
-    template<class Ty>
-    static inline typename std::enable_if< zshm_is_big_polymorphic<Ty>::value, u64>::type
+    template<class _Ty>
+    static inline typename std::enable_if< zshm_is_big_polymorphic<_Ty>::value, u64>::type
         get_vtable_address()
     {
-        Ty* ptr = new Ty();
-        u64 vptr = 0;
-        memcpy(&vptr, (char*)ptr, sizeof(vptr));
-        delete ptr;
+        auto get_vptr_lambda = []()
+        {
+            _Ty* p = new _Ty();
+            u64 vptr = 0;
+            //char* can safly clean warn: strict-aliasing rules  
+            memcpy(&vptr, (char*)p, sizeof(vptr));
+            delete p;
+            return vptr;
+        };
+        //similar behavior can be obtained for arbitrary functions with std::call_once;  from C++11;  
+        static u64 vptr = get_vptr_lambda();
         return vptr;
     }
 
-    template<class Ty>
-    static inline typename std::enable_if< zshm_is_small_polymorphic<Ty>::value, u64>::type
+    template<class _Ty>
+    static inline typename std::enable_if< zshm_is_small_polymorphic<_Ty>::value, u64>::type
         get_vtable_address()
     {
-        Ty t;
-        u64 vptr = 0;
-        //char* can safly clean warn: strict-aliasing rules  
-        memcpy(&vptr, (char*)&t, sizeof(vptr));
+        auto get_vptr_lambda = []()
+        {
+            _Ty t;
+            u64 vptr = 0;
+            //char* can safly clean warn: strict-aliasing rules  
+            memcpy(&vptr, (char*)&t, sizeof(vptr));
+            return vptr;
+        };
+        //similar behavior can be obtained for arbitrary functions with std::call_once;  from C++11;  
+        static u64 vptr = get_vptr_lambda();
         return vptr;
     }
 
-    template<class Ty>
+    template<class _Ty>
     static inline
-        typename std::enable_if <!std::is_polymorphic<Ty>::value, u64>::type
+        typename std::enable_if <!std::is_polymorphic<_Ty>::value, u64>::type
         get_vtable_address()
     {
         return 0;
