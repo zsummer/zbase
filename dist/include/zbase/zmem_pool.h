@@ -7,23 +7,25 @@
 */
 
 
-
-#ifndef  ZMEM_POOL_H
+#pragma once 
+#ifndef ZMEM_POOL_H
 #define ZMEM_POOL_H
+
+#include <stdint.h>
 #include <string.h>
 #include <type_traits>
 #include <cstddef>
 
 #ifndef ZBASE_SHORT_TYPE
 #define ZBASE_SHORT_TYPE
-using s8 = char;
-using u8 = unsigned char;
-using s16 = short int;
-using u16 = unsigned short int;
-using s32 = int;
+using s8 =  int8_t;
+using u8 =  uint8_t;
+using s16 = int16_t;
+using u16 = uint16_t;
+using s32 = int32_t;
 using s32 = unsigned int;
-using s64 = long long;
-using u64 = unsigned long long;
+using s64 = int64_t;
+using u64 = uint64_t;
 using f32 = float;
 using f64 = double;
 #endif

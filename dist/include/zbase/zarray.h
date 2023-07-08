@@ -9,10 +9,11 @@
 
 
 
-
+#pragma once 
 #ifndef  ZARRAY_H
 #define ZARRAY_H
 
+#include <stdint.h>
 #include <type_traits>
 #include <iterator>
 #include <cstddef>

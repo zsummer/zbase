@@ -9,10 +9,11 @@
 
 
 
-
-#ifndef  ZBITSET_H
+#pragma once 
+#ifndef ZBITSET_H
 #define ZBITSET_H
 
+#include <stdint.h>
 #include <type_traits>
 #include <iterator>
 #include <cstddef>

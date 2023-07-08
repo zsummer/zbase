@@ -1,6 +1,6 @@
 version:
-last_sha1(./src)=6934c1674a8c9aae86a07366085532e854755269
-last_date(./src)=2023-07-07 21:08:18 +0800
+last_sha1(./src)=36e015c753d99c6f386db5b6f7460c0ea5f381e7
+last_date(./src)=2023-07-08 11:49:22 +0800
 
 git log -1 --stat ./src:
-commit 6934c1674a8c9aae86a07366085532e854755269 Author: zsummer <yawei.zhang@foxmail.com> Date: Fri Jul 7 21:07:47 2023 +0800 zshm_ptr used std::call_once; src/include/zshm_ptr.h | 7 +++---- 1 file changed, 3 insertions(+), 4 deletions(-)
+commit 36e015c753d99c6f386db5b6f7460c0ea5f381e7 Author: zsummer <yawei.zhang@foxmail.com> Date: Sat Jul 8 11:49:22 2023 +0800 stdint.h #pragma once; src/include/zallocator.h | 6 ++++-- src/include/zarray.h | 3 ++- src/include/zbitset.h | 5 +++-- src/include/zbuddy.h | 4 ++-- src/include/zclock.h | 12 ++++++++---- src/include/zfile.h | 6 +++++- src/include/zfile_mapping.h | 5 +++-- src/include/zforeach.h | 10 +++++----- src/include/zhash_map.h | 4 +++- src/include/zlist.h | 6 ++++-- src/include/zlist_ext.h | 4 +++- src/include/zmalloc.h | 12 ++++++++---- src/include/zmem_color.h | 2 ++ src/include/zmem_pool.h | 20 +++++++++++--------- src/include/zshm_boot.h | 11 +++++++---- src/include/zshm_loader.h | 5 +++-- src/include/zshm_ptr.h | 5 +++-- src/include/zsingle.h | 5 +++-- src/include/zstream.h | 7 ++++--- src/include/zsymbols.h | 5 +++-- src/include/zvector.h | 5 +++-- 21 files changed, 89 insertions(+), 53 deletions(-)

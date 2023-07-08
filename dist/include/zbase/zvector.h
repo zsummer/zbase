@@ -8,10 +8,11 @@
 
 
 
-
-#ifndef  ZVECTOR_H
+#pragma once 
+#ifndef ZVECTOR_H
 #define ZVECTOR_H
 
+#include <stdint.h>
 #include <type_traits>
 #include <iterator>
 #include <cstddef>

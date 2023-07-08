@@ -7,9 +7,10 @@
 */
 
 #pragma once
-#ifndef _ZSHM_LOADER_H_
-#define _ZSHM_LOADER_H_
+#ifndef ZSHM_LOADER_H_
+#define ZSHM_LOADER_H_
 
+#include <stdint.h>
 #include <cstddef>
 #include <cstring>
 #include <stdio.h>

@@ -6,13 +6,13 @@
 */
 
 
-#include <memory>
-#include <cstddef>
-
-
-
+#pragma once 
 #ifndef ZFOREACH_H
 #define ZFOREACH_H
+
+#include <stdint.h>
+#include <memory>
+#include <cstddef>
 
 #ifdef WIN32
 #pragma warning( push )

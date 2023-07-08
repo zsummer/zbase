@@ -7,9 +7,10 @@
 */
 
 #pragma once
-#ifndef _ZSHM_PTR_H_
-#define _ZSHM_PTR_H_
+#ifndef ZSHM_PTR_H_
+#define ZSHM_PTR_H_
 
+#include <stdint.h>
 #include <type_traits>
 
 

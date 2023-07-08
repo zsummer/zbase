@@ -9,10 +9,11 @@
 
 
 
-
-#ifndef  ZSINGLE_H
+#pragma once 
+#ifndef ZSINGLE_H
 #define ZSINGLE_H
 
+#include <stdint.h>
 #include <type_traits>
 #include <iterator>
 #include <cstddef>

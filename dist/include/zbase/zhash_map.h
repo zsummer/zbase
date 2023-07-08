@@ -7,9 +7,11 @@
 */
 
 
-
+#pragma once 
 #ifndef  ZHASH_MAP_H
 #define ZHASH_MAP_H
+
+#include <stdint.h>
 #include <type_traits>
 #include <cstddef>
 
