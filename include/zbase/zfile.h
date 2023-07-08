@@ -6,9 +6,13 @@
 * This file is part of the zbase, used MIT License.
 */
 
-#ifndef  ZFILE_H
+
+
+#pragma once 
+#ifndef ZFILE_H
 #define ZFILE_H
 
+#include <stdint.h>
 #include <type_traits>
 #include <iterator>
 #include <cstddef>

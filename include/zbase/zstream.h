@@ -7,10 +7,11 @@
 
 
 
-
-#ifndef  ZSTREAM_H
+#pragma once 
+#ifndef ZSTREAM_H
 #define ZSTREAM_H
 
+#include <stdint.h>
 #include <type_traits>
 #include <iterator>
 #include <cstddef>
@@ -350,7 +351,7 @@ namespace zstream_impl
         static thread_local tm cache_date = { 0 };
         static thread_local long long cache_timestamp = 0;
         static const char date_fmt[] = "[20190412 13:05:35.417]";
-        if (len < sizeof(date_fmt))
+        if (len < (s32)sizeof(date_fmt))
         {
             return 0;
         }

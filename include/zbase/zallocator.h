@@ -6,13 +6,15 @@
 * This file is part of the zbase, used MIT License.
 */
 
+#pragma once 
+#ifndef  ZALLOCATOR_H
+#define ZALLOCATOR_H
 
+#include <stdint.h>
 #include "zmalloc.h"
 #include <memory>
 #include <limits>
 #include <cstddef>
-#ifndef  ZALLOCATOR_H
-#define ZALLOCATOR_H
 
 
 #ifndef ZBASE_SHORT_TYPE

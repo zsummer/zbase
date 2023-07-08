@@ -7,10 +7,11 @@
 
 
 
-
-#ifndef  ZSYMBOLS_H
+#pragma once 
+#ifndef ZSYMBOLS_H
 #define ZSYMBOLS_H
 
+#include <stdint.h>
 #include <type_traits>
 #include <iterator>
 #include <cstddef>

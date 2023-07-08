@@ -7,9 +7,11 @@
 */
 
 
-
+#pragma once 
 #ifndef  ZLIST_EXT_H
 #define ZLIST_EXT_H
+
+#include <stdint.h>
 #include <iterator>
 #include <memory>
 #include <cstddef>

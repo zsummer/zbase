@@ -5,9 +5,13 @@
 * This file is part of the zbase, used MIT License.
 */
 
+#pragma once 
+#ifndef ZBOOT_LOADER_H_
+#define ZBOOT_LOADER_H_
 
-#ifndef  _ZBOOT_LOADER_H_
-#define _ZBOOT_LOADER_H_
+#include <stdint.h>
+#include "zshm_loader.h"
+#include "zarray.h"
 
 
 #ifndef ZBASE_SHORT_TYPE
@@ -31,8 +35,7 @@ using f64 = double;
 #endif
 
 
-#include "zshm_loader.h"
-#include "zarray.h"
+
 
 #define ZSHM_MAX_SPACES 20
 

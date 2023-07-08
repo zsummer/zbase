@@ -10,9 +10,12 @@
 //from zprof; Copyright one author  
 //more test info to view zprof wiki  
 
+
+#pragma once 
 #ifndef  ZCLOCK_H
 #define ZCLOCK_H
 
+#include <stdint.h>
 #include <type_traits>
 #include <iterator>
 #include <cstddef>
@@ -142,12 +145,13 @@ namespace zclock_impl
         T_CLOCK_MAX,
     };
 
-
+    
     struct vmdata
     {
-        u64 vm_size;
-        u64 rss_size;
-        u64 shr_size;
+        //don't use u64 or s64; uint64_t maybe is long ;
+        unsigned long long vm_size;
+        unsigned long long rss_size;
+        unsigned long long shr_size;
     };
 
     template<ClockEnum _Ty>
