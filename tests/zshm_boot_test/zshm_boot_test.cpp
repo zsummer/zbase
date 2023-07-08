@@ -425,8 +425,8 @@ s32 zmalloc_stress()
     LogInfo() << "begin stress test";
     for (size_t loop = 0; loop < 80; loop++)
     {
-        u64 begin_size = cover_size / 80 * loop;
-        u64 end_size = cover_size / 80 * (loop + 1);
+        unsigned long long begin_size = cover_size / 80 * loop;
+        unsigned long long end_size = cover_size / 80 * (loop + 1);
         char mbuf[70];
         sprintf(mbuf, "global_zmalloc(%llu ~ %llu)", begin_size, end_size);
         char fbuf[70];
@@ -464,8 +464,8 @@ s32 zmalloc_stress()
         {
             continue;//做对比用 剔除部分数据提高测试速度
         }
-        u64 begin_size = cover_size / 80 * loop;
-        u64 end_size = cover_size / 80 * (loop + 1);
+        unsigned long long begin_size = cover_size / 80 * loop;
+        unsigned long long end_size = cover_size / 80 * (loop + 1);
         char mbuf[70];
         sprintf(mbuf, "sys malloc(%llu ~ %llu)", begin_size, end_size);
         char fbuf[70];
@@ -618,8 +618,8 @@ s32 zmalloc_stress()
 
     for (size_t loop = 0; loop < 80; loop++)
     {
-        u64 begin_size = cover_size / 80 * loop;
-        u64 end_size = cover_size / 80 * (loop + 1);
+        unsigned long long begin_size = cover_size / 80 * loop;
+        unsigned long long end_size = cover_size / 80 * (loop + 1);
         PROF_START_COUNTER(cost);
         for (u64 i = begin_size; i < end_size; i++)
         {
@@ -650,8 +650,8 @@ s32 zmalloc_stress()
         {
             continue;//做对比用 剔除部分数据提高测试速度
         }
-        u64 begin_size = cover_size / 80 * loop;
-        u64 end_size = cover_size / 80 * (loop + 1);
+        unsigned long long begin_size = cover_size / 80 * loop;
+        unsigned long long end_size = cover_size / 80 * (loop + 1);
         PROF_START_COUNTER(cost);
         for (u64 i = begin_size; i < end_size; i++)
         {
@@ -681,8 +681,8 @@ s32 zmalloc_stress()
 
     for (size_t loop = 0; loop < 80; loop++)
     {
-        u64 begin_size = cover_size / 80 * loop;
-        u64 end_size = cover_size / 80 * (loop + 1);
+        unsigned long long begin_size = cover_size / 80 * loop;
+        unsigned long long end_size = cover_size / 80 * (loop + 1);
         for (u64 i = begin_size; i < end_size; i++)
         {
             u32 test_size = rand_array[i] % (zmalloc::BIG_MAX_REQUEST);

@@ -16,11 +16,11 @@ STMalloc::~STMalloc()
 
 }
 
-s32 STMalloc::Init(AllocPagesPtr alloc_ptr, FreePagesPtr free_ptr)
+int STMalloc::Init(AllocPagesPtr alloc_ptr, FreePagesPtr free_ptr)
 {
 
 
-	s32 ret = 0;
+	int ret = 0;
 	ret = STSetPageOpPtrs(alloc_ptr, free_ptr);
 	if (ret != 0)
 	{
@@ -86,7 +86,7 @@ s32 STMalloc::Init(AllocPagesPtr alloc_ptr, FreePagesPtr free_ptr)
 	return 0;
 }
 
-s32 STMalloc::Resume(AllocPagesPtr alloc_ptr, FreePagesPtr free_ptr)
+int STMalloc::Resume(AllocPagesPtr alloc_ptr, FreePagesPtr free_ptr)
 {
 	if (NULL == alloc_ptr || NULL == free_ptr)
 	{
@@ -94,7 +94,7 @@ s32 STMalloc::Resume(AllocPagesPtr alloc_ptr, FreePagesPtr free_ptr)
 		return -1;
 	}
 
-	s32 ret = 0;
+	int ret = 0;
 	ret = STSetPageOpPtrs(alloc_ptr, free_ptr);
 	if (ret != 0)
 	{
@@ -116,17 +116,17 @@ static void* st_alloc_do_malloc_small(size_t size)
 {
 	if (size > kMaxSize || size == 0)
 	{
-		error_tlog("invalid size<%llu>.", (u64)size);
+		error_tlog("invalid size<%llu>.", (unsigned long long)size);
 		return NULL;
 	}
 
 
-	SizeClass cl = g_st_malloc->size_map().SizeClass((s32)size);
+	SizeClass cl = g_st_malloc->size_map().SizeClass((int)size);
 	size = g_st_malloc->size_map().ByteSizeForClass(cl);
 	void* ptr = g_st_malloc->thread_cache().Allocate(cl, size);
 	if (NULL == ptr)
 	{
-		error_tlog("Allocate failed, size<%llu>, cl<%u>.", (u64)size, cl);
+		error_tlog("Allocate failed, size<%llu>, cl<%u>.", (unsigned long long)size, cl);
 		return NULL;
 	}
 
@@ -137,7 +137,7 @@ static void* st_alloc_do_malloc_pages(size_t size)
 {
 	if (size <= kMaxSize)
 	{
-		error_tlog("invalid size<%llu>.", (u64)size);
+		error_tlog("invalid size<%llu>.", (unsigned long long)size);
 		return NULL;
 	}
 
@@ -178,7 +178,7 @@ void* st_malloc(size_t size)
 		ptr = st_alloc_do_malloc_small(size);
 		if (NULL == ptr)
 		{
-			error_tlog("st_alloc_do_malloc_small failed, size<%llu>.", (u64)size);
+			error_tlog("st_alloc_do_malloc_small failed, size<%llu>.", (unsigned long long)size);
 		}
 	}
 	else
@@ -186,7 +186,7 @@ void* st_malloc(size_t size)
 		ptr = st_alloc_do_malloc_pages(size);
 		if (NULL == ptr)
 		{
-			error_tlog("st_alloc_do_malloc_pages failed, size<%llu>.", (u64)size);
+			error_tlog("st_alloc_do_malloc_pages failed, size<%llu>.", (unsigned long long)size);
 		}
 
 	}
@@ -206,9 +206,9 @@ void st_free(void* ptr)
 		return;
 	}
 
-	s32 ret = 0;
+	int ret = 0;
 	Span* span = NULL;
-	PageID id = reinterpret_cast<u64>(ptr) >> kPageShift;
+	PageID id = reinterpret_cast<unsigned long long>(ptr) >> kPageShift;
 	SizeClass cl = (SizeClass)g_st_malloc->page_heap().GetSizeClassIfCached((SizeClass)id);
 	if (cl == 0)
 	{
@@ -232,14 +232,14 @@ void st_free(void* ptr)
 	}
 	else
 	{
-		if ((reinterpret_cast<u64>(ptr) % kPageSize) != 0)
+		if ((reinterpret_cast<unsigned long long>(ptr) % kPageSize) != 0)
 		{
 			error_tlog("ptr <%p> not align to page size.", ptr);
 			return;
 		}
-		if ((span->start<<kPageShift) != (u64)ptr)
+		if ((span->start<<kPageShift) != (unsigned long long)ptr)
 		{
-			error_tlog("ptr <%p> not equal start addr<%llu>.", ptr, (u64)(void*)(span->start << kPageShift));
+			error_tlog("ptr <%p> not equal start addr<%llu>.", ptr, (unsigned long long)(void*)(span->start << kPageShift));
 			return;
 		}
 		g_st_malloc->page_heap().Delete(span);

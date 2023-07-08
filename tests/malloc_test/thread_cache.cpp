@@ -19,9 +19,9 @@ ThreadCache::~ThreadCache()
 
 }
 
-s32 ThreadCache::Init()
+int ThreadCache::Init()
 {
-	s32 ret = 0;
+	int ret = 0;
 	size_ = 0;
 	max_size_ = 0;
 	ret = IncreaseCacheLimit();
@@ -54,7 +54,7 @@ void* ThreadCache::Allocate(SizeClass cl, size_t size)
 
 	if (g_st_malloc->size_map().ByteSizeForClass(cl) != size)
 	{
-		error_tlog("size <%llu> not equal class<%u>.", (u64)size, cl);
+		error_tlog("size <%llu> not equal class<%u>.", (unsigned long long)size, cl);
 		return NULL;
 	}
 
@@ -65,7 +65,7 @@ void* ThreadCache::Allocate(SizeClass cl, size_t size)
 		ptr = FetchFromCentralCache(cl, size);
 		if (NULL == ptr)
 		{
-			error_tlog("FetchFromCentralCache failed,size <%llu>, class<%u>.", (u64)size, cl);
+			error_tlog("FetchFromCentralCache failed,size <%llu>, class<%u>.", (unsigned long long)size, cl);
 			return NULL;
 		}
 	}
@@ -83,7 +83,7 @@ void* ThreadCache::Allocate(SizeClass cl, size_t size)
 	return ptr;
 }
 
-s32 ThreadCache::Deallocate(void* ptr, SizeClass cl)
+int ThreadCache::Deallocate(void* ptr, SizeClass cl)
 {
 	if (NULL == ptr || cl == 0 || cl >= kNumClasses)
 	{
@@ -91,7 +91,7 @@ s32 ThreadCache::Deallocate(void* ptr, SizeClass cl)
 		return -1;
 	}
 
-	s32 ret = 0;
+	int ret = 0;
 	FreeList* list = &list_[cl];
 	size_ += g_st_malloc->size_map().ByteSizeForClass(cl);
 	list->Push(ptr);
@@ -132,11 +132,11 @@ void* ThreadCache::FetchFromCentralCache(SizeClass cl, size_t byte_size)
 		return NULL;
 	}
 
-	s32 batch_size = g_st_malloc->size_map().num_objects_to_move(cl);
-	s32 num_to_move = std::min<s32>(list->max_length(), batch_size);
+	int batch_size = g_st_malloc->size_map().num_objects_to_move(cl);
+	int num_to_move = std::min<int>(list->max_length(), batch_size);
 
 	void *start = NULL, *end = NULL;
-	s32 fetch_count = g_st_malloc->center_lists()[cl].RemoveRange(
+	int fetch_count = g_st_malloc->center_lists()[cl].RemoveRange(
 		&start, &end, num_to_move);
 
 	if (fetch_count <= 0 || start == NULL)
@@ -156,7 +156,7 @@ void* ThreadCache::FetchFromCentralCache(SizeClass cl, size_t byte_size)
 	}
 	else
 	{
-		s32 new_length = std::min<s32>(list->max_length() + batch_size, kMaxDynamicFreeListLength);
+		int new_length = std::min<int>(list->max_length() + batch_size, kMaxDynamicFreeListLength);
 		new_length -= new_length % batch_size;
 		list->set_max_length(new_length);
 	}
@@ -164,7 +164,7 @@ void* ThreadCache::FetchFromCentralCache(SizeClass cl, size_t byte_size)
 	return start;
 }
 
-s32 ThreadCache::ReleaseToCentralCache(FreeList* src, SizeClass cl, s32 num)
+int ThreadCache::ReleaseToCentralCache(FreeList* src, SizeClass cl, int num)
 {
 	if (NULL == src || cl == 0 || cl >= kNumClasses)
 	{
@@ -172,7 +172,7 @@ s32 ThreadCache::ReleaseToCentralCache(FreeList* src, SizeClass cl, s32 num)
 		return -1;
 	}
 
-	s32 ret = 0;
+	int ret = 0;
 	if (num > src->length())
 	{
 		num = src->length();
@@ -180,7 +180,7 @@ s32 ThreadCache::ReleaseToCentralCache(FreeList* src, SizeClass cl, s32 num)
 
 	void *tail = NULL, *head = NULL;
 	size_t delta_bytes = num * g_st_malloc->size_map().ByteSizeForClass(cl);
-	s32 batch_size = g_st_malloc->size_map().num_objects_to_move(cl);
+	int batch_size = g_st_malloc->size_map().num_objects_to_move(cl);
 	while (num > batch_size)
 	{
 		src->PopRange(batch_size, &head, &tail);
@@ -208,25 +208,25 @@ s32 ThreadCache::ReleaseToCentralCache(FreeList* src, SizeClass cl, s32 num)
 	return 0;
 }
 
-s32 ThreadCache::Scavenge()
+int ThreadCache::Scavenge()
 {
-	s32 ret = 0;
-	for (s32 cl = 1; cl < (s32)kNumClasses; ++cl)
+	int ret = 0;
+	for (int cl = 1; cl < (int)kNumClasses; ++cl)
 	{
 		FreeList* list = &list_[cl];
-		s32 lowmark = list->lowwater_mark();
+		int lowmark = list->lowwater_mark();
 		if (lowmark > 0)
 		{
-			s32 drop = (lowmark > 1) ? lowmark / 2 : 1;
+			int drop = (lowmark > 1) ? lowmark / 2 : 1;
 			ret = ReleaseToCentralCache(list, cl, drop);
 			if (ret != 0)
 			{
 				error_tlog("ReleaseToCentralCache failed, ret<%d>.", ret);
 			}
-			s32 batch_size = g_st_malloc->size_map().num_objects_to_move(cl);
+			int batch_size = g_st_malloc->size_map().num_objects_to_move(cl);
 			if (list->max_length() > batch_size)
 			{
-				list->set_max_length(std::max<s32>(list->max_length() - batch_size, batch_size));
+				list->set_max_length(std::max<int>(list->max_length() - batch_size, batch_size));
 			}
 		}
 		list->clear_lowwater_mark();
@@ -235,7 +235,7 @@ s32 ThreadCache::Scavenge()
 	return 0;
 }
 
-s32 ThreadCache::ReduceTooLongList(FreeList* list, size_t cl)
+int ThreadCache::ReduceTooLongList(FreeList* list, size_t cl)
 {
 	if (NULL == list || cl == 0 || cl >= kNumClasses)
 	{
@@ -243,8 +243,8 @@ s32 ThreadCache::ReduceTooLongList(FreeList* list, size_t cl)
 		return -1;
 	}
 
-	s32 ret = 0;
-	s32 batch_size = g_st_malloc->size_map().num_objects_to_move(cl);
+	int ret = 0;
+	int batch_size = g_st_malloc->size_map().num_objects_to_move(cl);
 	ret = ReleaseToCentralCache(list, (SizeClass)cl, batch_size);
 	if (ret != 0)
 	{
@@ -269,7 +269,7 @@ s32 ThreadCache::ReduceTooLongList(FreeList* list, size_t cl)
 	return 0;
 }
 
-s32 ThreadCache::IncreaseCacheLimit()
+int ThreadCache::IncreaseCacheLimit()
 {
 	if (max_size_ == 0)
 	{

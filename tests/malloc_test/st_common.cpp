@@ -9,11 +9,11 @@ void* MetaDataChunkAlloc(size_t bytes)
 {	
 	if (bytes < kPageSize)
 	{
-		error_tlog("alloc bytes<%llu> less than page size.", (u64)bytes);
+		error_tlog("alloc bytes<%llu> less than page size.", (unsigned long long)bytes);
 		return NULL;
 	}
 
-	s32 order = log2_ceil(bytes);
+	int order = log2_ceil(bytes);
 	void* ptr = STAllocPages(order);
 	if (NULL == ptr)
 	{
@@ -24,14 +24,14 @@ void* MetaDataChunkAlloc(size_t bytes)
 	return ptr;
 }
 
-s32 STSetPageOpPtrs(AllocPagesPtr alloc_ptr, FreePagesPtr free_ptr)
+int STSetPageOpPtrs(AllocPagesPtr alloc_ptr, FreePagesPtr free_ptr)
 {
 	return 0;
 }
 
-void* STAllocPages(s32 order)
+void* STAllocPages(int order)
 {
-	u64 req_size = 1ULL << order;
+	unsigned long long req_size = 1ULL << order;
 #ifdef WIN32
 	char* addr = (char*)_aligned_malloc(req_size, kPageSize);
 #else
@@ -44,7 +44,7 @@ void* STAllocPages(s32 order)
 	return addr;
 }
 
-s32 STFreePages(void* ptr, size_t size)
+int STFreePages(void* ptr, size_t size)
 {
 #ifdef WIN32
 	_aligned_free(ptr);

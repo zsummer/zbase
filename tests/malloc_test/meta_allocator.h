@@ -15,7 +15,7 @@ public:
 		free_list_ = NULL;
 	}
 
-	s32 Init()
+	int Init()
 	{
 		inuse_ = 0;
 		free_area_ = NULL;
@@ -71,10 +71,10 @@ public:
 	}
 
 	// 正在使用的obj数目
-	s32 inuse() const { return inuse_; }
+	int inuse() const { return inuse_; }
 
 private:
-	static const s32 kAllocIncrement = 128 << 10; //128k
+	static const int kAllocIncrement = 128 << 10; //128k
 	char* free_area_; // free area, 用来切割出对象
 	size_t free_avail_;
 	void *free_list_; // 已经切割出的对象free list

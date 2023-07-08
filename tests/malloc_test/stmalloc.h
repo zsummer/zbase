@@ -20,8 +20,8 @@ using PageMapLeafAllocator = PageMapType::LeafAllocator;
 // 内存分配器统计信息
 struct STMallInfo
 {
-	u64 total_alloc_size;
-	u64 meta_alloc_size; // meta系统分配的内存数目
+	unsigned long long total_alloc_size;
+	unsigned long long meta_alloc_size; // meta系统分配的内存数目
 	STMallInfo()
 	{
 		total_alloc_size = 0;
@@ -37,8 +37,8 @@ public:
 	~STMalloc();
 
 public:
-	s32 Init(AllocPagesPtr alloc_ptr, FreePagesPtr free_ptr);
-	s32 Resume(AllocPagesPtr alloc_ptr, FreePagesPtr free_ptr);
+	int Init(AllocPagesPtr alloc_ptr, FreePagesPtr free_ptr);
+	int Resume(AllocPagesPtr alloc_ptr, FreePagesPtr free_ptr);
 
 	void Dump();
 

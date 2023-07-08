@@ -61,14 +61,14 @@ void SpanDoubleListRemove(Span* span)
 	span->next = NULL;
 }
 
-s32 SpanDoubleListLength(const Span* list)
+int SpanDoubleListLength(const Span* list)
 {
 	if (NULL == list)
 	{
 		return 0;
 	}
 
-	s32 result = 0;
+	int result = 0;
 	for (Span* s = list->next; s != list; s = s->next)
 	{
 		++result;

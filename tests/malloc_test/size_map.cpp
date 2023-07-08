@@ -12,7 +12,7 @@ void SizeMap::Dump()
     for (size_t i = 0; i < kNumClasses; ++i)
     {
         infor_tlog("index<%llu> class to size<%llu>  num to move<%d> class to page<%llu>.",
-            (u64)i, (u64)class_to_size_[i], num_objects_to_move_[i], (u64)class_to_pages_[i]);
+            (unsigned long long)i, (unsigned long long)class_to_size_[i], num_objects_to_move_[i], (unsigned long long)class_to_pages_[i]);
     }
     infor_tlog("SizeMap::Dump end!");
 }
@@ -38,10 +38,10 @@ size_t SizeMap::NumMoveSize(size_t size)
     return num;
 }
 
-s32 SizeMap::Init()
+int SizeMap::Init()
 {
-    s32 sc = 1;
-    u32 alignment = kAlignment;
+    int sc = 1;
+    unsigned int alignment = kAlignment;
 
     // 每次步进aligment个单位,alignment会随着size不断的增加
     for (size_t size = kAlignment; size <= kMaxSize; size += alignment)
@@ -60,7 +60,7 @@ s32 SizeMap::Init()
         } while ((psize / size) < (block_to_move));
 
         // 页面数对齐到2的N次方，方便buddy system分配
-        s32 page_order = log2_ceil(psize);
+        int page_order = log2_ceil(psize);
         if (page_order < 16)
         {
             page_order = 16;
@@ -86,15 +86,15 @@ s32 SizeMap::Init()
 
     if (sc != kNumClasses)
     {
-        error_tlog("sc is <%d>, kNumClass<%llu>.", sc, (u64)kNumClasses);
+        error_tlog("sc is <%d>, kNumClass<%llu>.", sc, (unsigned long long)kNumClasses);
         return -2;
     }
 
-    s32 next_size = 0;
-    for (s32 cl = 1; cl < (s32)kNumClasses; ++cl)
+    int next_size = 0;
+    for (int cl = 1; cl < (int)kNumClasses; ++cl)
     {
-        const s32 max_size_in_class = (s32)class_to_size_[cl];
-        for (s32 s = next_size; s <= max_size_in_class; s += kAlignment)
+        const int max_size_in_class = (int)class_to_size_[cl];
+        for (int s = next_size; s <= max_size_in_class; s += kAlignment)
         {
             class_array_[ClassArrayIndex(s)] = cl;
         }
@@ -102,24 +102,24 @@ s32 SizeMap::Init()
     }
 
     // 这个地方加个check, 防止前面初始化不正确
-    for (s32 size = 0; size <= (s32)kMaxSize;)
+    for (int size = 0; size <= (int)kMaxSize;)
     {
-        const s32 sc = SizeClass(size);
+        const int sc = SizeClass(size);
         if (sc <= 0 || (size_t) sc >= kNumClasses)
         {
             error_tlog("bad size class sc<%d>, size<%d>.", sc, size);
             return -3;
         }
 
-        if (sc > 1 && size <= (s32)class_to_size_[sc - 1])
+        if (sc > 1 && size <= (int)class_to_size_[sc - 1])
         {
             error_tlog("size not in right sc, sc<%d>, size<%d>.", sc, size);
             return -3;
         }
         size_t sc_size = class_to_size_[sc];
-        if (size > (s32)sc_size || sc_size == 0)
+        if (size > (int)sc_size || sc_size == 0)
         {
-            error_tlog(" sc<%d>, size<%d> more than sc size<%llu>.", sc, size, (u64)sc_size);
+            error_tlog(" sc<%d>, size<%d> more than sc size<%llu>.", sc, size, (unsigned long long)sc_size);
             return -4;
         }
         if (size <= kMaxSmallSize)
@@ -135,17 +135,17 @@ s32 SizeMap::Init()
     for (size_t cl = 1; cl < kNumClasses; ++cl)
     {
         size_t size = ByteSizeForClass(cl);
-        num_objects_to_move_[cl] = (s32)NumMoveSize(size);
+        num_objects_to_move_[cl] = (int)NumMoveSize(size);
     }
     return 0;
 }
 
-static s32 LogFloor(size_t n)
+static int LogFloor(size_t n)
 {
-    s32 log = 0;
+    int log = 0;
     for (int i = 4; i >= 0; --i)
     {
-        s32 shift = (1 << i);
+        int shift = (1 << i);
         size_t x = n >> shift;
         if (x != 0)
         {
@@ -156,9 +156,9 @@ static s32 LogFloor(size_t n)
     return log;
 }
 
-u32 AlignmentForSize(size_t size)
+unsigned int AlignmentForSize(size_t size)
 {
-    u32 alignment = kAlignment;
+    unsigned int alignment = kAlignment;
     if (size > kMaxSize) // 大于256k, 按照页尺寸来对齐
     {
         alignment = kPageSize;

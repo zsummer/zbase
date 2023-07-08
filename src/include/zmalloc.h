@@ -6,6 +6,14 @@
 * This file is part of the zbase, used MIT License.
 */
 
+
+
+
+#pragma once 
+#ifndef ZMALLOC_H
+#define ZMALLOC_H
+
+#include <stdint.h>
 #include <vector>
 #include <iostream>
 #include <thread>
@@ -22,10 +30,6 @@
 #include <Windows.h>
 #endif
 
-
-
-#ifndef  ZMALLOC_H
-#define ZMALLOC_H
 //#define ZMALLOC_OPEN_FENCE 1
 
 //#define ZDEBUG_DEATH_MEMORY

@@ -188,6 +188,7 @@ public:
     {
         pod_ = 1;
     }
+    virtual ~ChildNode() {}
     virtual s32 ouput()
     {
         return pod_;
@@ -201,6 +202,7 @@ public:
     {
         pod_ = 2;
     }
+    virtual ~LeafNode(){}
     virtual s32 ouput()
     {
         return pod_;

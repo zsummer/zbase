@@ -56,7 +56,7 @@ inline void SLL_PushRange(void** head, void* start, void* end)
 
 inline size_t  SLL_Size(void* head)
 {
-	s32 count = 0;
+	int count = 0;
 	while (head)
 	{
 		count++;

@@ -7,18 +7,18 @@
                     (static_cast<IntType>(1) << ((N)-1))) )
 
 
-template<s32 KEY_BITS, typename T>
+template<int KEY_BITS, typename T>
 class PageMapCache
 {
 public:
-	typedef u64 K;
-	typedef u64 V;
+	typedef unsigned long long K;
+	typedef unsigned long long V;
 
-	static const s32 kCacheHashBits = 16; // hash值对应的位数
-	static const s32 kValueBits = 7; // 留给size class的位数
-	static const s32 kTBits = 8 * sizeof(T); // T类型占用的Bits数量
+	static const int kCacheHashBits = 16; // hash值对应的位数
+	static const int kValueBits = 7; // 留给size class的位数
+	static const int kTBits = 8 * sizeof(T); // T类型占用的Bits数量
 
-	static const s32 kUpperBits = KEY_BITS;
+	static const int kUpperBits = KEY_BITS;
 
 	static const K kKeyMask = SAFE_N_ONES_(K, KEY_BITS);
 
@@ -34,7 +34,7 @@ public:
 		Clear(init_value);
 	}
 
-	s32 Put(K key, V value)
+	int Put(K key, V value)
 	{
 		if (key == 0 || key != (key & kKeyMask))
 		{
@@ -48,7 +48,7 @@ public:
 			return -2;
 		}
 
-		u64 hash_value = Hash(key);
+		unsigned long long hash_value = Hash(key);
 		array_[hash_value] = KeyToUpper(key) | value;
 
 		return 0;
@@ -62,7 +62,7 @@ public:
 			return false;
 		}
 
-		u64 hash_value = Hash(key);
+		unsigned long long hash_value = Hash(key);
 		bool is_match = IsKeyMatch(array_[hash_value], key);
 		return is_match;
 	}
@@ -75,7 +75,7 @@ public:
 			return default_value;
 		}
 
-		u64 hash_value = Hash(key);
+		unsigned long long hash_value = Hash(key);
 		bool is_match = IsKeyMatch(array_[hash_value], key);
 		if (is_match)
 		{
@@ -94,7 +94,7 @@ public:
 			return;
 		}
 
-		for (s32 i = 0; i < 1 << kCacheHashBits; ++i)
+		for (int i = 0; i < 1 << kCacheHashBits; ++i)
 		{
 			array_[i] = KeyToUpper(i) | value;
 		}
@@ -107,9 +107,9 @@ private:
 	{
 		return static_cast<T>(k) << kValueBits; // 直接左移value bits即可
 	}
-	inline u64 Hash(K key)
+	inline unsigned long long Hash(K key)
 	{
-		return static_cast<u64>(key & SAFE_N_ONES_(u64, kCacheHashBits));
+		return static_cast<unsigned long long>(key & SAFE_N_ONES_(unsigned long long, kCacheHashBits));
 	}
 	bool IsKeyMatch(T entry, K key)
 	{

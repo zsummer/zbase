@@ -14,7 +14,7 @@ PageHeap::~PageHeap()
 
 }
 
-s32 PageHeap::Init(PageMapType::NodeAllocator* node_allocator, PageMapType::LeafAllocator* leaf_allocator)
+int PageHeap::Init(PageMapType::NodeAllocator* node_allocator, PageMapType::LeafAllocator* leaf_allocator)
 {
 	if (NULL == node_allocator || NULL == leaf_allocator)
 	{
@@ -22,7 +22,7 @@ s32 PageHeap::Init(PageMapType::NodeAllocator* node_allocator, PageMapType::Leaf
 		return -1;
 	}
 
-	s32 ret = 0;
+	int ret = 0;
 	ret = page_map_.Init(node_allocator, leaf_allocator);
 	if (ret != 0)
 	{
@@ -41,8 +41,8 @@ Span* PageHeap::New(Length num)
 		return NULL;
 	}
 
-	s32 ret = 0;
-	s32 order = log2_ceil(num) + kPageShift;
+	int ret = 0;
+	int order = log2_ceil(num) + kPageShift;
 	void* ptr = STAllocPages(order);
 	if (NULL == ptr)
 	{
@@ -50,7 +50,7 @@ Span* PageHeap::New(Length num)
 		return NULL;
 	}
 
-	Span* span = NewSpan(reinterpret_cast<u64>(ptr) >> kPageShift,  num);
+	Span* span = NewSpan(reinterpret_cast<unsigned long long>(ptr) >> kPageShift,  num);
 	if (NULL == span)
 	{
 		error_tlog("NewSpan failed.");
@@ -62,12 +62,12 @@ Span* PageHeap::New(Length num)
 		return NULL;
 	}
 	span->sizeclass = 0;
-	page_map_.Reserve((u64)ptr >> kPageShift, num);
+	page_map_.Reserve((unsigned long long)ptr >> kPageShift, num);
 
 	return span;
 }
 
-s32 PageHeap::Delete(Span* span)
+int PageHeap::Delete(Span* span)
 {
 	if (NULL == span)
 	{
@@ -81,7 +81,7 @@ s32 PageHeap::Delete(Span* span)
 	return 0;
 }
 
-s32 PageHeap::RegisterSizeClass(Span* span, SizeClass sc)
+int PageHeap::RegisterSizeClass(Span* span, SizeClass sc)
 {
 	if (NULL == span || sc == 0)
 	{
@@ -97,7 +97,7 @@ s32 PageHeap::RegisterSizeClass(Span* span, SizeClass sc)
 	return 0;
 }
 
-s32 PageHeap::RecordSpan(Span* span)
+int PageHeap::RecordSpan(Span* span)
 {
 	if (NULL == span)
 	{

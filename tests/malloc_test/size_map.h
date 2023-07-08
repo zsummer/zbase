@@ -4,7 +4,7 @@
 #include "st_common.h"
 
 // 对于大的分配尺寸， 用的大的内存分配对齐来减少size class 的数目
-u32 AlignmentForSize(size_t size);
+unsigned int AlignmentForSize(size_t size);
 
 // size-class的映射关系信息
 class SizeMap
@@ -12,12 +12,12 @@ class SizeMap
 public:
     SizeMap();
     // 初始化所有的映射关系
-    s32 Init();
+    int Init();
 
     void Dump();
 
     // 根据size 获取他对应的外部Class索引
-    inline s32 SizeClass(s32 size)
+    inline int SizeClass(int size)
     {
         return class_array_[ClassArrayIndex(size)];
     }
@@ -29,20 +29,20 @@ public:
     {
         return class_to_pages_[cl];
     }
-    inline s32 num_objects_to_move(size_t cl)
+    inline int num_objects_to_move(size_t cl)
     {
         return num_objects_to_move_[cl];
     }
 
 private:
-    s32 num_objects_to_move_[kNumClasses];
+    int num_objects_to_move_[kNumClasses];
     // 小尺寸对象的最大大小
-    static const s32 kMaxSmallSize = 1024;
+    static const int kMaxSmallSize = 1024;
     static const size_t kClassArraySize = ((kMaxSize + 127 + (120 << 7)) >> 7) + 1;
 
-    u8 class_array_[kClassArraySize];
+    unsigned char class_array_[kClassArraySize];
 
-    static inline size_t ClassArrayIndex(s32 s)
+    static inline size_t ClassArrayIndex(int s)
     {
         /*if (0 > s || s > kMaxSize)
         {
@@ -52,11 +52,11 @@ private:
 
         if (s <= kMaxSmallSize) // 1024一下。按照8字节对齐
         {
-            return (static_cast<u32>(s) + 7) >> 3;
+            return (static_cast<unsigned int>(s) + 7) >> 3;
         }
         else // 1024 到256k之间，按照128对齐
         {
-            return (static_cast<u32>(s) + 127 + (120 << 7)) >> 7;
+            return (static_cast<unsigned int>(s) + 127 + (120 << 7)) >> 7;
         }
     }
 

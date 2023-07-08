@@ -22,19 +22,19 @@ public:
 		length_overages_ = 0;
 	}
 
-	s32 length() const { return length_; }
-	s32 max_length() { return max_length_; }
-	void set_max_length(s32 new_max)
+	int length() const { return length_; }
+	int max_length() { return max_length_; }
+	void set_max_length(int new_max)
 	{
 		max_length_ = new_max;
 	}
 
-	u32 length_overages() const
+	unsigned int length_overages() const
 	{
 		return length_overages_;
 	}
 
-	void set_length_overages(s32 new_count)
+	void set_length_overages(int new_count)
 	{
 		length_overages_ = new_count;
 	}
@@ -44,7 +44,7 @@ public:
 		return (list_ == NULL);
 	}
 
-	u32 lowwater_mark() { return lowater_; }
+	unsigned int lowwater_mark() { return lowater_; }
 	void clear_lowwater_mark() { lowater_ = length_; }
 
 	void Push(void* ptr)
@@ -72,7 +72,7 @@ public:
 		return SLL_Next(&list_);
 	}
 
-	void PushRange(s32 N, void* start, void* end)
+	void PushRange(int N, void* start, void* end)
 	{
 		SLL_PushRange(&list_, start, end);
 		length_ += N;
@@ -91,8 +91,8 @@ public:
 
 private:
 	void* list_; // 链表头
-	s32 length_; // 当前长度
-	s32 max_length_; // 动态最大长度
-	s32 lowater_; // 低水线长度
-	s32 length_overages_; // 统计在释放时length_ > max_length_ 的次数
+	int length_; // 当前长度
+	int max_length_; // 动态最大长度
+	int lowater_; // 低水线长度
+	int length_overages_; // 统计在释放时length_ > max_length_ 的次数
 };

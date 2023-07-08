@@ -75,11 +75,9 @@ s32 likely_test()
 
 
     std::unique_ptr<zarray<Element, list_size>> zarray_ptr(new  zarray<Element, list_size>());
-    zarray<Element, list_size>& zarray_ref = *zarray_ptr;
     std::unique_ptr< zlist<Element, list_size>> zlist_ptr(new  zlist<Element, list_size>());
-    zlist<Element, list_size>& zlist_bound = *zlist_ptr;
     std::unique_ptr< zlist_ext<Element, list_size, list_size / 2>> zlist_ext_ptr(new  zlist_ext<Element, list_size, list_size / 2>());
-    zlist_ext<Element, list_size, list_size / 2 >& zlist_ext_bound = *zlist_ext_ptr;
+
 
     for (int i = 0; i < rand_size; i++)
     {

@@ -9,7 +9,7 @@
 
 static Span* MapObjectToSpan(void* object)
 {
-	const PageID p = reinterpret_cast<u64>(object) >> kPageShift;
+	const PageID p = reinterpret_cast<unsigned long long>(object) >> kPageShift;
 	Span* span = g_st_malloc->page_heap().GetDescriptor(p);
 	return span;
 }
@@ -36,7 +36,7 @@ CentralFreeList::~CentralFreeList()
 
 }
 
-s32 CentralFreeList::Init(SizeClass cl)
+int CentralFreeList::Init(SizeClass cl)
 {
 	cl_ = cl;
 	SpanDoubleListInit(&empty_);
@@ -49,8 +49,8 @@ s32 CentralFreeList::Init(SizeClass cl)
 
 	if (cl > 0)
 	{
-		s32 bytes = (s32)g_st_malloc->size_map().ByteSizeForClass(cl);
-		s32 objs_to_move = g_st_malloc->size_map().num_objects_to_move(cl);
+		int bytes = (int)g_st_malloc->size_map().ByteSizeForClass(cl);
+		int objs_to_move = g_st_malloc->size_map().num_objects_to_move(cl);
 
 		max_cache_size_ = (std::min)(max_cache_size_,
 			(std::max)(1, (1024 * 1024) / (bytes * objs_to_move)));
@@ -61,7 +61,7 @@ s32 CentralFreeList::Init(SizeClass cl)
 	return 0;
 }
 
-s32 CentralFreeList::InsertRange(void* start, void* end, s32 num)
+int CentralFreeList::InsertRange(void* start, void* end, int num)
 {
 	if (NULL == start || NULL == end || 0 >= num)
 	{
@@ -75,7 +75,7 @@ s32 CentralFreeList::InsertRange(void* start, void* end, s32 num)
 		bool is_ok = TryMakeCacheSpace();
 		if (is_ok)
 		{
-			s32 slot = used_slots_++;
+			int slot = used_slots_++;
 			TCEntry* entry = &tc_slots_[slot];
 			entry->head = start;
 			entry->tail = end;
@@ -83,7 +83,7 @@ s32 CentralFreeList::InsertRange(void* start, void* end, s32 num)
 		}
 	}
 
-	s32 ret = ReleaseListToSpans(start);
+	int ret = ReleaseListToSpans(start);
 	if (ret != 0)
 	{
 		error_tlog("ReleaseListToSpans failed, ret<%d>.", ret);
@@ -91,7 +91,7 @@ s32 CentralFreeList::InsertRange(void* start, void* end, s32 num)
 	return ret;
 }
 
-s32 CentralFreeList::RemoveRange(void** start, void** end, s32 num)
+int CentralFreeList::RemoveRange(void** start, void** end, int num)
 {
 	if (NULL == start || NULL == end || 0 >= num)
 	{
@@ -102,7 +102,7 @@ s32 CentralFreeList::RemoveRange(void** start, void** end, s32 num)
 	// 申请的数量正好和TCEntry缓存的一致，而且tc entry缓存有元素，直接返回
 	if (num == g_st_malloc->size_map().num_objects_to_move(cl_) && used_slots_ > 0)
 	{
-		s32 slot = --used_slots_;
+		int slot = --used_slots_;
 		TCEntry* entry = &tc_slots_[slot];
 		*start = entry->head;
 		*end = entry->tail;
@@ -112,12 +112,12 @@ s32 CentralFreeList::RemoveRange(void** start, void** end, s32 num)
 	*start = NULL;
 	*end = NULL;
 
-	s32 result = FetchFromOneSpanSafe(num, start, end);
+	int result = FetchFromOneSpanSafe(num, start, end);
 	if (result != 0)
 	{
 		while (result < num)
 		{
-			s32 fetch_num = 0;
+			int fetch_num = 0;
 			void* head = NULL;
 			void* tail = NULL;
 			// 取不到更多的对象就返回
@@ -160,12 +160,12 @@ bool CentralFreeList::TryMakeCacheSpace()
 	return false;
 }
 
-s32 CentralFreeList::ShrinkCache(bool is_force)
+int CentralFreeList::ShrinkCache(bool is_force)
 {
 	return 0;
 }
 
-u64 CentralFreeList::OverheadBytes() const
+unsigned long long CentralFreeList::OverheadBytes() const
 {
 	if (cl_ == 0)
 	{
@@ -180,7 +180,7 @@ u64 CentralFreeList::OverheadBytes() const
 	return num_spans_ * overhead_per_span;
 }
 
-s32 CentralFreeList::TCTotalLength() const
+int CentralFreeList::TCTotalLength() const
 {
 	return used_slots_ * g_st_malloc->size_map().num_objects_to_move(cl_);
 }
@@ -190,7 +190,7 @@ bool CentralFreeList::EvictRandomSizeClass(SizeClass lock_cl, bool is_force)
 	return true;
 }
 
-s32 CentralFreeList::FetchFromOneSpan(s32 num, void** start, void** end)
+int CentralFreeList::FetchFromOneSpan(int num, void** start, void** end)
 {
 	if (NULL == start || NULL == end || 0 >= num)
 	{
@@ -211,7 +211,7 @@ s32 CentralFreeList::FetchFromOneSpan(s32 num, void** start, void** end)
 		return 0;
 	}
 
-	s32 result = 0;
+	int result = 0;
 	void* prev = NULL, *curr = NULL;
 	curr = span->objects;
 	do
@@ -238,7 +238,7 @@ s32 CentralFreeList::FetchFromOneSpan(s32 num, void** start, void** end)
 	return result;
 }
 
-s32 CentralFreeList::FetchFromOneSpanSafe(s32 num, void** start, void** end)
+int CentralFreeList::FetchFromOneSpanSafe(int num, void** start, void** end)
 {
 	if (NULL == start || NULL == end || 0 >= num)
 	{
@@ -246,10 +246,10 @@ s32 CentralFreeList::FetchFromOneSpanSafe(s32 num, void** start, void** end)
 		return 0;
 	};
 
-	s32 result = FetchFromOneSpan(num, start, end);
+	int result = FetchFromOneSpan(num, start, end);
 	if (result == 0)
 	{
-		s32 ret = Populate();
+		int ret = Populate();
 		if (ret != 0)
 		{
 			error_tlog("Populate failed, ret<%d>.", ret);
@@ -262,7 +262,7 @@ s32 CentralFreeList::FetchFromOneSpanSafe(s32 num, void** start, void** end)
 	return result;
 }
 
-s32 CentralFreeList::ReleaseListToSpans(void* start)
+int CentralFreeList::ReleaseListToSpans(void* start)
 {
 	if (NULL == start)
 	{
@@ -270,7 +270,7 @@ s32 CentralFreeList::ReleaseListToSpans(void* start)
 		return -1;
 	}
 
-	s32 ret = 0;
+	int ret = 0;
 	while (start)
 	{
 		void* next = SLL_Next(start);
@@ -285,7 +285,7 @@ s32 CentralFreeList::ReleaseListToSpans(void* start)
 	return 0;
 }
 
-s32 CentralFreeList::ReleaseToSpans(void* object)
+int CentralFreeList::ReleaseToSpans(void* object)
 {
 	if (NULL == object)
 	{
@@ -293,7 +293,7 @@ s32 CentralFreeList::ReleaseToSpans(void* object)
 		return -1;
 	}
 
-	s32 ret = 0;
+	int ret = 0;
 	Span* span = MapObjectToSpan(object);
 	if (NULL == span || span->refcount == 0)
 	{
@@ -335,7 +335,7 @@ s32 CentralFreeList::ReleaseToSpans(void* object)
 	return 0;
 }
 
-s32 CentralFreeList::Populate()
+int CentralFreeList::Populate()
 {
 	size_t pages = g_st_malloc->size_map().class_to_pages(cl_);
 	if (0 == pages)
@@ -349,7 +349,7 @@ s32 CentralFreeList::Populate()
 	span = g_st_malloc->page_heap().New(pages);
 	if (NULL == span || span->page_num != pages)
 	{
-		error_tlog("New pages<%llu> span failed.", (u64)pages);
+		error_tlog("New pages<%llu> span failed.", (unsigned long long)pages);
 		return -2;
 	}
 
@@ -363,7 +363,7 @@ s32 CentralFreeList::Populate()
 	char* ptr = reinterpret_cast<char*>(span->start << kPageShift);
 	char* ptr_limit = ptr + (pages << kPageShift);
 	const size_t size = g_st_malloc->size_map().ByteSizeForClass(cl_);
-	s32 num = 0;
+	int num = 0;
 	while ((ptr + size) <= ptr_limit)
 	{
 		*tail = ptr;

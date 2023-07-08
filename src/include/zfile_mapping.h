@@ -7,9 +7,10 @@
 */
 
 #pragma once
-#ifndef _ZMAPPING_H_
-#define _ZMAPPING_H_
+#ifndef ZMAPPING_H_
+#define ZMAPPING_H_
 
+#include <stdint.h>
 #include <cstddef>
 #include <cstring>
 #include <stdio.h>

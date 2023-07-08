@@ -9,6 +9,8 @@
 #pragma once
 #ifndef _ZMEM_COLOR_H_
 #define _ZMEM_COLOR_H_
+
+#include <stdint.h>
 #include "zallocator.h"
 #include "zlist_ext.h"
 #include <map>

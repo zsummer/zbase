@@ -5,10 +5,10 @@
 * This file is part of the zbase, used MIT License.
 */
 
-
+#pragma once 
 #ifndef  ZBUDDY_H
 #define ZBUDDY_H
-
+#include <stdint.h>
 
 #ifndef ZBASE_SHORT_TYPE
 #define ZBASE_SHORT_TYPE

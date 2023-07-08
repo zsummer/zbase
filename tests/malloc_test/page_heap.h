@@ -5,13 +5,13 @@
 #include "st_common.h"
 
 using PageMapType = PageMap3<kAddressBits - kPageShift>;
-using PageCacheType = PageMapCache<kAddressBits - kPageShift, u64>;
+using PageCacheType = PageMapCache<kAddressBits - kPageShift, unsigned long long>;
 struct Span;
 
 //
 struct PageHeapStats
 {
-	u64 page_count;
+	unsigned long long page_count;
 	PageHeapStats()
 	{
 		page_count = 0;
@@ -25,11 +25,11 @@ public:
 	~PageHeap();
 
 public:
-	s32 Init(PageMapType::NodeAllocator* node_allocator, PageMapType::LeafAllocator* leaf_allocator);
+	int Init(PageMapType::NodeAllocator* node_allocator, PageMapType::LeafAllocator* leaf_allocator);
 	Span* New(Length num);
-	s32 Delete(Span* span);
+	int Delete(Span* span);
 	// 给span 指定他所分配小对象对应的size class
-	s32 RegisterSizeClass(Span* span, SizeClass sc);
+	int RegisterSizeClass(Span* span, SizeClass sc);
 
 	Span* GetDescriptor(PageID id)
 	{
@@ -46,7 +46,7 @@ public:
 		page_cache_.Put(id, cl);
 	}
 	// 记录span信息
-	s32 RecordSpan(Span* span);
+	int RecordSpan(Span* span);
 
 	PageHeapStats& stats() { return stats_; }
 

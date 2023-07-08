@@ -6,7 +6,7 @@
 
 // raidx tree, 实现了从1级到3级三种方式
 
-template<s32 BITS>
+template<int BITS>
 class PageMap1
 {
 public:
@@ -16,14 +16,14 @@ public:
 		memset(array_, 0, sizeof(void*) << BITS);
 	}
 
-	bool Ensure(u64 x, size_t n)
+	bool Ensure(unsigned long long x, size_t n)
 	{
 		return n <= LENGTH - x;
 	}
 
 	void PreallocateMoreMemory() {}
 
-	void* get(u64 k) const
+	void* get(unsigned long long k) const
 	{
 		if ((k >> BITS) > 0)
 		{
@@ -32,12 +32,12 @@ public:
 		return array_[k];
 	}
 
-	void set(u64 k, void* v)
+	void set(unsigned long long k, void* v)
 	{
 		array_[k] = v;
 	}
 
-	void* Next(u64 k) const
+	void* Next(unsigned long long k) const
 	{
 		while (k < (1 << BITS))
 		{
@@ -51,12 +51,12 @@ public:
 	}
 
 private:
-	static const s32 LENGTH = 1 << BITS;
+	static const int LENGTH = 1 << BITS;
 	void** array_;
 	//void* (*allocator_)(size_t); // 分配器
 };
 
-template<s32 BITS>
+template<int BITS>
 class PageMap2
 {
 public:
@@ -66,12 +66,12 @@ public:
 		memset(root_, 0, sizeof(root_));
 	}
 
-	void* get(u64 k) const
+	void* get(unsigned long long k) const
 	{
 		// 高位
-		const u64 i1 = k >> LEAF_BITS;
+		const unsigned long long i1 = k >> LEAF_BITS;
 		// 低位
-		const u64 i2 = k & (LEAF_LENGTH - 1);
+		const unsigned long long i2 = k & (LEAF_LENGTH - 1);
 		if ((k >> BITS) > 0 || root_[i1] == NULL)
 		{
 			return NULL;
@@ -79,10 +79,10 @@ public:
 		return root_[i1]->values[i2];
 	}
 
-	void set(u64 k, void* v)
+	void set(unsigned long long k, void* v)
 	{
-		const u64 i1 = k >> LEAF_BITS;
-		const u64 i2 = k & (LEAF_LENGTH - 1);
+		const unsigned long long i1 = k >> LEAF_BITS;
+		const unsigned long long i2 = k & (LEAF_LENGTH - 1);
 		if (i1 >= ROOT_LENGTH || root_[i1] == NULL)
 		{
 			// 此处应有error log
@@ -91,11 +91,11 @@ public:
 		root_[i1]->values[i2] = v;
 	}
 
-	bool Ensure(u64 start, size_t n)
+	bool Ensure(unsigned long long start, size_t n)
 	{
-		for (u64 key = start; key < start + n - 1; )
+		for (unsigned long long key = start; key < start + n - 1; )
 		{
-			const u64 i1 = key >> LEAF_BITS;
+			const unsigned long long i1 = key >> LEAF_BITS;
 			if (i1 >= ROOT_LENGTH)
 			{
 				return false;
@@ -121,15 +121,15 @@ public:
 		Ensure(0, 1 << BITS);
 	}
 
-	void* Next(u64 k) const
+	void* Next(unsigned long long k) const
 	{
 		while (k < (1 << BITS))
 		{
-			const u64 i1 = k >> LEAF_BITS;
+			const unsigned long long i1 = k >> LEAF_BITS;
 			Leaf* leaf = root_[i1];
 			if (leaf != NULL)
 			{
-				for (u64 i2 = k & (LEAF_LENGTH - 1); i2 < LEAF_LENGTH; i2++)
+				for (unsigned long long i2 = k & (LEAF_LENGTH - 1); i2 < LEAF_LENGTH; i2++)
 				{
 					if (leaf->values[i2] != NULL)
 					{
@@ -143,11 +143,11 @@ public:
 	}
 
 private:
-	static const s32 ROOT_BITS = 5; // 第一级所占BIT数
-	static const s32 ROOT_LENGTH = 1 << ROOT_BITS;
+	static const int ROOT_BITS = 5; // 第一级所占BIT数
+	static const int ROOT_LENGTH = 1 << ROOT_BITS;
 
-	static const s32  LEAF_BITS = BITS - ROOT_BITS;
-	static const s32 LEAF_LENGTH = 1 << LEAF_BITS;
+	static const int  LEAF_BITS = BITS - ROOT_BITS;
+	static const int LEAF_LENGTH = 1 << LEAF_BITS;
 
 	struct Leaf
 	{
@@ -158,15 +158,15 @@ private:
 };
 
 
-template <s32 BITS>
+template <int BITS>
 class PageMap3
 {
 public:
-	static const s32 INTERIOR_BITS = (BITS + 2) / 3; // 内部节点所占BITS数目
-	static const s32 INTERIOR_LENGTH = 1 << INTERIOR_BITS;
+	static const int INTERIOR_BITS = (BITS + 2) / 3; // 内部节点所占BITS数目
+	static const int INTERIOR_LENGTH = 1 << INTERIOR_BITS;
 
-	static const s32 LEAF_BITS = BITS - 2 * INTERIOR_BITS; // 叶节点所占的BITS数目
-	static const s32 LEAF_LENGTH = 1 << LEAF_BITS;
+	static const int LEAF_BITS = BITS - 2 * INTERIOR_BITS; // 叶节点所占的BITS数目
+	static const int LEAF_LENGTH = 1 << LEAF_BITS;
 
 public:
 	// 中间节点
@@ -190,7 +190,7 @@ public:
 		leaf_allocator_ = NULL;
 	}
 
-	s32 Init(NodeAllocator* node_allocator, LeafAllocator* leaf_allocator)
+	int Init(NodeAllocator* node_allocator, LeafAllocator* leaf_allocator)
 	{
 		if (NULL == node_allocator || NULL == leaf_allocator)
 		{
@@ -214,11 +214,11 @@ public:
 		return result;
 	}
 
-	void* get(u64 k) const
+	void* get(unsigned long long k) const
 	{
-		const u64 i1 = k >> (LEAF_BITS + INTERIOR_BITS);
-		const u64 i2 = (k >> LEAF_BITS)  & (INTERIOR_LENGTH - 1);
-		const  u64 i3 = k & (LEAF_LENGTH - 1);
+		const unsigned long long i1 = k >> (LEAF_BITS + INTERIOR_BITS);
+		const unsigned long long i2 = (k >> LEAF_BITS)  & (INTERIOR_LENGTH - 1);
+		const  unsigned long long i3 = k & (LEAF_LENGTH - 1);
 
 		// k 大于地址范围或者k对应地址并未被分配
 		if ((k >> BITS) > 0 || root_->ptrs[i1] == NULL || root_->ptrs[i1]->ptrs[i2] == NULL)
@@ -228,20 +228,20 @@ public:
 		return reinterpret_cast<Leaf*>(root_->ptrs[i1]->ptrs[i2])->values[i3];
 	}
 
-	void set(u64 k, void* v)
+	void set(unsigned long long k, void* v)
 	{
-		const u64 i1 = k >> (LEAF_BITS + INTERIOR_BITS);
-		const u64 i2 = (k >> LEAF_BITS)  & (INTERIOR_LENGTH - 1);
-		const  u64 i3 = k & (LEAF_LENGTH - 1);
+		const unsigned long long i1 = k >> (LEAF_BITS + INTERIOR_BITS);
+		const unsigned long long i2 = (k >> LEAF_BITS)  & (INTERIOR_LENGTH - 1);
+		const  unsigned long long i3 = k & (LEAF_LENGTH - 1);
 		reinterpret_cast<Leaf*>(root_->ptrs[i1]->ptrs[i2])->values[i3] = v;
 	}
 
-	bool Reserve(u64 start, size_t n)
+	bool Reserve(unsigned long long start, size_t n)
 	{
-		for (u64 key = start; key <= (start + n - 1);)
+		for (unsigned long long key = start; key <= (start + n - 1);)
 		{
-			const u64 i1 = key >> (LEAF_BITS + INTERIOR_BITS);
-			const u64 i2 = (key >> LEAF_BITS) & (INTERIOR_LENGTH - 1);
+			const unsigned long long i1 = key >> (LEAF_BITS + INTERIOR_BITS);
+			const unsigned long long i2 = (key >> LEAF_BITS) & (INTERIOR_LENGTH - 1);
 
 			// 防止溢出
 			if (i1 >= INTERIOR_LENGTH || i2 >= INTERIOR_LENGTH)
@@ -276,12 +276,12 @@ public:
 		return true;
 	}
 
-	void* Next(u64 k) const
+	void* Next(unsigned long long k) const
 	{
 		while (k < (1ull << BITS))
 		{
-			const u64 i1 = k >> (LEAF_BITS + INTERIOR_BITS);
-			const u64 i2 = (k >> LEAF_BITS) & (INTERIOR_LENGTH - 1);
+			const unsigned long long i1 = k >> (LEAF_BITS + INTERIOR_BITS);
+			const unsigned long long i2 = (k >> LEAF_BITS) & (INTERIOR_LENGTH - 1);
 
 			if (root_->ptrs[i1] == NULL) // 每次增加一个middle node
 			{
@@ -292,7 +292,7 @@ public:
 				Leaf* leaf = reinterpret_cast<Leaf*>(root_->ptrs[i1]->ptrs[i2]);
 				if (leaf != NULL)
 				{
-					for (u64 i3 = (k & (LEAF_LENGTH - 1)); i3 < LEAF_LENGTH; ++i3)
+					for (unsigned long long i3 = (k & (LEAF_LENGTH - 1)); i3 < LEAF_LENGTH; ++i3)
 					{
 						if (leaf->values[i3] != NULL)
 						{
