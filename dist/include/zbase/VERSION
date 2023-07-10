@@ -1,6 +1,6 @@
 version:
-last_sha1(./src)=36e015c753d99c6f386db5b6f7460c0ea5f381e7
-last_date(./src)=2023-07-08 11:49:22 +0800
+last_sha1(./src)=8334b1967c1418e94d27f87997efe5a22d5f0c85
+last_date(./src)=2023-07-10 19:01:56 +0800
 
 git log -1 --stat ./src:
-commit 36e015c753d99c6f386db5b6f7460c0ea5f381e7 Author: zsummer <yawei.zhang@foxmail.com> Date: Sat Jul 8 11:49:22 2023 +0800 stdint.h #pragma once; src/include/zallocator.h | 6 ++++-- src/include/zarray.h | 3 ++- src/include/zbitset.h | 5 +++-- src/include/zbuddy.h | 4 ++-- src/include/zclock.h | 12 ++++++++---- src/include/zfile.h | 6 +++++- src/include/zfile_mapping.h | 5 +++-- src/include/zforeach.h | 10 +++++----- src/include/zhash_map.h | 4 +++- src/include/zlist.h | 6 ++++-- src/include/zlist_ext.h | 4 +++- src/include/zmalloc.h | 12 ++++++++---- src/include/zmem_color.h | 2 ++ src/include/zmem_pool.h | 20 +++++++++++--------- src/include/zshm_boot.h | 11 +++++++---- src/include/zshm_loader.h | 5 +++-- src/include/zshm_ptr.h | 5 +++-- src/include/zsingle.h | 5 +++-- src/include/zstream.h | 7 ++++--- src/include/zsymbols.h | 5 +++-- src/include/zvector.h | 5 +++-- 21 files changed, 89 insertions(+), 53 deletions(-)
+commit 8334b1967c1418e94d27f87997efe5a22d5f0c85 Author: zsummer <yawei.zhang@foxmail.com> Date: Mon Jul 10 19:01:56 2023 +0800 fixed zstream typo; update cmake file src/include/zstream.h | 25 ++++++++++++++++++------- 1 file changed, 18 insertions(+), 7 deletions(-)
