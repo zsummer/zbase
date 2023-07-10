@@ -76,23 +76,23 @@ endif(OPEN_CHECK)
 
 
 file(GLOB_RECURSE src_files ${CMAKE_SOURCE_DIR}/src/include/*.h)
-auto_group_source(src_files)
-auto_include_from_source(src_files)
+auto_group_files(src_files)
+auto_include_files(src_files)
 add_custom_target(${PROJECT_NAME} SOURCES  ${src_files} )
 
 
 
 # todo: auto include & link  vender 
 auto_link_sub_lib_dir(${CMAKE_SOURCE_DIR}/vender "")
-auto_include_sub_hpp_dir(${CMAKE_SOURCE_DIR}/vender)
-auto_group_sub_cpp_dir(${CMAKE_SOURCE_DIR}/vender)
+auto_include_sub_dir(${CMAKE_SOURCE_DIR}/vender)
+auto_group_sub_dir(${CMAKE_SOURCE_DIR}/vender)
 
 
 # tests  
 include_directories(${CMAKE_SOURCE_DIR}/tests)
 include_directories(${CMAKE_SOURCE_DIR}/tests/common)
-auto_include_sub_hpp_dir(${CMAKE_SOURCE_DIR}/tests/common)
-auto_group_sub_cpp_dir(${CMAKE_SOURCE_DIR}/tests/common)
+auto_include_sub_dir(${CMAKE_SOURCE_DIR}/tests/common)
+auto_group_sub_dir(${CMAKE_SOURCE_DIR}/tests/common)
 
 
 get_sub_dir_name(sub_dirs ${CMAKE_SOURCE_DIR}/tests/)
@@ -108,7 +108,7 @@ foreach(sub_dir_name ${sub_dirs})
     ${CMAKE_SOURCE_DIR}/tests/${sub_dir_name}/*.cpp)
 
 
-    auto_group_source(test_sources)
+    auto_group_files(test_sources)
     add_executable(${sub_dir_name}  ${test_sources})
     if (UNIX)
             #set_target_properties(${sub_dir_name} PROPERTIES COMPILE_FLAGS "" LINK_FLAGS "-ldl")

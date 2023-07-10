@@ -72,18 +72,19 @@ namespace zstream_impl
         {
             return 0;
         }
-
+        //A terminating null character is automatically appended after the content written.  
 #ifdef WIN32
-        int ret = _snprintf_s(dst, dstlen, _TRUNCATE, fmt_string, args ...);
+        int cnt = _snprintf_s(dst, dstlen, _TRUNCATE, fmt_string, args ...);
 #else
-        int ret = snprintf(dst, dstlen, fmt_string, args ...);
+        int cnt = snprintf(dst, dstlen, fmt_string, args ...);
 #endif // WIN32
 
-        if (ret < 0)
+        if (cnt < 0)
         {
             return 0;
         }
-        return ret;
+        //result cnt not counting the terminating null character. 
+        return cnt;
     }
 
     template<int WIDE>
@@ -446,6 +447,16 @@ public:
         return 0;
     }
 
+    //__attribute__((format(printf, 3, 4))) 
+    template<typename ... Args>
+    inline zstream& fmt(const char* fmt_string, Args&& ... args)
+    {
+        s32 cnt = zstream_impl::write_fmt(buf_ + offset_, buf_len_ - offset_, fmt_string, args ...);
+        offset_ += cnt;
+        return *this;
+    }
+
+
     //close with '\0'  
     zstream& write_block(const char* bin, s32 len)
     {
@@ -455,7 +466,7 @@ public:
         }
         if (offset_ + len + 1 < buf_len_)
         {
-            memcpy(buf_, bin, len);
+            memcpy(buf_ + offset_, bin, len);
             offset_ += len;
             *(buf_ + offset_) = '\0';
         }
@@ -475,7 +486,7 @@ public:
 
         if (offset_ + len + 1 < buf_len_)
         {
-            memcpy(buf_, str, len + 1);
+            memcpy(buf_ + offset_, str, len + 1);
             offset_ += len;
             *(buf_ + offset_) = '\0';
         }

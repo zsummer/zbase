@@ -47,7 +47,7 @@
 # source_group(TREE <root> [PREFIX <prefix>] [FILES <src>...])  
 # LIST作为参数传递过来时候不要解值(通过传递符号名传递) 否则LIST的内容只剩下第一个元素  
 
-function(auto_group_source src_file_list)
+function(auto_group_files src_file_list)
     source_group(TREE ${CMAKE_SOURCE_DIR} FILES ${${src_file_list}})
 endfunction()
 
@@ -69,7 +69,7 @@ endfunction()
 
 
 # 自动include 头文件所在目录  
-function(auto_include_from_source src_file_list)
+function(auto_include_files src_file_list)
     foreach(file_name ${${src_file_list}})
         string(REGEX REPLACE "[^/\\]+$" " " dir_path ${file_name} )
         list(APPEND dir_paths ${dir_path})
@@ -80,35 +80,90 @@ function(auto_include_from_source src_file_list)
     endif()
 
     foreach(dir_path ${dir_paths})
-        message("auto include: " ${dir_path} )
+        message("auto_include_files::auto include: " ${dir_path} )
         include_directories(${dir_path})
     endforeach()
 endfunction()
 
+# 自动include 头文件所在目录  
+function(auto_target_include_files target src_file_list)
+    #message(${target} ":" ${src_file_list})
+    foreach(file_name ${${src_file_list}})
+        string(REGEX REPLACE "[^/\\]+$" " " dir_path ${file_name} )
+        list(APPEND dir_paths ${dir_path})
+        #message(${file_name} "-->" ${dir_path})
+    endforeach()
 
+    if(dir_paths)
+        list(REMOVE_DUPLICATES dir_paths)
+    endif()
 
-
-function(auto_include_sub_hpp_dir dir_path)
-    message("find all sub dirs from ${dir_path}")
-    file(GLOB_RECURSE hpps ${dir_path}/*.h ${dir_path}/*.hpp)
-    auto_include_from_source(hpps)
+    foreach(dir_path ${dir_paths})
+        message("auto_target_include_files::auto target: " ${target} " include:" ${dir_path})
+        target_include_directories(${target} PUBLIC ${dir_path})
+    endforeach()
 endfunction()
 
 
-function(auto_group_sub_cpp_dir dir_path)
-    message("find all sub dirs from ${dir_path}")
-    file(GLOB_RECURSE hpps ${dir_path}/*.h ${dir_path}/*.hpp ${dir_path}/*.cpp)
-    auto_group_source(hpps)
+function(auto_include_sub_dir dir_path)
+    message("auto_include_sub_dir::find sub dir files: ${dir_path}")
+    file(GLOB_RECURSE files ${dir_path}/*.h ${dir_path}/*.hpp)
+    auto_include_files(files)
 endfunction()
 
-function(auto_custom_target_sub_dir dir_path target)
-    file(GLOB_RECURSE hpps ${dir_path}/*.h ${dir_path}/*.hpp)
-    message(${hpps})
-    add_custom_target(${target} SOURCES  ${hpps} )
+
+function(auto_target_include_sub_dir target dir_path)
+    message("auto_target_include_sub_dir::find sub dirs: ${dir_path}")
+    file(GLOB_RECURSE files ${dir_path}/*.h ${dir_path}/*.hpp)
+    auto_target_include_files(${target} files)
 endfunction()
+
+
+function(auto_group_sub_dir dir_path)
+    message("auto_group_sub_dir::find sub dirs files: ${dir_path}")
+    file(GLOB_RECURSE files ${dir_path}/*.h ${dir_path}/*.hpp ${dir_path}/*.cpp)
+    auto_group_files(files)
+endfunction()
+
+function(auto_custom_target_sub_dir target dir_path )
+    message("auto_custom_target_sub_dir::find sub dirs files: ${dir_path}")
+    file(GLOB_RECURSE files ${dir_path}/*.h ${dir_path}/*.hpp)
+    add_custom_target(${target} SOURCES  ${files} )
+endfunction()
+
+
+
 
 
 function(auto_link_from_file src_file_list)
+    foreach(file_name ${${src_file_list}})
+        string(REGEX REPLACE "[^/\\]+$" " " dir_path ${file_name} )
+        string(REGEX MATCH "[^/\\]+$" lib_name ${file_name} )
+        list(APPEND dir_paths ${dir_path})
+        list(APPEND lib_names ${lib_name})
+    endforeach()
+
+    if(dir_paths)
+        list(REMOVE_DUPLICATES dir_paths)
+    endif()
+
+    if(lib_names)
+        list(REMOVE_DUPLICATES lib_names)
+    endif()
+
+    foreach(dir_path ${dir_paths})
+        message("auto link_directories: " ${dir_path} )
+        link_directories(${dir_path})
+    endforeach()
+
+    foreach(lib_name ${lib_names})
+        message("auto link_library: " ${lib_name} )
+        link_library(${lib_name})
+    endforeach()
+
+endfunction()
+
+function(auto_target_link_from_file target src_file_list)
     foreach(file_name ${${src_file_list}})
         string(REGEX REPLACE "[^/\\]+$" " " dir_path ${file_name} )
         string(REGEX MATCH "[^/\\]+$" lib_name ${file_name} )
@@ -130,13 +185,11 @@ function(auto_link_from_file src_file_list)
     endforeach()
 
     foreach(lib_name ${lib_names})
-        message("auto include: " ${lib_name} )
-        add_library(${lib_name})
+        message("auto target_link_library: " ${lib_name} )
+        target_link_library(${target} ${lib_name})
     endforeach()
 
 endfunction()
-
-
 
 
 function(auto_link_sub_lib_dir dir_path suffix)
