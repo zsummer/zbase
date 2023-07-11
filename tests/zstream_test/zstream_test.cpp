@@ -27,16 +27,16 @@ s32 zstream_test()
         ASSERT_TEST(strlen(buf) == 0);
 
         s << (u32)100;
-        ASSERT_TEST(s.offset_ == 3);
+        ASSERT_TEST(s.size() == 3);
         ASSERT_TEST(atoi(buf) == 100);
 
-        s.offset_ = 0;
+        s.attach(buf, 1000, 0);
         s << (s32)-100;
-        ASSERT_TEST(s.offset_ == 4);
+        ASSERT_TEST(s.size() == 4);
         ASSERT_TEST(atoi(buf) == -100);
 
 
-        s.offset_ = 0;
+        s.attach(buf, 1000, 0);
         s << -100.001;
         ASSERT_TEST(atof(buf) * 1000 == -100001);
 
@@ -46,7 +46,7 @@ s32 zstream_test()
             s << i;
         }
 
-        ASSERT_TEST(s.offset_ < 1000);
+        ASSERT_TEST(s.size() < 1000);
     }
 
     if (true)
@@ -54,14 +54,32 @@ s32 zstream_test()
         zstream s(buf, 1000);
         s.fmt("%d", 100);
         s.fmt("100");
-        ASSERT_TEST(std::string("100100") == s.buf_);
+        ASSERT_TEST(std::string("100100") == s.data());
     }
     if (true)
     {
         zstream s(buf, 6);
         s.fmt("%d", 100);
         s.fmt("100");
-        ASSERT_TEST(std::string("10010") == s.buf_);
+        ASSERT_TEST(std::string("10010") == s.data());
+    }
+    if (true)
+    {
+        zstream s(buf, 1);
+        s.fmt("%d", 100);
+        s << 1;
+        s << 1.1;
+        s << 1.1f;
+        s << 'c';
+        s << (u8)1;
+        s << (u64)1;
+        s << (s64)-1;
+        s.write_date(time(NULL), 0);
+        s.write_date(0, 0);
+        s.write_block(buf, 100);
+        s.write_block(buf, 1);
+        ASSERT_TEST(s.size() == 0);
+        ASSERT_TEST(strlen(s.data()) == 0);
     }
 
     delete buf;
@@ -71,7 +89,23 @@ s32 zstream_test()
 
 s32 zstream_bench_test()
 {
-
+    volatile s32 count = 0;
+    if (true)
+    {
+        zstream_static<1000> ss;
+        ss.write_date(time(NULL), 0);
+        ss << "bench test[" << 0 << "] double:" << 3234.23 << " ull" << (u64)324234 << " pointer:" << (void*)&ss;
+        LogInfo() << ss.data();
+    }
+    static constexpr s32 loop_count = 10 * 10000;
+    PROF_DEFINE_AUTO_MULTI_ANON_RECORD(cost, loop_count, "write stream");
+    for (s32 i = 0; i < loop_count; i++)
+    {
+        zstream_static<1000> ss;
+        ss.write_date(time(NULL), 0);
+        ss << "bench test[" << i << "] double:" << 3234.23 << " ull" << (u64)324234 << " pointer:" << (void*)&ss;
+        count += ss.size();
+    }
     return 0;
 }
 

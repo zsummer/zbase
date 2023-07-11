@@ -411,13 +411,13 @@ class zfile_mapping
 {
     
 #ifdef WIN32
-    zfile_mapping_win32 mapping_;
-    using file_mapping = zfile_mapping_win32;
+    using file_mapping = zfile_mapping_impl::zfile_mapping_win32;
 #else
-    using file_mapping = zfile_mapping_unix;
-    zfile_mapping_unix mapping_;
+    using file_mapping = zfile_mapping_impl::zfile_mapping_unix;
 #endif // WIN32
+
     file_mapping mapping_;
+
 public:
     zfile_mapping()
     {
