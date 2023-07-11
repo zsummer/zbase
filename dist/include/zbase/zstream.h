@@ -352,7 +352,7 @@ namespace zstream_impl
         static thread_local tm cache_date = { 0 };
         static thread_local long long cache_timestamp = 0;
         static const char date_fmt[] = "[20190412 13:05:35.417]";
-        if (len < (s32)sizeof(date_fmt))
+        if (len <= (s32)sizeof(date_fmt))
         {
             return 0;
         }
@@ -419,10 +419,15 @@ namespace zstream_impl
 
 class zstream
 {
-public:
+private:
     char* buf_;
     s32 buf_len_;
     s32 offset_;
+public:
+    s32 size() const { return offset_; }
+    s32 max_size() const { return buf_len_; }
+    char* data() const { return buf_; }
+
 public:
     zstream()
     {
@@ -440,7 +445,7 @@ public:
         buf_ = buf;
         buf_len_ = len;
         offset_ = offset;
-        if (offset < len && len > 0)
+        if (offset < len && len >= 0)
         {
             *(buf + offset) = '\0';
         }
@@ -453,6 +458,14 @@ public:
     {
         s32 cnt = zstream_impl::write_fmt(buf_ + offset_, buf_len_ - offset_, fmt_string, args ...);
         offset_ += cnt;
+        return *this;
+    }
+
+    zstream& write_date(long long timestamp, unsigned int precise)
+    {
+        s32 cnt = zstream_impl::write_date(buf_ + offset_, buf_len_ - offset_, timestamp, precise);
+        offset_ += cnt;
+        *(buf_ + offset_) = '\0';
         return *this;
     }
 
@@ -594,6 +607,28 @@ public:
 
     zstream& operator <<(const std::string& str) { return write_str(str.c_str(), (s32)str.length()); }
 };
+
+template<s32 BuffSize>
+class zstream_static :public zstream
+{
+public:
+    zstream_static()
+    {
+        attach(space_, BuffSize, 0);
+    }
+    ~zstream_static()
+    {
+
+    }
+private:
+    s32 attach(char* buf, s32 len, s32 offset = 0)
+    {
+        return zstream::attach(buf, len, offset);
+    }
+private:
+    char space_[BuffSize];
+};
+
 
 
 #endif
