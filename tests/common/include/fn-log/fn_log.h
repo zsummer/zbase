@@ -352,7 +352,7 @@ namespace FNLog
 #else
         sprintf(buf, "/proc/%d/cmdline", (int)getpid());
         FileHandler i;
-	struct stat file_stat;
+    struct stat file_stat;
         i.open(buf, "rb", file_stat);
         if (!i.is_open())
         {

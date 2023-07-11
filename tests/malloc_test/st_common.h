@@ -100,7 +100,7 @@ static const unsigned long long kMaxValidAddr = 1ull << 48;
 // 获取指定的byte数量到所需的page数量的转换
 inline Length GetPagesNum(size_t bytes)
 {
-	return ((bytes >> kPageShift) + (bytes & (kPageSize - 1)) > 0 ? 1 : 0);
+    return ((bytes >> kPageShift) + (bytes & (kPageSize - 1)) > 0 ? 1 : 0);
 }
 
 // 每次在thread cache 和center cache之间传递的对象数量
