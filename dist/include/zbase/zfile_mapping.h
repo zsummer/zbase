@@ -106,8 +106,8 @@ using f64 = double;
 
 
 //comment: grep -i commit /proc/meminfo   #查看overcommit value和当前commit   
-//comment: sar -r											#查看kbcommit   %   
-//comment: cat /proc/981/oom_score		#查看OOM分数  
+//comment: sar -r                                            #查看kbcommit   %   
+//comment: cat /proc/981/oom_score        #查看OOM分数  
 
 
 //内存水位线
@@ -128,147 +128,147 @@ using f64 = double;
 class zfile_mapping_win32
 {
 public:
-	zfile_mapping_win32()
-	{
+    zfile_mapping_win32()
+    {
 #ifdef WIN32
-		mapping_hd_ = NULL;
-		file_hd_ = NULL;
+        mapping_hd_ = NULL;
+        file_hd_ = NULL;
 #endif
-		file_data_ = NULL;
-		file_size_ = 0;
-	}
-	~zfile_mapping_win32()
-	{
-		unmap_res();
-	}
+        file_data_ = NULL;
+        file_size_ = 0;
+    }
+    ~zfile_mapping_win32()
+    {
+        unmap_res();
+    }
 
-	s32 mapping_res(const char* file_path, bool readonly, bool remapping = false)
-	{
+    s32 mapping_res(const char* file_path, bool readonly, bool remapping = false)
+    {
 #ifdef WIN32
-		s32 ret = 0;
+        s32 ret = 0;
 
-		if (remapping)
-		{
-			unmap_res();
-		}
+        if (remapping)
+        {
+            unmap_res();
+        }
 
-		if (file_hd_ != NULL)
-		{
-			return 1;
-		}
-		if (readonly)
-		{
-			file_hd_ = ::CreateFile(file_path, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
-		}
-		else
-		{
-			file_hd_ = ::CreateFile(file_path, GENERIC_READ| GENERIC_WRITE, FILE_SHARE_READ| FILE_SHARE_WRITE, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
-		}
-		
-		if (file_hd_ == INVALID_HANDLE_VALUE)
-		{
-			return 1;
-		}
-		LARGE_INTEGER file_size;
-		if (!GetFileSizeEx(file_hd_, &file_size))
-		{
-			::CloseHandle(file_hd_);
-			file_hd_ = NULL;
-			return 2;
-		}
+        if (file_hd_ != NULL)
+        {
+            return 1;
+        }
+        if (readonly)
+        {
+            file_hd_ = ::CreateFile(file_path, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+        }
+        else
+        {
+            file_hd_ = ::CreateFile(file_path, GENERIC_READ| GENERIC_WRITE, FILE_SHARE_READ| FILE_SHARE_WRITE, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+        }
+        
+        if (file_hd_ == INVALID_HANDLE_VALUE)
+        {
+            return 1;
+        }
+        LARGE_INTEGER file_size;
+        if (!GetFileSizeEx(file_hd_, &file_size))
+        {
+            ::CloseHandle(file_hd_);
+            file_hd_ = NULL;
+            return 2;
+        }
 
-		if (readonly)
-		{
-			mapping_hd_ = CreateFileMapping(file_hd_, NULL, PAGE_READONLY, 0, 0, NULL);
-		}
-		else
-		{
-			mapping_hd_ = CreateFileMapping(file_hd_, NULL, PAGE_READWRITE, 0, 0, NULL);
-		}
-		
-		if (mapping_hd_ == NULL)
-		{
-			::CloseHandle(file_hd_);
-			file_hd_ = NULL;
-			return 2;
-		}
+        if (readonly)
+        {
+            mapping_hd_ = CreateFileMapping(file_hd_, NULL, PAGE_READONLY, 0, 0, NULL);
+        }
+        else
+        {
+            mapping_hd_ = CreateFileMapping(file_hd_, NULL, PAGE_READWRITE, 0, 0, NULL);
+        }
+        
+        if (mapping_hd_ == NULL)
+        {
+            ::CloseHandle(file_hd_);
+            file_hd_ = NULL;
+            return 2;
+        }
 
-		if (readonly)
-		{
-			file_data_ = (char*)::MapViewOfFile(mapping_hd_, FILE_MAP_READ, 0, 0, 0);
-		}
-		else
-		{
-			file_data_ = (char*)::MapViewOfFile(mapping_hd_, FILE_MAP_READ| FILE_MAP_WRITE, 0, 0, 0);
-		}
+        if (readonly)
+        {
+            file_data_ = (char*)::MapViewOfFile(mapping_hd_, FILE_MAP_READ, 0, 0, 0);
+        }
+        else
+        {
+            file_data_ = (char*)::MapViewOfFile(mapping_hd_, FILE_MAP_READ| FILE_MAP_WRITE, 0, 0, 0);
+        }
 
-		
-		if (file_data_)
-		{
-			file_size_ = (s64)file_size.QuadPart;
-		}
-		else
-		{
-			::CloseHandle(file_hd_);
-			::CloseHandle(mapping_hd_);
-			file_hd_ = NULL;
-			mapping_hd_ = NULL;
-			return 3;
-		}
+        
+        if (file_data_)
+        {
+            file_size_ = (s64)file_size.QuadPart;
+        }
+        else
+        {
+            ::CloseHandle(file_hd_);
+            ::CloseHandle(mapping_hd_);
+            file_hd_ = NULL;
+            mapping_hd_ = NULL;
+            return 3;
+        }
 #endif
-		return 0;
-	}
+        return 0;
+    }
 
-	s32 is_mapped()
-	{
+    s32 is_mapped()
+    {
 #ifdef WIN32
-		return file_hd_ != NULL;
+        return file_hd_ != NULL;
 #else
-		return 0;
+        return 0;
 #endif
-	}
+    }
 
-	s32 unmap_res()
-	{
+    s32 unmap_res()
+    {
 #ifdef WIN32
-		if (file_hd_ == 0)
-		{
-			return 1;
-		}
+        if (file_hd_ == 0)
+        {
+            return 1;
+        }
 
-		if (file_data_)
-		{
-			::UnmapViewOfFile(file_data_);
-		}
-		::CloseHandle(mapping_hd_);
-		::CloseHandle(file_hd_);
-		file_data_ = NULL;
-		file_size_ = 0;
-		mapping_hd_ = NULL;
-		file_hd_ = NULL;
+        if (file_data_)
+        {
+            ::UnmapViewOfFile(file_data_);
+        }
+        ::CloseHandle(mapping_hd_);
+        ::CloseHandle(file_hd_);
+        file_data_ = NULL;
+        file_size_ = 0;
+        mapping_hd_ = NULL;
+        file_hd_ = NULL;
 #endif
-		return 0;
-	}
+        return 0;
+    }
 
-	s32 remove_file(const char* file_path)
-	{
-		return ::remove(file_path);
-	}
+    s32 remove_file(const char* file_path)
+    {
+        return ::remove(file_path);
+    }
 
-	s32 trim_cache()
-	{
-		return 0;
-	}
+    s32 trim_cache()
+    {
+        return 0;
+    }
 public:
-	const char* file_data() { return file_data_; }
-	s64 file_size() { return file_size_; }
+    const char* file_data() { return file_data_; }
+    s64 file_size() { return file_size_; }
 private:
 #ifdef WIN32
-	HANDLE file_hd_;
-	HANDLE mapping_hd_;
+    HANDLE file_hd_;
+    HANDLE mapping_hd_;
 #endif
-	char* file_data_;
-	s64   file_size_;
+    char* file_data_;
+    s64   file_size_;
 };
 
 
@@ -279,126 +279,126 @@ class zfile_mapping_unix
 {
 
 public:
-	zfile_mapping_unix()
-	{
-		file_fd_ = -1;
-		file_data_ = NULL;
-		file_size_ = 0;
-	}
-	~zfile_mapping_unix()
-	{
-		unmap_res();
-	}
+    zfile_mapping_unix()
+    {
+        file_fd_ = -1;
+        file_data_ = NULL;
+        file_size_ = 0;
+    }
+    ~zfile_mapping_unix()
+    {
+        unmap_res();
+    }
 
 
-	s32 mapping_res(const char* file_path, bool readonly, bool remapping = false)
-	{
-#ifndef WIN32	
-		if (remapping)
-		{
-			unmap_res();
-		}
-		if (file_fd_ != -1)
-		{
-			return 1;
-		}
+    s32 mapping_res(const char* file_path, bool readonly, bool remapping = false)
+    {
+#ifndef WIN32    
+        if (remapping)
+        {
+            unmap_res();
+        }
+        if (file_fd_ != -1)
+        {
+            return 1;
+        }
 
-		struct stat sb;
-		if (readonly)
-		{
-			file_fd_ = open(file_path, O_RDONLY);
-		}
-		else
-		{
-			file_fd_ = open(file_path, O_RDWR);
-		}
-		if (file_fd_ == -1)
-		{
-			return 10;
-		}
+        struct stat sb;
+        if (readonly)
+        {
+            file_fd_ = open(file_path, O_RDONLY);
+        }
+        else
+        {
+            file_fd_ = open(file_path, O_RDWR);
+        }
+        if (file_fd_ == -1)
+        {
+            return 10;
+        }
 
-		if (fstat(file_fd_, &sb) == -1)
-		{
-			close(file_fd_);
-			file_fd_ = -1;
-			return 11;
-		}
-		if (readonly)
-		{
-			file_data_ = (char*)mmap(NULL, sb.st_size, PROT_READ, MAP_SHARED, file_fd_, 0);
-		}
-		else
-		{
-			file_data_ = (char*)mmap(NULL, sb.st_size, PROT_READ | PROT_WRITE, MAP_SHARED, file_fd_, 0);
-		}
-		file_size_ = sb.st_size;
+        if (fstat(file_fd_, &sb) == -1)
+        {
+            close(file_fd_);
+            file_fd_ = -1;
+            return 11;
+        }
+        if (readonly)
+        {
+            file_data_ = (char*)mmap(NULL, sb.st_size, PROT_READ, MAP_SHARED, file_fd_, 0);
+        }
+        else
+        {
+            file_data_ = (char*)mmap(NULL, sb.st_size, PROT_READ | PROT_WRITE, MAP_SHARED, file_fd_, 0);
+        }
+        file_size_ = sb.st_size;
 #endif 
-		return 0;
-	}
+        return 0;
+    }
 
 
 
-	s32 is_mapped()
-	{
-		return file_fd_ != -1;
-	}
+    s32 is_mapped()
+    {
+        return file_fd_ != -1;
+    }
 
-	s32 unmap_res()
-	{
-		if (file_fd_ == 0)
-		{
-			return 1;
-		}
+    s32 unmap_res()
+    {
+        if (file_fd_ == 0)
+        {
+            return 1;
+        }
 #ifndef WIN32
-		if (file_data_ != NULL && file_size_ != 0)
-		{
-			munmap(file_data_, file_size_);
-		}
-		close(file_fd_);
-		file_data_ = NULL;
-		file_size_ = 0;
-		file_fd_ = -1;
+        if (file_data_ != NULL && file_size_ != 0)
+        {
+            munmap(file_data_, file_size_);
+        }
+        close(file_fd_);
+        file_data_ = NULL;
+        file_size_ = 0;
+        file_fd_ = -1;
 #endif // 0
-		return 0;
-	}
-	s32 remove_file(const char* file_path)
-	{
-		return ::remove(file_path);
-	}
-	s32 trim_cache()
-	{
-		if (!is_mapped())
-		{
-			return 1;
-		}
+        return 0;
+    }
+    s32 remove_file(const char* file_path)
+    {
+        return ::remove(file_path);
+    }
+    s32 trim_cache()
+    {
+        if (!is_mapped())
+        {
+            return 1;
+        }
 #if !defined(__APPLE__) && !defined(WIN32) 
-		fsync(file_fd_);
-		posix_fadvise(file_fd_, 0, 0, POSIX_FADV_DONTNEED);
-		fsync(file_fd_);
+        fsync(file_fd_);
+        posix_fadvise(file_fd_, 0, 0, POSIX_FADV_DONTNEED);
+        fsync(file_fd_);
 #endif
-		return 0;
-	}
+        return 0;
+    }
 public:
-	const char* file_data() { return file_data_; }
-	s64 file_size() { return file_size_; }
+    const char* file_data() { return file_data_; }
+    s64 file_size() { return file_size_; }
 private:
-	int file_fd_;
-	char* file_data_;
-	s64   file_size_;
+    int file_fd_;
+    char* file_data_;
+    s64   file_size_;
 };
 
 
 /* type_traits:
 *
 * is_trivially_copyable: no
-	* memset: no
-	* memcpy: no
+    * memset: no
+    * memcpy: no
 * shm resume : no
-	* has vptr:     no
-	* static var:   no
-	* has heap ptr: no
-	* has code ptr: no
-	* has sys ptr: yes
+    * has vptr:     no
+    * static var:   no
+    * has heap ptr: no
+    * has code ptr: no
+    * has sys ptr: yes
 * thread safe: no
 *
 */
@@ -406,46 +406,46 @@ private:
 class zfile_mapping
 {
 #ifdef WIN32
-	zfile_mapping_win32 mapping_;
+    zfile_mapping_win32 mapping_;
 #else
-	zfile_mapping_unix mapping_;
+    zfile_mapping_unix mapping_;
 #endif // WIN32
 
 public:
-	zfile_mapping()
-	{
-	}
-	~zfile_mapping()
-	{
-	}
+    zfile_mapping()
+    {
+    }
+    ~zfile_mapping()
+    {
+    }
 
-	const char* file_data() { return mapping_.file_data(); }
-	s64 file_size() { return mapping_.file_size(); }
+    const char* file_data() { return mapping_.file_data(); }
+    s64 file_size() { return mapping_.file_size(); }
 
-	s32 mapping_res(const char* file_path, bool readonly = true, bool remapping = false)
-	{
-		return mapping_.mapping_res(file_path, readonly, remapping);
-	}
+    s32 mapping_res(const char* file_path, bool readonly = true, bool remapping = false)
+    {
+        return mapping_.mapping_res(file_path, readonly, remapping);
+    }
 
-	s32 is_mapped()
-	{
-		return mapping_.is_mapped();
-	}
+    s32 is_mapped()
+    {
+        return mapping_.is_mapped();
+    }
 
-	s32 unmap_res()
-	{
-		return mapping_.unmap_res();
-	}
+    s32 unmap_res()
+    {
+        return mapping_.unmap_res();
+    }
 
-	s32 remove_file(const char* file_path)
-	{
-		return mapping_.remove_file(file_path);
-	}
+    s32 remove_file(const char* file_path)
+    {
+        return mapping_.remove_file(file_path);
+    }
 
-	s32 trim_cache()
-	{
-		return mapping_.trim_cache();
-	}
+    s32 trim_cache()
+    {
+        return mapping_.trim_cache();
+    }
 };
 
 
