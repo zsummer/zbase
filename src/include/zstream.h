@@ -73,15 +73,14 @@ namespace zstream_impl
             return 0;
         }
         //A terminating null character is automatically appended after the content written.  
-#ifdef WIN32
-        int cnt = _snprintf_s(dst, dstlen, _TRUNCATE, fmt_string, args ...);
-#else
         int cnt = snprintf(dst, dstlen, fmt_string, args ...);
-#endif // WIN32
-
         if (cnt < 0)
         {
             return 0;
+        }
+        if (cnt > dstlen -1)
+        {
+            cnt = dstlen - 1;
         }
         //result cnt not counting the terminating null character. 
         return cnt;

@@ -66,7 +66,9 @@ s32 zstream_test()
     if (true)
     {
         zstream s(buf, 1);
+        ASSERT_TEST(s.size() == 0, "size:", s.size());
         s.fmt("%d", 100);
+        ASSERT_TEST(s.size() == 0, "size:", s.size());
         s << 1;
         s << 1.1;
         s << 1.1f;
@@ -74,11 +76,12 @@ s32 zstream_test()
         s << (u8)1;
         s << (u64)1;
         s << (s64)-1;
+        ASSERT_TEST(s.size() == 0, "size:", s.size());
         s.write_date(time(NULL), 0);
         s.write_date(0, 0);
         s.write_block(buf, 100);
         s.write_block(buf, 1);
-        ASSERT_TEST(s.size() == 0);
+        ASSERT_TEST(s.size() == 0, "size:", s.size());
         ASSERT_TEST(strlen(s.data()) == 0);
     }
 
