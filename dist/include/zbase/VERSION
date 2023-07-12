@@ -1,6 +1,6 @@
 version:
-last_sha1(./src)=df5f4f09a2438174410f40d720a04f36697afb7f
-last_date(./src)=2023-07-11 16:06:47 +0800
+last_sha1(./src)=3a20c69ee3569ff0220da5cfe94aab3c14bb57eb
+last_date(./src)=2023-07-12 14:23:07 +0800
 
 git log -1 --stat ./src:
-commit df5f4f09a2438174410f40d720a04f36697afb7f Author: zsummer <yawei.zhang@foxmail.com> Date: Tue Jul 11 16:06:47 2023 +0800 clean code src/include/zfile_mapping.h | 8 ++++---- src/include/zstream.h | 41 ++++++++++++++++++++++++++++++++++++++--- 2 files changed, 42 insertions(+), 7 deletions(-)
+commit 3a20c69ee3569ff0220da5cfe94aab3c14bb57eb Author: zsummer <yawei.zhang@foxmail.com> Date: Wed Jul 12 14:23:07 2023 +0800 fixed snprintf return val use src/include/zstream.h | 9 ++++----- 1 file changed, 4 insertions(+), 5 deletions(-)
