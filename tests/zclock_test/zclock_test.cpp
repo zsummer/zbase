@@ -118,6 +118,12 @@ s32 zclock_bench_test()
     return 0;
 }
 
+FNLog::LogStream& operator<<(FNLog::LogStream& ls, const zclock_impl::vmdata& vm)
+{
+    ls << "vm:" << vm.vm_size << ", rss:" << vm.rss_size << ", shm:" << vm.shr_size;
+    return ls;
+}
+
 int main(int argc, char *argv[])
 {
     ztest_init();
@@ -130,6 +136,9 @@ int main(int argc, char *argv[])
     ASSERT_TEST(zclock_test() == 0);
     ASSERT_TEST(zclock_bench_test() == 0);
 
+    
+    LogInfo() << zclock_impl::get_vmdata();
+    LogInfo() << zclock_impl::get_sys_mem();
 
     LogInfo() << "all test finish .";
     return 0;
