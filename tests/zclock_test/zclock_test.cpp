@@ -82,7 +82,7 @@ s32 zclock_test()
     return 0;
 }
 
-template<zclock_impl::ClockEnum ctype>
+template<zclock_impl::clock_type ctype>
 s32 zclock_cost_test(const std::string& desc)
 {
     zclock_base<ctype> c;
@@ -92,7 +92,7 @@ s32 zclock_cost_test(const std::string& desc)
     for (size_t i = 0; i < 10*10000; i++)
     {
         c.start();
-        salt += c.stop_and_save().duration_cycles();
+        salt += c.stop_and_save().duration_ticks();
     }
     cost.stop_and_save();
     LogInfo() << desc << " start + stop cost:" << (double)cost.duration_ns() / (10.0 * 10000) <<"ns";
