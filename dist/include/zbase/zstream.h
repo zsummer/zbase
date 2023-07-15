@@ -607,6 +607,7 @@ public:
     zstream& operator <<(const std::string& str) { return write_str(str.c_str(), (s32)str.length()); }
 };
 
+
 template<s32 BuffSize>
 class zstream_static :public zstream
 {
