@@ -60,7 +60,7 @@ s32 zmalloc_stress()
         void* p = st_malloc(test_size);
         st_free(p);
     }
-    PROF_OUTPUT_MULTI_COUNT_CPU("st_free(st_malloc(0~1024))", rand_size, cost.stop_and_save().cycles());
+    PROF_OUTPUT_MULTI_COUNT_CPU("st_free(st_malloc(0~1024))", rand_size, cost.stop_and_save().duration_ticks());
 
 
 
@@ -71,7 +71,7 @@ s32 zmalloc_stress()
     {
         global_zfree(global_zmalloc(1));
     }
-    PROF_OUTPUT_MULTI_COUNT_CPU("global_zfree(global_zmalloc(1))", rand_size, cost.stop_and_save().cycles());
+    PROF_OUTPUT_MULTI_COUNT_CPU("global_zfree(global_zmalloc(1))", rand_size, cost.stop_and_save().duration_ticks());
 
     PROF_START_COUNTER(cost);
     for (u64 i = 0; i < rand_size; i++)
@@ -80,7 +80,7 @@ s32 zmalloc_stress()
         void* p = global_zmalloc(test_size);
         global_zfree(p);
     }
-    PROF_OUTPUT_MULTI_COUNT_CPU("global_zfree(global_zmalloc(0~1024))", rand_size, cost.stop_and_save().cycles());
+    PROF_OUTPUT_MULTI_COUNT_CPU("global_zfree(global_zmalloc(0~1024))", rand_size, cost.stop_and_save().duration_ticks());
 
     PROF_START_COUNTER(cost);
     for (u64 i = 0; i < rand_size; i++)
@@ -89,7 +89,7 @@ s32 zmalloc_stress()
         void* p = global_zmalloc(test_size);
         global_zfree(p);
     }
-    PROF_OUTPUT_MULTI_COUNT_CPU("global_zfree(global_zmalloc(1024~512k))", rand_size, cost.stop_and_save().cycles());
+    PROF_OUTPUT_MULTI_COUNT_CPU("global_zfree(global_zmalloc(1024~512k))", rand_size, cost.stop_and_save().duration_ticks());
 
     PROF_START_COUNTER(cost);
     for (u64 i = rand_size/2; i < rand_size; i++)
@@ -98,7 +98,7 @@ s32 zmalloc_stress()
         void* p = global_zmalloc(test_size);
         global_zfree(p);
     }
-    PROF_OUTPUT_MULTI_COUNT_CPU("global_zfree(global_zmalloc(0~1M))", rand_size, cost.stop_and_save().cycles());
+    PROF_OUTPUT_MULTI_COUNT_CPU("global_zfree(global_zmalloc(0~1M))", rand_size, cost.stop_and_save().duration_ticks());
 
     PROF_START_COUNTER(cost);
     for (u64 i = rand_size / 2; i < rand_size; i++)
@@ -112,7 +112,7 @@ s32 zmalloc_stress()
             buffers->clear();
         }
     }
-    PROF_OUTPUT_MULTI_COUNT_CPU("global_zfree(global_zmalloc(0~1M))", rand_size, cost.stop_and_save().cycles());
+    PROF_OUTPUT_MULTI_COUNT_CPU("global_zfree(global_zmalloc(0~1M))", rand_size, cost.stop_and_save().duration_ticks());
     buffers->clear();
     PROF_OUTPUT_SELF_MEM("base alloc/free test finish");
     LogInfo() << "";
@@ -135,7 +135,7 @@ s32 zmalloc_stress()
             buffers->push_back(p);
         }
 
-        PROF_OUTPUT_MULTI_COUNT_CPU(mbuf, buffers->size(), cost.stop_and_save().cycles());
+        PROF_OUTPUT_MULTI_COUNT_CPU(mbuf, buffers->size(), cost.stop_and_save().duration_ticks());
         if (loop < 2 || loop >37)
         {
             //LogDebug() << zmalloc::instance().debug_color_string();
@@ -145,7 +145,7 @@ s32 zmalloc_stress()
         {
             global_zfree(p);
         }
-        PROF_OUTPUT_MULTI_COUNT_CPU(fbuf, buffers->size(), cost.stop_and_save().cycles());
+        PROF_OUTPUT_MULTI_COUNT_CPU(fbuf, buffers->size(), cost.stop_and_save().duration_ticks());
         buffers->clear();
     }
     zmalloc::instance().clear_cache();
@@ -163,13 +163,13 @@ s32 zmalloc_stress()
             *(u32*)p = (u32)i;
             buffers->push_back(p);
         }
-        PROF_OUTPUT_MULTI_COUNT_CPU("st_malloc(0~512k)", buffers->size(), cost.stop_and_save().cycles());
+        PROF_OUTPUT_MULTI_COUNT_CPU("st_malloc(0~512k)", buffers->size(), cost.stop_and_save().duration_ticks());
         PROF_START_COUNTER(cost);
         for (auto p : *buffers)
         {
             st_free(p);
         }
-        PROF_OUTPUT_MULTI_COUNT_CPU("st_free(0~512k)", buffers->size(), cost.stop_and_save().cycles());
+        PROF_OUTPUT_MULTI_COUNT_CPU("st_free(0~512k)", buffers->size(), cost.stop_and_save().duration_ticks());
         buffers->clear();
     }
     PROF_OUTPUT_SELF_MEM("st malloc finish");
@@ -198,13 +198,13 @@ s32 zmalloc_stress()
             *(u32*)p = (u32)i;
             buffers->push_back(p);
         }
-        PROF_OUTPUT_MULTI_COUNT_CPU(mbuf, buffers->size(), cost.stop_and_save().cycles());
+        PROF_OUTPUT_MULTI_COUNT_CPU(mbuf, buffers->size(), cost.stop_and_save().duration_ticks());
         PROF_START_COUNTER(cost);
         for (auto p : *buffers)
         {
             free(p);
         }
-        PROF_OUTPUT_MULTI_COUNT_CPU(fbuf, buffers->size(), cost.stop_and_save().cycles());
+        PROF_OUTPUT_MULTI_COUNT_CPU(fbuf, buffers->size(), cost.stop_and_save().duration_ticks());
         buffers->clear();
     }
     PROF_OUTPUT_SELF_MEM("sys malloc finish");
@@ -230,13 +230,13 @@ s32 zmalloc_stress()
             *(u32*)p = (u32)i;
             buffers->push_back(p);
         }
-        PROF_OUTPUT_MULTI_COUNT_CPU(mbuf, buffers->size(), cost.stop_and_save().cycles());
+        PROF_OUTPUT_MULTI_COUNT_CPU(mbuf, buffers->size(), cost.stop_and_save().duration_ticks());
         PROF_START_COUNTER(cost);
         for (auto p : *buffers)
         {
             st_free(p);
         }
-        PROF_OUTPUT_MULTI_COUNT_CPU(fbuf, buffers->size(), cost.stop_and_save().cycles());
+        PROF_OUTPUT_MULTI_COUNT_CPU(fbuf, buffers->size(), cost.stop_and_save().duration_ticks());
         buffers->clear();
         if (loop > 5)
         {
@@ -286,7 +286,7 @@ s32 zmalloc_stress()
             buffers2->push_back(global_zmalloc(push_size2));
             alloc_count += 2;
         }
-        PROF_OUTPUT_MULTI_COUNT_CPU("rand zmalloc/zfree(0~2k)", alloc_count + free_count, cost.stop_and_save().cycles());
+        PROF_OUTPUT_MULTI_COUNT_CPU("rand zmalloc/zfree(0~2k)", alloc_count + free_count, cost.stop_and_save().duration_ticks());
         zstate->check_panic();
         if (true)
         {
@@ -295,7 +295,7 @@ s32 zmalloc_stress()
             cost.start();
             zmalloc::instance().debug_state_log(new_log);
             zmalloc::instance().debug_color_log(new_log, 0, (zmalloc::CHUNK_COLOR_MASK_WITH_LEVEL + 1) / 2);
-            PROF_OUTPUT_SINGLE_CPU("zamlloc debug_state_log debug_color_log cost", cost.stop_and_save().cycles());
+            PROF_OUTPUT_SINGLE_CPU("zamlloc debug_state_log debug_color_log cost", cost.stop_and_save().duration_ticks());
         }
         
         for (auto p : *buffers)
@@ -352,7 +352,7 @@ s32 zmalloc_stress()
             buffers2->push_back(malloc(push_size2));
             alloc_count += 2;
         }
-        PROF_OUTPUT_MULTI_COUNT_CPU("rand sys malloc/free(0~2k)", alloc_count + free_count, cost.stop_and_save().cycles());
+        PROF_OUTPUT_MULTI_COUNT_CPU("rand sys malloc/free(0~2k)", alloc_count + free_count, cost.stop_and_save().duration_ticks());
         for (auto p : *buffers)
         {
             free(p);
@@ -384,14 +384,14 @@ s32 zmalloc_stress()
         cost.stop_and_save();
         char buf[80];
         sprintf(buf, "zmalloc[%llu~%llu) bat", begin_size, end_size);
-        PROF_OUTPUT_MULTI_COUNT_CPU(buf, buffers->size(), cost.cycles());
+        PROF_OUTPUT_MULTI_COUNT_CPU(buf, buffers->size(), cost.duration_ticks());
         zstate->check_panic();
         PROF_START_COUNTER(cost);
         for (auto p : *buffers)
         {
             global_zfree(p);
         }
-        PROF_OUTPUT_MULTI_COUNT_CPU("zfree bat", buffers->size(), cost.stop_and_save().cycles());
+        PROF_OUTPUT_MULTI_COUNT_CPU("zfree bat", buffers->size(), cost.stop_and_save().duration_ticks());
         buffers->clear();
         zstate->check_panic();
     }
@@ -416,14 +416,14 @@ s32 zmalloc_stress()
         cost.stop_and_save();
         char buf[80];
         sprintf(buf, "sys malloc[%llu~%llu) bat", begin_size, end_size);
-        PROF_OUTPUT_MULTI_COUNT_CPU(buf, buffers->size(), cost.cycles());
+        PROF_OUTPUT_MULTI_COUNT_CPU(buf, buffers->size(), cost.duration_ticks());
 
         PROF_START_COUNTER(cost);
         for (auto p : *buffers)
         {
             free(p);
         }
-        PROF_OUTPUT_MULTI_COUNT_CPU("sys free bat", buffers->size(), cost.stop_and_save().cycles());
+        PROF_OUTPUT_MULTI_COUNT_CPU("sys free bat", buffers->size(), cost.stop_and_save().duration_ticks());
         buffers->clear();
     }
     PROF_OUTPUT_SELF_MEM("sys malloc finish");
@@ -446,7 +446,7 @@ s32 zmalloc_stress()
         cost.stop_and_save();
         char buf[80];
         sprintf(buf, "st_malloc[%llu~%llu) bat", begin_size, end_size);
-        PROF_OUTPUT_MULTI_COUNT_CPU(buf, buffers->size(), cost.cycles());
+        PROF_OUTPUT_MULTI_COUNT_CPU(buf, buffers->size(), cost.duration_ticks());
 
 
         PROF_START_COUNTER(cost);
@@ -454,7 +454,7 @@ s32 zmalloc_stress()
         {
             st_free(p);
         }
-        PROF_OUTPUT_MULTI_COUNT_CPU("st_free bat", buffers->size(), cost.stop_and_save().cycles());
+        PROF_OUTPUT_MULTI_COUNT_CPU("st_free bat", buffers->size(), cost.stop_and_save().duration_ticks());
         buffers->clear();
     }
     PROF_OUTPUT_SELF_MEM("st malloc finish");
@@ -519,7 +519,7 @@ s32 zmalloc_base_test()
         u32 resolve = zmalloc_resolve_order_size(compress_id);
         ASSERT_TEST_NOLOG(i <= resolve, "");
     }
-    PROF_OUTPUT_MULTI_COUNT_CPU("zmalloc third used", 1000 * 10000 - 1024, cost.stop_and_save().cycles());
+    PROF_OUTPUT_MULTI_COUNT_CPU("zmalloc third used", 1000 * 10000 - 1024, cost.stop_and_save().duration_ticks());
 
 
     if (true)

@@ -1,11 +1,6 @@
-release zprof version date:2023-05-10 13:46:50
+version:
+last_sha1(./src)=037b131b55e2e35d506eeb43907917ea12bb8ca0
+last_date(./src)=2023-07-17 15:15:12 +0800
 
-git log:
-commit 729ed7b3cd3cccff858ad891cdd3df49941a5fdd
-Author: zsummer <yawei.zhang@foxmail.com>
-Date:   Tue May 9 21:50:45 2023 +0800
-
-    clean comment
-
- src/zprof.h | 3 ---
- 1 file changed, 3 deletions(-)
+git log -1 --stat ./src:
+commit 037b131b55e2e35d506eeb43907917ea12bb8ca0 Author: zsummer <yawei.zhang@foxmail.com> Date: Mon Jul 17 15:15:12 2023 +0800 兼容老代码 src/zprof.h | 3 ++- src/zprof_clock.h | 12 ++++++------ 2 files changed, 8 insertions(+), 7 deletions(-)

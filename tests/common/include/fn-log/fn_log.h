@@ -2,44 +2,12 @@
 #pragma GCC push_options
 #pragma GCC optimize ("O2")
 #endif
+
 /*
- *
- * MIT License
- *
- * Copyright (C) 2019 YaweiZhang <yawei.zhang@foxmail.com>.
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to deal
- * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in
- * all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
- * THE SOFTWARE.
- *
- * ===============================================================================
- *
- * (end of COPYRIGHT)
- */
-
-
- /*
- * AUTHORS:  YaweiZhang <yawei.zhang@foxmail.com>
- * VERSION:  1.0.0
- * PURPOSE:  fn-log is a cpp-based logging utility.
- * CREATION: 2019.4.20
- * RELEASED: 2019.6.27
- * QQGROUP:  524700770
- */
+* Copyright (C) 2019 YaweiZhang <yawei.zhang@foxmail.com>.
+* All rights reserved
+* This file is part of the fn-log, used MIT License.
+*/
 
 
 #pragma once
@@ -352,7 +320,7 @@ namespace FNLog
 #else
         sprintf(buf, "/proc/%d/cmdline", (int)getpid());
         FileHandler i;
-    struct stat file_stat;
+	struct stat file_stat;
         i.open(buf, "rb", file_stat);
         if (!i.is_open())
         {
@@ -740,11 +708,19 @@ namespace FNLog
 
     enum ChannelLogEnum
     {
+        CHANNEL_LOG_WAIT_COUNT,
         CHANNEL_LOG_HOLD,
         CHANNEL_LOG_PUSH,
         CHANNEL_LOG_PRIORITY, //== PRIORITY_TRACE
         CHANNEL_LOG_PRIORITY_MAX = CHANNEL_LOG_PRIORITY + PRIORITY_MAX,
-        CHANNEL_LOG_PROCESSED = CHANNEL_LOG_PUSH + 8,
+
+        CHANNEL_LOG_BOUND = CHANNEL_LOG_PRIORITY_MAX + 8, //ull*8 
+
+        CHANNEL_LOG_PROCESSED,
+        CHANNEL_LOG_PROCESSED_BYTES,
+        CHANNEL_LOG_MAX_PROC_QUE_SIZE,
+        CHANNEL_LOG_MAX_DELAY_TIME_S, //second 
+
         CHANNEL_LOG_MAX_ID
     };
 
@@ -760,6 +736,7 @@ namespace FNLog
     {
     public:
         static const int BUFFER_LEN = FN_LOG_MAX_LOG_QUEUE_SIZE;
+        static_assert(BUFFER_LEN > 10, "ring queue size too little");
     public:
         char chunk_1_[CHUNK_SIZE];
         std::atomic_int write_idx_;
@@ -939,48 +916,48 @@ namespace FNLog
         m.log_fields_[eid].store(v, std::memory_order_relaxed);
     }
 
+
+    enum ErrNo
+    {
+        E_SUCCESS = 0,
+        E_INNER_ERROR,
+        E_UNKNOWN_ERROR,
+        E_UNKNOWN_CHANNEL_SYNC,
+        E_ILL_PARAMS,
+        E_LOGGER_STATE_NOT_UNINIT,
+        E_LOGGER_STATE_NOT_INIT,
+        E_LOGGER_STATE_NOT_RUNNING,
+        E_CONFIG_OUT_CHANNEL_MAX,
+        E_CONFIG_DISABLE_HOTUPDATE,
+        E_CONFIG_NOT_FROM_PATHFILE,
+        E_NOT_FIND_CONFIG_FILE,
+        E_CONFIG_FILE_NOT_CHANGE,
+        E_OUT_CHANNEL_SIZE,
+        E_OUT_RINGBUFFER,
+        E_NEW_THREAD_ERROR,
+        E_NEW_THREAD_LOSS,
+        E_SHMGET_PROBE_ERROR,
+        E_SHMGET_CREATE_ERROR,
+        E_SHMAT_ERROR,
+        E_SHM_VERSION_WRONG,
+
+        E_CONFIG_VERSION_MISMATCH,
+
+        E_BASE_ERRNO_MAX
+
+    };
+
+
 }
 
 
 #endif
+
 /*
- *
- * MIT License
- *
- * Copyright (C) 2019 YaweiZhang <yawei.zhang@foxmail.com>.
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to deal
- * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in
- * all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
- * THE SOFTWARE.
- *
- * ===============================================================================
- *
- * (end of COPYRIGHT)
- */
-
-
- /*
-  * AUTHORS:  YaweiZhang <yawei.zhang@foxmail.com>
-  * VERSION:  1.0.0
-  * PURPOSE:  fn-log is a cpp-based logging utility.
-  * CREATION: 2019.4.20
-  * RELEASED: 2019.6.27
-  * QQGROUP:  524700770
-  */
+* Copyright (C) 2019 YaweiZhang <yawei.zhang@foxmail.com>.
+* All rights reserved
+* This file is part of the fn-log, used MIT License.
+*/
 
 
 #pragma once
@@ -993,8 +970,8 @@ namespace FNLog
 {
     enum ParseErrorCode
     {
-        PEC_NONE, 
-        PEC_ERROR,
+        PEC_NONE = E_SUCCESS,
+        PEC_ERROR = E_BASE_ERRNO_MAX,
         PEC_ILLEGAL_CHARACTER,
         PEC_ILLEGAL_KEY,
         PEC_NOT_CLOSURE,
@@ -1821,44 +1798,12 @@ namespace FNLog
 
 
 #endif
+
 /*
- *
- * MIT License
- *
- * Copyright (C) 2019 YaweiZhang <yawei.zhang@foxmail.com>.
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to deal
- * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in
- * all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
- * THE SOFTWARE.
- *
- * ===============================================================================
- *
- * (end of COPYRIGHT)
- */
-
-
- /*
-  * AUTHORS:  YaweiZhang <yawei.zhang@foxmail.com>
-  * VERSION:  1.0.0
-  * PURPOSE:  fn-log is a cpp-based logging utility.
-  * CREATION: 2019.4.20
-  * RELEASED: 2019.6.27
-  * QQGROUP:  524700770
-  */
+* Copyright (C) 2019 YaweiZhang <yawei.zhang@foxmail.com>.
+* All rights reserved
+* This file is part of the fn-log, used MIT License.
+*/
 
 
 #pragma once
@@ -2256,44 +2201,12 @@ namespace FNLog
 
 
 #endif
+
 /*
- *
- * MIT License
- *
- * Copyright (C) 2019 YaweiZhang <yawei.zhang@foxmail.com>.
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to deal
- * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in
- * all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
- * THE SOFTWARE.
- *
- * ===============================================================================
- *
- * (end of COPYRIGHT)
- */
-
-
- /*
-  * AUTHORS:  YaweiZhang <yawei.zhang@foxmail.com>
-  * VERSION:  1.0.0
-  * PURPOSE:  fn-log is a cpp-based logging utility.
-  * CREATION: 2019.4.20
-  * RELEASED: 2019.6.27
-  * QQGROUP:  524700770
-  */
+* Copyright (C) 2019 YaweiZhang <yawei.zhang@foxmail.com>.
+* All rights reserved
+* This file is part of the fn-log, used MIT License.
+*/
 
 #pragma once
 #ifndef _FN_LOG_LOAD_H_
@@ -2324,7 +2237,7 @@ namespace FNLog
         {
             printf("shmget error. key:<0x%llx>, errno:<%d>. can use 'ipcs -m', 'ipcrm -m' to view and clear.\n",
                 logger.shm_key_, errno);
-            return -1;
+            return E_SHMGET_PROBE_ERROR;
         }
 
         if (idx < 0)
@@ -2333,13 +2246,13 @@ namespace FNLog
             if (idx < 0)
             {
                 printf("new shm. shmget error. key:<0x%llx>, errno:<%d>.\n", logger.shm_key_, errno);
-                return -2;
+                return E_SHMGET_CREATE_ERROR;
             }
             void* addr = shmat(idx, nullptr, 0);
             if (addr == nullptr || addr == (void*)-1)
             {
                 printf("new shm. shmat error. key:<0x%llx>, idx:<%d>, errno:<%d>.\n", logger.shm_key_, idx, errno);
-                return -3;
+                return E_SHMAT_ERROR;
             }
             memset(addr, 0, sizeof(SHMLogger));
             shm = (SHMLogger*)addr;
@@ -2352,7 +2265,7 @@ namespace FNLog
             if (addr == nullptr || addr == (void*)-1)
             {
                 printf("shmat error. key:<%llx>, idx:<%d>, errno:<%d>.\n", logger.shm_key_, idx, errno);
-                return -4;
+                return E_SHMAT_ERROR;
             }
             shm = (SHMLogger*)addr;
         }
@@ -2362,19 +2275,19 @@ namespace FNLog
             printf("shm version error. key:<0x%llx>, old id:<%d>, new id:<%d>, old size:<%d> new size:<%d>. "
                 "can use 'ipcs -m', 'ipcrm -m' to view and clear.\n",
                 logger.shm_key_, shm->shm_id_, idx, shm->shm_size_, (int)sizeof(SHMLogger));
-            return -5;
+            return E_SHM_VERSION_WRONG;
         }
         for (int i = 0; i < shm->channel_size_; i++)
         {
             if (i >= SHMLogger::MAX_CHANNEL_SIZE)
             {
-                return -6;
+                return E_SHM_VERSION_WRONG;
             }
 
             if (shm->ring_buffers_[i].write_idx_ >= RingBuffer::BUFFER_LEN
                 || shm->ring_buffers_[i].write_idx_ < 0)
             {
-                return -7;
+                return E_SHM_VERSION_WRONG;
             }
 
             while (shm->ring_buffers_[i].write_idx_.load() != shm->ring_buffers_[i].hold_idx_.load())
@@ -2437,8 +2350,8 @@ namespace FNLog
         Logger::StateLockGuard state_guard(logger.state_lock);
         if (logger.logger_state_ != LOGGER_STATE_UNINIT)
         {
-            printf("init from ymal:<%s> text error\n", path.c_str());
-            return -1;
+            printf("InitFromYMAL:<%s> text error\n", path.c_str());
+            return E_LOGGER_STATE_NOT_UNINIT;
         }
 
         std::unique_ptr<LexState> ls(new LexState);
@@ -2446,7 +2359,7 @@ namespace FNLog
         if (ret != PEC_NONE)
         {
             std::stringstream os;
-            os << "load has error:<" << ret << "> in line:[" << ls->line_number_ << "], line type:" << ls->line_.line_type_;
+            os << "ParseLogger has error:<" << ret << "> in line:[" << ls->line_number_ << "], line type:" << ls->line_.line_type_;
             if (ls->current_ != nullptr)
             {
                 os << " before:";
@@ -2478,7 +2391,7 @@ namespace FNLog
             ret = LoadSharedMemory(logger);
             if (ret != 0)
             {
-                printf("LoadSharedMemory has error:%d,  yaml:%s\n", ret, text.c_str());
+                printf("InitFromYMAL has error:%d,  yaml:%s\n", ret, text.c_str());
                 return ret;
             }
         }
@@ -2498,8 +2411,8 @@ namespace FNLog
 
         if (logger.shm_->channel_size_ > Logger::MAX_CHANNEL_SIZE || logger.shm_->channel_size_ <= 0)
         {
-            printf("start error 2");
-            return -2;
+            printf("InitFromYMAL channel size:%d out channel max%d. \n", logger.shm_->channel_size_, Logger::MAX_CHANNEL_SIZE);
+            return E_CONFIG_OUT_CHANNEL_MAX;
         }
         return 0;
     }
@@ -2515,13 +2428,13 @@ namespace FNLog
         config.open(path.c_str(), "rb", file_stat);
         if (!config.is_open())
         {
-            printf("ymal:<%s> open file error\n", path.c_str());
-            return -1;
+            printf("InitFromYMALFile:<%s> open file error\n", path.c_str());
+            return E_NOT_FIND_CONFIG_FILE;
         }
         int ret = InitFromYMAL(logger, config.read_content(), path);
         if (ret != 0)
         {
-            printf("ymal:<%s> has parse/init error\n", path.c_str());
+            printf("InitFromYMALFile:<%s> has parse/init error\n", path.c_str());
             return ret;
         }
 
@@ -2536,15 +2449,15 @@ namespace FNLog
     {
         if (logger.shm_->channel_size_ <= channel_id)
         {
-            return -1;
+            return E_OUT_CHANNEL_SIZE;
         }
         if (!logger.hot_update_)
         {
-            return -2;
+            return E_CONFIG_DISABLE_HOTUPDATE;
         }
         if (logger.yaml_path_.empty())
         {
-            return -3;
+            return E_CONFIG_NOT_FROM_PATHFILE;
         }
 
         Channel& dst_chl = logger.shm_->channels_[channel_id];
@@ -2560,17 +2473,17 @@ namespace FNLog
         config.open(logger.yaml_path_.c_str(), "rb", file_stat);
         if (!config.is_open())
         {
-            return -5;
+            return E_NOT_FIND_CONFIG_FILE;
         }
         if (file_stat.st_mtime == dst_chl.yaml_mtime_)
         {
-            return -6;
+            return E_CONFIG_FILE_NOT_CHANGE;
         }
 
         Logger::StateLockGuard state_guard(logger.state_lock);
         if (logger.logger_state_ != LOGGER_STATE_RUNNING)
         {
-            return -7;
+            return E_LOGGER_STATE_NOT_RUNNING;
         }
 
         dst_chl.yaml_mtime_ = file_stat.st_mtime;
@@ -2587,7 +2500,7 @@ namespace FNLog
         }
         if (!logger.hot_update_)
         {
-            return -8;
+            return E_CONFIG_DISABLE_HOTUPDATE;
         }
         logger.hot_update_ = ls->hot_update_;
 
@@ -2598,7 +2511,7 @@ namespace FNLog
         Channel& src_chl = ls->channels_[channel_id];
         if (dst_chl.channel_id_ != src_chl.channel_id_ || src_chl.channel_id_ != channel_id)
         {
-            return -10;
+            return E_CONFIG_VERSION_MISMATCH;
         }
         for (int field_id = 0; field_id < CHANNEL_CFG_MAX_ID; field_id++)
         {
@@ -2612,21 +2525,21 @@ namespace FNLog
             Device& src_dvc = src_chl.devices_[device_id];
             if (src_dvc.device_id_ != device_id)
             {
-                return -11;
+                return E_CONFIG_VERSION_MISMATCH;
             }
             if (device_id < dst_chl.device_size_)
             {
                 Device& dst_dvc = dst_chl.devices_[device_id];
                 if (dst_dvc.device_id_ != device_id)
                 {
-                    return -12;
+                    return E_CONFIG_VERSION_MISMATCH;
                 }
                 memcpy(&dst_dvc.config_fields_, &src_dvc.config_fields_, sizeof(dst_dvc.config_fields_));
                 continue;
             }
             if (dst_chl.device_size_ != device_id)
             {
-                return -13;
+                return E_CONFIG_VERSION_MISMATCH;
             }
             memcpy(&dst_chl.devices_[dst_chl.device_size_++], &src_dvc, sizeof(src_dvc));
             
@@ -2642,43 +2555,12 @@ namespace FNLog
 
 
 #endif
-/*
- *
- * MIT License
- *
- * Copyright (C) 2019 YaweiZhang <yawei.zhang@foxmail.com>.
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to deal
- * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in
- * all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
- * THE SOFTWARE.
- *
- * ===============================================================================
- *
- * (end of COPYRIGHT)
- */
 
- /*
-  * AUTHORS:  YaweiZhang <yawei.zhang@foxmail.com>
-  * VERSION:  1.0.0
-  * PURPOSE:  fn-log is a cpp-based logging utility.
-  * CREATION: 2019.4.20
-  * RELEASED: 2019.6.27
-  * QQGROUP:  524700770
-  */
+/*
+* Copyright (C) 2019 YaweiZhang <yawei.zhang@foxmail.com>.
+* All rights reserved
+* This file is part of the fn-log, used MIT License.
+*/
 
 #pragma once
 #ifndef _FN_LOG_OUT_FILE_DEVICE_H_
@@ -2859,10 +2741,6 @@ namespace FNLog
     //[$PNAME $PID $YEAR $MON $DAY $HOUR $MIN $SEC]
     inline std::string MakePathName(const std::string& fmt_name, int channel_id, int device_id, const struct tm& t)
     {
-        if (fmt_name.empty())
-        {
-            return "./log/";
-        }
         return FmtName(fmt_name, channel_id, device_id, t);
     }
 
@@ -2987,44 +2865,12 @@ namespace FNLog
 
 
 #endif
+
 /*
- *
- * MIT License
- *
- * Copyright (C) 2019 YaweiZhang <yawei.zhang@foxmail.com>.
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to deal
- * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in
- * all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
- * THE SOFTWARE.
- *
- * ===============================================================================
- *
- * (end of COPYRIGHT)
- */
-
-
- /*
-  * AUTHORS:  YaweiZhang <yawei.zhang@foxmail.com>
-  * VERSION:  1.0.0
-  * PURPOSE:  fn-log is a cpp-based logging utility.
-  * CREATION: 2019.4.20
-  * RELEASED: 2019.6.27
-  * QQGROUP:  524700770
-  */
+* Copyright (C) 2019 YaweiZhang <yawei.zhang@foxmail.com>.
+* All rights reserved
+* This file is part of the fn-log, used MIT License.
+*/
 
 
 #pragma once
@@ -3057,44 +2903,12 @@ namespace FNLog
 
 
 #endif
+
 /*
- *
- * MIT License
- *
- * Copyright (C) 2019 YaweiZhang <yawei.zhang@foxmail.com>.
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to deal
- * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in
- * all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
- * THE SOFTWARE.
- *
- * ===============================================================================
- *
- * (end of COPYRIGHT)
- */
-
-
- /*
-  * AUTHORS:  YaweiZhang <yawei.zhang@foxmail.com>
-  * VERSION:  1.0.0
-  * PURPOSE:  fn-log is a cpp-based logging utility.
-  * CREATION: 2019.4.20
-  * RELEASED: 2019.6.27
-  * QQGROUP:  524700770
-  */
+* Copyright (C) 2019 YaweiZhang <yawei.zhang@foxmail.com>.
+* All rights reserved
+* This file is part of the fn-log, used MIT License.
+*/
 
 
 #pragma once
@@ -3152,44 +2966,12 @@ namespace FNLog
 
 
 #endif
+
 /*
- *
- * MIT License
- *
- * Copyright (C) 2021 YaweiZhang <yawei.zhang@foxmail.com>.
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to deal
- * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in
- * all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
- * THE SOFTWARE.
- *
- * ===============================================================================
- *
- * (end of COPYRIGHT)
- */
-
-
- /*
-  * AUTHORS:  YaweiZhang <yawei.zhang@foxmail.com>
-  * VERSION:  1.0.0
-  * PURPOSE:  fn-log is a cpp-based logging utility.
-  * CREATION: 2019.4.20
-  * RELEASED: 2019.6.27
-  * QQGROUP:  524700770
-  */
+* Copyright (C) 2019 YaweiZhang <yawei.zhang@foxmail.com>.
+* All rights reserved
+* This file is part of the fn-log, used MIT License.
+*/
 
 
 #pragma once
@@ -3258,43 +3040,11 @@ namespace FNLog
 
 #endif
 /*
- *
- * MIT License
- *
- * Copyright (C) 2019 YaweiZhang <yawei.zhang@foxmail.com>.
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to deal
- * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in
- * all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
- * THE SOFTWARE.
- *
- * ===============================================================================
- *
- * (end of COPYRIGHT)
- */
+* Copyright (C) 2019 YaweiZhang <yawei.zhang@foxmail.com>.
+* All rights reserved
+* This file is part of the fn-log, used MIT License.
+*/
 
-
- /*
-  * AUTHORS:  YaweiZhang <yawei.zhang@foxmail.com>
-  * VERSION:  1.0.0
-  * PURPOSE:  fn-log is a cpp-based logging utility.
-  * CREATION: 2019.4.20
-  * RELEASED: 2019.6.27
-  * QQGROUP:  524700770
-  */
 
 
 #pragma once
@@ -3398,9 +3148,34 @@ namespace FNLog
                 DispatchLog(logger, channel, cur_log);
                 cur_log.data_mark_ = 0;
                 AtomicAddL(channel, CHANNEL_LOG_PROCESSED);
+                AtomicAddLV(channel, CHANNEL_LOG_PROCESSED_BYTES, cur_log.content_len_);
                 local_write_count ++;
 
+                int write_id = ring_buffer.write_idx_.load(std::memory_order_acquire);
+                int proc_que_size = 0;
+                if (old_idx <= write_id)
+                {
+                    proc_que_size = write_id - old_idx;
+                }
+                else
+                {
+                    proc_que_size = write_id + RingBuffer::BUFFER_LEN - old_idx;
+                }
 
+                if (proc_que_size > channel.log_fields_.at(CHANNEL_LOG_MAX_PROC_QUE_SIZE))
+                {
+                    AtomicStoreL(channel, CHANNEL_LOG_MAX_PROC_QUE_SIZE, proc_que_size);
+                }
+
+                if (cur_log.timestamp_ > 0)
+                {
+                    long long now = (long long)time(NULL);
+                    long long diff = now - 1 - cur_log.timestamp_;
+                    if (diff > channel.log_fields_.at(CHANNEL_LOG_MAX_DELAY_TIME_S))
+                    {
+                        AtomicStoreL(channel, CHANNEL_LOG_MAX_DELAY_TIME_S, diff);
+                    }
+                }
                 do
                 {
                     //set read index to proc index  
@@ -3628,6 +3403,7 @@ namespace FNLog
         {
             if (state > 0)
             {
+                AtomicAddL(channel, CHANNEL_LOG_WAIT_COUNT);
                 std::this_thread::sleep_for(std::chrono::milliseconds(10));
             }
             state++;
@@ -3664,17 +3440,17 @@ namespace FNLog
     {
         if (channel_id >= logger.shm_->channel_size_ || channel_id < 0)
         {
-            return -1;
+            return E_OUT_CHANNEL_SIZE;
         }
         if (hold_idx >= RingBuffer::BUFFER_LEN || hold_idx < 0)
         {
-            return -2;
+            return E_OUT_RINGBUFFER;
         }
         Channel& channel = logger.shm_->channels_[channel_id];
         RingBuffer& ring_buffer = logger.shm_->ring_buffers_[channel_id];
         if (channel.channel_state_ != CHANNEL_STATE_RUNNING)
         {
-            return -1;
+            return E_LOGGER_STATE_NOT_RUNNING;
         }
 
         LogData& log = ring_buffer.buffer_[hold_idx];
@@ -3711,22 +3487,26 @@ namespace FNLog
     }
 
     //combine virtual device  can transmit log to other channel 
-    inline int TransmitChannel(Logger& logger, int channel_id, const LogData& log)
+    inline int TransmitChannel(Logger& logger, int channel_id, int category, long long identify, const LogData& log)
     {
         if (log.channel_id_ == channel_id)
         {
-            return -1;
+            return E_ILL_PARAMS;
         }
-        int hold_idx = FNLog::HoldChannel(logger, channel_id, log.priority_, log.category_, log.identify_);
+        int hold_idx = FNLog::HoldChannel(logger, channel_id, log.priority_, category, identify);
         if (hold_idx < 0)
         {
-            return -2;
+            if (hold_idx == -1)
+            {
+                return 0;
+            }
+            return E_INNER_ERROR;
         }
         LogData& trans_log = logger.shm_->ring_buffers_[channel_id].buffer_[hold_idx];
         trans_log.channel_id_ = channel_id;
         trans_log.priority_ = log.priority_;
-        trans_log.category_ = log.category_;
-        trans_log.identify_ = log.identify_;
+        trans_log.category_ = category;
+        trans_log.identify_ = identify;
         trans_log.code_line_ = log.code_line_;
         trans_log.code_func_len_ = log.code_func_len_;
         trans_log.code_file_len_ = log.code_file_len_;
@@ -3744,44 +3524,12 @@ namespace FNLog
 
 
 #endif
+
 /*
- *
- * MIT License
- *
- * Copyright (C) 2019 YaweiZhang <yawei.zhang@foxmail.com>.
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to deal
- * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in
- * all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
- * THE SOFTWARE.
- *
- * ===============================================================================
- *
- * (end of COPYRIGHT)
- */
-
-
- /*
-  * AUTHORS:  YaweiZhang <yawei.zhang@foxmail.com>
-  * VERSION:  1.0.0
-  * PURPOSE:  fn-log is a cpp-based logging utility.
-  * CREATION: 2019.4.20
-  * RELEASED: 2019.6.27
-  * QQGROUP:  524700770
-  */
+* Copyright (C) 2019 YaweiZhang <yawei.zhang@foxmail.com>.
+* All rights reserved
+* This file is part of the fn-log, used MIT License.
+*/
 
 
 #pragma once
@@ -3853,8 +3601,8 @@ namespace FNLog
                 thd = std::thread(EnterProcChannel, std::ref(logger), channel_id);
                 if (!thd.joinable())
                 {
-                    printf("%s", "start async log thread has error.\n");
-                    return -1;
+                    printf("StartChannels %s", "start async log thread has error.\n");
+                    return E_NEW_THREAD_ERROR;
                 }
                 int state = 0;
                 while (channel.channel_state_ == CHANNEL_STATE_NULL && state < 100)
@@ -3864,19 +3612,19 @@ namespace FNLog
                 }
                 if (channel.channel_state_ == CHANNEL_STATE_NULL)
                 {
-                    printf("%s", "start async log thread timeout.\n");
-                    return -2;
+                    printf("StartChannels %s", "start async log thread timeout.\n");
+                    return E_NEW_THREAD_LOSS;
                 }
                 if (channel.channel_state_ != CHANNEL_STATE_RUNNING)
                 {
-                    printf("%s", "start async log thread has inner error.\n");
-                    return -3;
+                    printf("StartChannels %s", "start async log thread has inner error.\n");
+                    return E_UNKNOWN_ERROR;
                 }
             }
             break;
             default:
                 printf("%s", "unknown channel type");
-                return -10;
+                return E_UNKNOWN_CHANNEL_SYNC;
             }
         }
         return 0;
@@ -3908,8 +3656,8 @@ namespace FNLog
             }
             break;
             default:
-                printf("%s", "unknown channel type");
-                return -10;
+                printf("StopChannels %s", "unknown channel type");
+                return E_UNKNOWN_CHANNEL_SYNC;
             }
         }
         return 0;
@@ -3919,31 +3667,33 @@ namespace FNLog
     {
         if (logger.logger_state_ != LOGGER_STATE_UNINIT)
         {
-            printf("start error. state:<%u> not uninit:<%u>.\n", logger.logger_state_, LOGGER_STATE_UNINIT);
-            return -1;
+            printf("StartLogger error. state:<%u> not uninit:<%u>.\n", logger.logger_state_, LOGGER_STATE_UNINIT);
+            return E_LOGGER_STATE_NOT_UNINIT;
         }
         if (logger.shm_ == NULL || logger.shm_->channel_size_ > Logger::MAX_CHANNEL_SIZE || logger.shm_->channel_size_ <= 0)
         {
-            printf("start error. channel size:<%d> invalid.\n", logger.shm_->channel_size_);
-            return -2;
+            printf("StartLogger error. channel size:<%d> invalid.\n", logger.shm_->channel_size_);
+            return E_CONFIG_OUT_CHANNEL_MAX;
         }
         Logger::StateLockGuard state_guard(logger.state_lock);
         if (logger.logger_state_ != LOGGER_STATE_UNINIT)
         {
-            printf("start error. state:<%u> not uninit:<%u>.\n", logger.logger_state_, LOGGER_STATE_UNINIT);
-            return -3;
+            printf("StartLogger error. state:<%u> not uninit:<%u>.\n", logger.logger_state_, LOGGER_STATE_UNINIT);
+            return E_LOGGER_STATE_NOT_UNINIT;
         }
         if (logger.shm_->channel_size_ > Logger::MAX_CHANNEL_SIZE || logger.shm_->channel_size_ <= 0)
         {
-            printf("start error. channel size:<%d> invalid.\n", logger.shm_->channel_size_);
-            return -4;
+            printf("StartLogger error. channel size:<%d> invalid.\n", logger.shm_->channel_size_);
+            return E_CONFIG_OUT_CHANNEL_MAX;
         }
         logger.logger_state_ = LOGGER_STATE_INITING;
-        if (StartChannels(logger) != 0)
+        int ret = StartChannels(logger);
+        if (ret != 0)
         {
             StopChannels(logger);
             logger.logger_state_ = LOGGER_STATE_UNINIT;
-            return -5;
+            printf("StartLogger error. StartChannels failed. channel size:<%d>. \n", logger.shm_->channel_size_);
+            return ret;
         }
         logger.logger_state_ = LOGGER_STATE_RUNNING;
         return 0;
@@ -3973,20 +3723,20 @@ namespace FNLog
     {
         if (logger.shm_->channel_size_ > Logger::MAX_CHANNEL_SIZE || logger.shm_->channel_size_ <= 0)
         {
-            printf("try stop error. channel size:<%d> invalid.\n", logger.shm_->channel_size_);
-            return -1;
+            printf("StopLogger error. channel size:<%d> invalid.\n", logger.shm_->channel_size_);
+            return E_INNER_ERROR;
         }
         if (logger.logger_state_ != LOGGER_STATE_RUNNING)
         {
-            printf("try stop logger error. state:<%u> not running:<%u>.\n", logger.logger_state_, LOGGER_STATE_RUNNING);
-            return -2;
+            printf("StopLogger logger error. state:<%u> not running:<%u>.\n", logger.logger_state_, LOGGER_STATE_RUNNING);
+            return E_LOGGER_STATE_NOT_RUNNING;
         }
         Logger::StateLockGuard state_guard(logger.state_lock);
         
         if (logger.logger_state_ != LOGGER_STATE_RUNNING)
         {
-            printf("try stop logger error. state:<%u> not running:<%u>.\n", logger.logger_state_, LOGGER_STATE_RUNNING);
-            return -3;
+            printf("StopLogger logger error. state:<%u> not running:<%u>.\n", logger.logger_state_, LOGGER_STATE_RUNNING);
+            return E_LOGGER_STATE_NOT_RUNNING;
         }
         logger.logger_state_ = LOGGER_STATE_CLOSING;
         StopChannels(logger);
@@ -4015,25 +3765,25 @@ namespace FNLog
     {
         if (logger.logger_state_ != LOGGER_STATE_UNINIT)
         {
-            printf("parse and start error. state:<%u> not uninit:<%u> by fast try.\n", logger.logger_state_, LOGGER_STATE_UNINIT);
-            return -1;
+            printf("ParseAndStartLogger error. state:<%u> not uninit:<%u> by fast try.\n", logger.logger_state_, LOGGER_STATE_UNINIT);
+            return E_LOGGER_STATE_NOT_UNINIT;
         }
         Logger::StateLockGuard state_guard(logger.state_lock);
         if (logger.logger_state_ != LOGGER_STATE_UNINIT)
         {
-            printf("parse and start error. state:<%u> not uninit:<%u> in locked check.\n", logger.logger_state_, LOGGER_STATE_UNINIT);
-            return -2;
+            printf("ParseAndStartLogger error. state:<%u> not uninit:<%u> in locked check.\n", logger.logger_state_, LOGGER_STATE_UNINIT);
+            return E_LOGGER_STATE_NOT_UNINIT;
         }
         int ret = InitFromYMAL(logger, config_content, "");
         if (ret != 0)
         {
-            printf("init and load default logger error. ret:<%d>.\n", ret);
+            printf("ParseAndStartLogger error. ret:<%d>.\n", ret);
             return ret;
         }
         ret = StartLogger(logger);
         if (ret != 0)
         {
-            printf("start default logger error. ret:<%d>.\n", ret);
+            printf("ParseAndStartLogger error. ret:<%d>.\n", ret);
             return ret;
         }
         return 0;
@@ -4043,20 +3793,20 @@ namespace FNLog
     {
         if (logger.logger_state_ != LOGGER_STATE_UNINIT)
         {
-            printf("load and start error. state:<%u> not uninit:<%u>.\n", logger.logger_state_, LOGGER_STATE_UNINIT);
-            return -1;
+            printf("LoadAndStartLogger error. state:<%u> not uninit:<%u>.\n", logger.logger_state_, LOGGER_STATE_UNINIT);
+            return E_LOGGER_STATE_NOT_UNINIT;
         }
         Logger::StateLockGuard state_guard(logger.state_lock);
         int ret = InitFromYMALFile(logger, confg_path);
         if (ret != 0)
         {
-            printf("init and load default logger error. ret:<%d>.\n", ret);
+            printf("LoadAndStartLogger error. ret:<%d>.\n", ret);
             return ret;
         }
         ret = StartLogger(logger);
         if (ret != 0)
         {
-            printf("start default logger error. ret:<%d>.\n", ret);
+            printf("LoadAndStartLogger error. ret:<%d>.\n", ret);
             return ret;
         }
         return 0;
@@ -4230,44 +3980,12 @@ namespace FNLog
 
 
 #endif
+
 /*
- *
- * MIT License
- *
- * Copyright (C) 2019 YaweiZhang <yawei.zhang@foxmail.com>.
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to deal
- * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in
- * all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
- * THE SOFTWARE.
- *
- * ===============================================================================
- *
- * (end of COPYRIGHT)
- */
-
-
- /*
-  * AUTHORS:  YaweiZhang <yawei.zhang@foxmail.com>
-  * VERSION:  1.0.0
-  * PURPOSE:  fn-log is a cpp-based logging utility.
-  * CREATION: 2019.4.20
-  * RELEASED: 2019.6.27
-  * QQGROUP:  524700770
-  */
+* Copyright (C) 2019 YaweiZhang <yawei.zhang@foxmail.com>.
+* All rights reserved
+* This file is part of the fn-log, used MIT License.
+*/
 
 
 #pragma once
@@ -4688,44 +4406,12 @@ namespace FNLog
 
 
 #endif
+
 /*
- *
- * MIT License
- *
- * Copyright (C) 2019 YaweiZhang <yawei.zhang@foxmail.com>.
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to deal
- * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in
- * all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
- * THE SOFTWARE.
- *
- * ===============================================================================
- *
- * (end of COPYRIGHT)
- */
-
-
- /*
-  * AUTHORS:  YaweiZhang <yawei.zhang@foxmail.com>
-  * VERSION:  1.0.0
-  * PURPOSE:  fn-log is a cpp-based logging utility.
-  * CREATION: 2019.4.20
-  * RELEASED: 2019.6.27
-  * QQGROUP:  524700770
-  */
+* Copyright (C) 2019 YaweiZhang <yawei.zhang@foxmail.com>.
+* All rights reserved
+* This file is part of the fn-log, used MIT License.
+*/
 
 
 #pragma once
@@ -4920,22 +4606,7 @@ FNLog::LogStream& LogTemplatePack(FNLog::LogStream& ls, Args&& ... args)
 
 
 //--------------------C STYLE FORMAT ---------------------------
-#ifdef WIN32
-#define LOG_FORMAT(channel_id, priority, category, identify, prefix, logformat, ...) \
-do{ \
-    if (FNLog::BlockInput(FNLog::GetDefaultLogger(), channel_id, priority, category, identify))  \
-    { \
-        break;   \
-    } \
-    FNLog::LogStream __log_stream(LOG_STREAM_ORIGIN(FNLog::GetDefaultLogger(), channel_id, priority, category, identify, prefix));\
-    if (__log_stream.log_data_)\
-    {\
-        int __log_len = _snprintf_s(__log_stream.log_data_ ->content_ + __log_stream.log_data_ ->content_len_, FNLog::LogData::LOG_SIZE - __log_stream.log_data_ ->content_len_, _TRUNCATE, logformat, ##__VA_ARGS__); \
-        if (__log_len < 0) __log_len = 0; \
-        __log_stream.log_data_ ->content_len_ += __log_len; \
-    }\
-} while (0)
-#else
+
 // function format warn:   void(int x1, int x2, const char *args, ...) __attribute__((format(printf, 3, 4)));    
 #define LOG_FORMAT(channel_id, priority, category, identify, prefix, logformat, ...) \
 do{ \
@@ -4946,12 +4617,13 @@ do{ \
     FNLog::LogStream __log_stream(LOG_STREAM_ORIGIN(FNLog::GetDefaultLogger(), channel_id, priority, category, identify, prefix));\
     if (__log_stream.log_data_)\
     {\
-        int __log_len = snprintf(__log_stream.log_data_ ->content_ + __log_stream.log_data_ ->content_len_, FNLog::LogData::LOG_SIZE - __log_stream.log_data_ ->content_len_, logformat, ##__VA_ARGS__); \
+        int __log_len = snprintf(__log_stream.log_data_ ->content_ + __log_stream.log_data_ ->content_len_, FNLog::LogData::LOG_SIZE - __log_stream.log_data_->content_len_, logformat, ##__VA_ARGS__); \
         if (__log_len < 0) __log_len = 0; \
+        if (__log_len >= FNLog::LogData::LOG_SIZE - __log_stream.log_data_->content_len_) __log_len = FNLog::LogData::LOG_SIZE - __log_stream.log_data_->content_len_ -1; \
         __log_stream.log_data_ ->content_len_ += __log_len; \
     }\
 } while (0)
-#endif
+
 
 #define LOGFMT_TRACE(channel_id, category, identify, fmt, ...)  LOG_FORMAT(channel_id, FNLog::PRIORITY_TRACE, category, identify, FNLog::LOG_PREFIX_DEFAULT, fmt, ##__VA_ARGS__)
 #define LOGFMT_DEBUG(channel_id, category, identify, fmt, ...)  LOG_FORMAT(channel_id, FNLog::PRIORITY_DEBUG, category, identify, FNLog::LOG_PREFIX_DEFAULT, fmt, ##__VA_ARGS__)
@@ -4970,44 +4642,12 @@ do{ \
 
 
 #endif
+
 /*
- *
- * MIT License
- *
- * Copyright (C) 2019 YaweiZhang <yawei.zhang@foxmail.com>.
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to deal
- * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in
- * all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
- * THE SOFTWARE.
- *
- * ===============================================================================
- *
- * (end of COPYRIGHT)
- */
-
-
- /*
-  * AUTHORS:  YaweiZhang <yawei.zhang@foxmail.com>
-  * VERSION:  1.0.0
-  * PURPOSE:  fn-log is a cpp-based logging utility.
-  * CREATION: 2019.4.20
-  * RELEASED: 2019.6.27
-  * QQGROUP:  524700770
-  */
+* Copyright (C) 2019 YaweiZhang <yawei.zhang@foxmail.com>.
+* All rights reserved
+* This file is part of the fn-log, used MIT License.
+*/
 
 
 #pragma once
