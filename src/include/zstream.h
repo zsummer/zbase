@@ -23,8 +23,27 @@
 #include <time.h>
 #include <string>
 
-#ifndef ZBASE_SHORT_TYPE
-#define ZBASE_SHORT_TYPE
+
+//default use format compatible short type .  
+#if !defined(ZBASE_USE_AHEAD_TYPE) && !defined(ZBASE_USE_DEFAULT_TYPE)
+#define ZBASE_USE_DEFAULT_TYPE
+#endif 
+
+//win & unix format incompatible   
+#ifdef ZBASE_USE_AHEAD_TYPE
+using s8 = int8_t;
+using u8 = uint8_t;
+using s16 = int16_t;
+using u16 = uint16_t;
+using s32 = int32_t;
+using u32 = uint32_t;
+using s64 = int64_t;
+using u64 = uint64_t;
+using f32 = float;
+using f64 = double;
+#endif
+
+#ifdef ZBASE_USE_DEFAULT_TYPE
 using s8 = char;
 using u8 = unsigned char;
 using s16 = short int;
@@ -36,6 +55,7 @@ using u64 = unsigned long long;
 using f32 = float;
 using f64 = double;
 #endif
+
 
 #if __GNUG__
 #define ZBASE_ALIAS __attribute__((__may_alias__))
@@ -73,7 +93,7 @@ namespace zstream_impl
             return 0;
         }
         //A terminating null character is automatically appended after the content written.  
-        int cnt = snprintf(dst, dstlen, fmt_string, args ...);
+        int cnt = snprintf(dst, (size_t)dstlen, fmt_string, args ...);
         if (cnt < 0)
         {
             return 0;

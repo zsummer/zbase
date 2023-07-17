@@ -72,7 +72,9 @@ else()
     message("-- OPEN_CHECK is OFF")
 endif(OPEN_CHECK)
 
-
+if (USE_AHEAD_TYPE)
+    add_definitions(-DZBASE_USE_AHEAD_TYPE)
+endif(USE_AHEAD_TYPE)
 
 
 file(GLOB_RECURSE src_files ${CMAKE_SOURCE_DIR}/src/include/*.h)
