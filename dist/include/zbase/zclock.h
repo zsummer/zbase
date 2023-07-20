@@ -698,7 +698,7 @@ public:
 
     //utils
 public:
-    static long long now() { return get_tick<T>(); }
+    static long long now() { return zclock_impl::get_tick<_Ty>(); }
     static s64 now_ms() { return std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count(); }
     static double now_s() { return std::chrono::duration<double>(std::chrono::system_clock().now().time_since_epoch()).count(); }
     static zclock_impl::vmdata get_vmdata() { return zclock_impl::get_vmdata(); }
