@@ -1,6 +1,6 @@
 version:
-last_sha1(./src)=58aa082d69435b56534d33825095a234bd151c7e
-last_date(./src)=2023-07-20 22:54:41 +0800
+last_sha1(./src)=4bcf106cb34e28924273e4f0e4b90b58d708113d
+last_date(./src)=2023-07-21 01:00:11 +0800
 
 git log -1 --stat ./src:
-commit 58aa082d69435b56534d33825095a234bd151c7e Author: zsummer <yawei.zhang@foxmail.com> Date: Thu Jul 20 22:54:41 2023 +0800 ztrace src/include/ztrace.h | 16 +++++++++------- 1 file changed, 9 insertions(+), 7 deletions(-)
+commit 4bcf106cb34e28924273e4f0e4b90b58d708113d Author: zsummer <yawei.zhang@foxmail.com> Date: Fri Jul 21 00:59:54 2023 +0800 update src/include/ztrace.h | 2 ++ 1 file changed, 2 insertions(+)
