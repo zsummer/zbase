@@ -19,8 +19,14 @@
 
 
 using test_callstacker = zcallstacker<5>;
-test_callstacker g_call_stacker_;
-#define CALL_STACKER_GUARD() ztrace_guard<test_callstacker> trace_guard(g_call_stacker_, __FUNCTION__)
+
+inline test_callstacker& inst()
+{
+    static test_callstacker stacker;
+    return stacker;
+}
+
+#define CALL_STACKER_GUARD() ztrace_guard<test_callstacker> trace_guard(inst(), (__FUNCTION__))
 
 
 void func1();
@@ -54,7 +60,7 @@ void func5()
     CALL_STACKER_GUARD();
 }
 
-class MyClass1
+class StackOverTest
 {
 public:
     void test()
@@ -67,10 +73,10 @@ private:
 
 };
 
-class MyClass2
+class StackTraceTest
 {
 public:
-    void test()
+    static inline void test()
     {
         CALL_STACKER_GUARD();
         func5();
@@ -84,38 +90,38 @@ private:
 s32 ztrace_test()
 {
     CALL_STACKER_GUARD();
-    MyClass1 o;
+    StackOverTest o;
     o.test();
 
-    LogInfo() << "print last call stack. stacker good:" << g_call_stacker_.good();
-    for (s32 i = 0; i <= g_call_stacker_.top(); i++)
+    LogInfo() << "print last call stack. stacker good:" << inst().good();
+    for (s32 i = 0; i <= inst().top(); i++)
     {
         FNLog::LogStream ls = std::move(LogInfo());
 
         ls.write_buffer("                                                                          ", i * 2);
 
-        if (i == g_call_stacker_.top())
+        if (i == inst().top())
         {
             ls << "*";
         }
-        ls << g_call_stacker_.at(i);
+        ls << inst().at(i);
     }
-    g_call_stacker_.reset_errcode();
-    g_call_stacker_.set_top(1);
-    MyClass2 o2;
+    inst().set_errcode();
+    inst().set_top(1);
+    StackTraceTest o2;
     o2.test();
-    LogInfo() << "print last call stack. stacker good:" << g_call_stacker_.good();
-    for (s32 i = 0; i <= g_call_stacker_.top(); i++)
+    LogInfo() << "print last call stack. stacker good:" << inst().good();
+    for (s32 i = 0; i <= inst().top(); i++)
     {
         FNLog::LogStream ls = std::move(LogInfo());
 
         ls.write_buffer("                                                                          ", i * 2);
 
-        if (i == g_call_stacker_.top())
+        if (i == inst().top())
         {
             ls << "*";
         }
-        ls << g_call_stacker_.at(i);
+        ls << inst().at(i);
     }
 
     return 0;
@@ -126,11 +132,11 @@ s32 ztrace_test()
 
 s32 ztrace_bench_test()
 {
-    MyClass2 o;
+    StackTraceTest o;
     PROF_DEFINE_AUTO_MULTI_ANON_RECORD(cost, 1000*10000, "used");
     for (s32 i = 0; i < 1000 * 10000; i++)
     {
-        g_call_stacker_.reset();
+        inst().reset();
         o.test();
     }
     return 0;
@@ -139,6 +145,7 @@ s32 ztrace_bench_test()
 int main(int argc, char *argv[])
 {
     ztest_init();
+
     CALL_STACKER_GUARD();
     PROF_DEFINE_AUTO_ANON_RECORD(delta, "self use mem in main func begin and exit");
     PROF_OUTPUT_SELF_MEM("self use mem in main func begin and exit");
