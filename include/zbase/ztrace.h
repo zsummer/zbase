@@ -106,11 +106,14 @@ public:
     ztrace_stacker()
     {
         static_assert(std::is_trivial<_Ty>::value, "");
-        reset();
+        reset(false);
     }
-    void reset()
+    void reset(bool light_clear = true)
     {
-        memset(stacker_, 0, sizeof(stacker_));
+        if (!light_clear)
+        {
+            memset(stacker_, 0, sizeof(stacker_));
+        }
         size_ = 0;
         errcode_ = TE_NONE;
     }
@@ -118,7 +121,7 @@ public:
     {
         return errcode_ == TE_NONE;
     }
-    void reset_errcode() { errcode_ = TE_NONE; }
+    void set_errcode(s32 errcode = TE_NONE) { errcode_ = errcode; }
     s32 errcode()const
     {
         return errcode_;
@@ -162,7 +165,7 @@ public:
     s32 max_top()const { return max_depth -1; }
     const _Ty& at(s32 id)const { return stacker_[id]; }
     
-public:
+private:
     _Ty stacker_[_Depth];
     s32 size_;
     s32 errcode_;
@@ -187,7 +190,7 @@ public:
     }
 private:
     _Stacker& stacker_;
-    const typename _Stacker::value_type& v_;
+    const typename _Stacker::value_type v_;
 };
 
 
@@ -195,7 +198,6 @@ private:
 //don't store to shm 
 template<s32 _Depth>
 using zcallstacker = ztrace_stacker<const char*, _Depth>;
-
 
 
 
