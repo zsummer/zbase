@@ -32,6 +32,7 @@ s32 zclock_test()
     zclock_base<zclock_impl::T_CLOCK_MFENCE_RDTSC>     c11;
     zclock_base<zclock_impl::T_CLOCK_BTB_MFENCE_RDTSC>  c12;
     zclock_base<zclock_impl::T_CLOCK_LOCK_RDTSC>       c13;
+    zclock_base<zclock_impl::T_CLOCK_SYS_MS>       c14;
 
     c01.start();
     c02.start();
@@ -46,6 +47,7 @@ s32 zclock_test()
     c11.start();
     c12.start();
     c13.start();
+    c14.start();
 
     std::this_thread::sleep_for(std::chrono::milliseconds(1000));
 
@@ -62,6 +64,7 @@ s32 zclock_test()
     c11.stop_and_save();
     c12.stop_and_save();
     c13.stop_and_save();
+    c14.stop_and_save();
 
 
     ASSERT_TEST(std::abs(c01.duration_ms() - 1000) < 100, " dev ms:", c01.duration_ms()- 1000);
@@ -76,7 +79,8 @@ s32 zclock_test()
     ASSERT_TEST(std::abs(c10.duration_ms() - 1000) < 100, " dev ms:", c10.duration_ms()- 1000);
     ASSERT_TEST(std::abs(c11.duration_ms() - 1000) < 100, " dev ms:", c11.duration_ms()- 1000);
     ASSERT_TEST(std::abs(c12.duration_ms() - 1000) < 100, " dev ms:", c12.duration_ms()- 1000);
-    ASSERT_TEST(std::abs(c13.duration_ms() - 1000) < 100, " dev ms:", c13.duration_ms()- 1000);
+    ASSERT_TEST(std::abs(c13.duration_ms() - 1000) < 100, " dev ms:", c13.duration_ms() - 1000);
+    ASSERT_TEST(std::abs(c14.duration_ms() - 1000) < 100, " dev ms:", c14.duration_ms() - 1000);
 
 
     return 0;
@@ -107,6 +111,7 @@ s32 zclock_bench_test()
     bench(zclock_impl::T_CLOCK_CHRONO);
     bench(zclock_impl::T_CLOCK_STEADY_CHRONO);
     bench(zclock_impl::T_CLOCK_SYS_CHRONO);
+    bench(zclock_impl::T_CLOCK_SYS_MS);
     bench(zclock_impl::T_CLOCK_PURE_RDTSC);
     bench(zclock_impl::T_CLOCK_VOLATILE_RDTSC);
     bench(zclock_impl::T_CLOCK_FENCE_RDTSC);

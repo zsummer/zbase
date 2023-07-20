@@ -49,7 +49,7 @@ endif( NOT CMAKE_CONFIGURATION_TYPES )
 
 set(CMAKE_BUILD_TYPE Release CACHE STRING "cache debug release "  )
 set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS ${CMAKE_CONFIGURATION_TYPES} )
-
+message("build type:" ${CMAKE_BUILD_TYPE})
 
 #通用设置部分 包括启用分组 设置 启动项目  
 if(WIN32)

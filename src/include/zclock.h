@@ -152,6 +152,7 @@ namespace zclock_impl
         T_CLOCK_CHRONO,
         T_CLOCK_STEADY_CHRONO,
         T_CLOCK_SYS_CHRONO,
+        T_CLOCK_SYS_MS, //wall clock 
 
         T_CLOCK_PURE_RDTSC,
         T_CLOCK_VOLATILE_RDTSC,
@@ -350,6 +351,13 @@ namespace zclock_impl
     {
         return std::chrono::system_clock().now().time_since_epoch().count();
     }
+
+    template<>
+    inline s64 get_tick<T_CLOCK_SYS_MS>()
+    {
+        return std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+    }
+
 
 
     inline vmdata get_vmdata()
@@ -618,6 +626,13 @@ namespace zclock_impl
     inline double get_frequency<T_CLOCK_SYS_CHRONO>()
     {
         const static double chrono_frequency = std::chrono::duration_cast<std::chrono::system_clock::duration>(std::chrono::seconds(1)).count() / 1000.0 / 1000.0 / 1000.0;
+        return chrono_frequency;
+    }
+
+    template<>
+    inline double get_frequency<T_CLOCK_SYS_MS>()
+    {
+        static double chrono_frequency = 1.0 / 1000.0 / 1000.0;
         return chrono_frequency;
     }
 
