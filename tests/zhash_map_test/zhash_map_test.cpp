@@ -46,7 +46,7 @@ s32 MapStress(Map& m, const std::string& desc, bool is_static = false)
         {
             m.insert({ i, V(i) });
         }
-        PROF_OUTPUT_MULTI_COUNT_CPU((ss.str() + "insert").c_str(), LOAD_CAPACITY, cost.stop_and_save().duration_ticks());
+        PROF_OUTPUT_MULTI_COUNT_CPU((ss.str() + "insert").c_str(), LOAD_CAPACITY, cost.stop_and_save().cost());
         if (is_static)
         {
             m.insert({ LOAD_CAPACITY, V(LOAD_CAPACITY) });
@@ -60,7 +60,7 @@ s32 MapStress(Map& m, const std::string& desc, bool is_static = false)
     {
         PROF_START_COUNTER(cost);
         m.clear();
-        PROF_OUTPUT_MULTI_COUNT_CPU((ss.str() + "clear").c_str(), 1, cost.stop_and_save().duration_ticks());
+        PROF_OUTPUT_MULTI_COUNT_CPU((ss.str() + "clear").c_str(), 1, cost.stop_and_save().cost());
         ASSERT_TEST_EQ((int)m.size(), 0, desc + ":has error");
 
     }
@@ -77,7 +77,7 @@ s32 MapStress(Map& m, const std::string& desc, bool is_static = false)
         {
             m.erase(i);
         }
-        PROF_OUTPUT_MULTI_COUNT_CPU((ss.str() + "erase").c_str(), LOAD_CAPACITY, cost.stop_and_save().duration_ticks());
+        PROF_OUTPUT_MULTI_COUNT_CPU((ss.str() + "erase").c_str(), LOAD_CAPACITY, cost.stop_and_save().cost());
         ASSERT_TEST_EQ((int)m.size(), 0, desc + ":has error");
         for (int i = 0; i < LOAD_CAPACITY; i++)
         {
@@ -100,7 +100,7 @@ s32 MapStress(Map& m, const std::string& desc, bool is_static = false)
         {
             m.erase(LOAD_CAPACITY - i - 1);
         }
-        PROF_OUTPUT_MULTI_COUNT_CPU((ss.str() + "revert erase key (capacity)").c_str(), LOAD_CAPACITY, cost.stop_and_save().duration_ticks());
+        PROF_OUTPUT_MULTI_COUNT_CPU((ss.str() + "revert erase key (capacity)").c_str(), LOAD_CAPACITY, cost.stop_and_save().cost());
         ASSERT_TEST_EQ((int)m.size(), 0, desc + ":has error");
         for (int i = 0; i < LOAD_CAPACITY; i++)
         {
@@ -123,7 +123,7 @@ s32 MapStress(Map& m, const std::string& desc, bool is_static = false)
         {
             m.erase(m.begin());
         }
-        PROF_OUTPUT_MULTI_COUNT_CPU((ss.str() + "erase begin (capacity)").c_str(), LOAD_CAPACITY, cost.stop_and_save().duration_ticks());
+        PROF_OUTPUT_MULTI_COUNT_CPU((ss.str() + "erase begin (capacity)").c_str(), LOAD_CAPACITY, cost.stop_and_save().cost());
         ASSERT_TEST_EQ((int)m.size(), 0, desc + ":has error");
     }
 
@@ -144,7 +144,7 @@ s32 MapStress(Map& m, const std::string& desc, bool is_static = false)
                 LogError() << " stress test error";
             }
         }
-        PROF_OUTPUT_MULTI_COUNT_CPU((ss.str() + "find(capacity)").c_str(), 1000 * 10000, cost.stop_and_save().duration_ticks());
+        PROF_OUTPUT_MULTI_COUNT_CPU((ss.str() + "find(capacity)").c_str(), 1000 * 10000, cost.stop_and_save().cost());
         PROF_START_COUNTER(cost);
         for (int i = 0; i < 1000 * 10000; i++)
         {
@@ -153,7 +153,7 @@ s32 MapStress(Map& m, const std::string& desc, bool is_static = false)
                 LogError() << " stress test error";
             }
         }
-        PROF_OUTPUT_MULTI_COUNT_CPU((ss.str() + "[](capacity)").c_str(), 1000 * 10000, cost.stop_and_save().duration_ticks());
+        PROF_OUTPUT_MULTI_COUNT_CPU((ss.str() + "[](capacity)").c_str(), 1000 * 10000, cost.stop_and_save().cost());
     }
 
 
@@ -176,7 +176,7 @@ s32 MapStringStress(Map& m, const std::string& desc, bool is_static = false)
         {
             m.insert({ string_data[i], string_data[i] });
         }
-        PROF_OUTPUT_MULTI_COUNT_CPU((ss.str() + "insert").c_str(), LOAD_CAPACITY, cost.stop_and_save().duration_ticks());
+        PROF_OUTPUT_MULTI_COUNT_CPU((ss.str() + "insert").c_str(), LOAD_CAPACITY, cost.stop_and_save().cost());
         ASSERT_TEST_EQ((int)m.size(), LOAD_CAPACITY, desc + ":has error");
 
     }
@@ -185,7 +185,7 @@ s32 MapStringStress(Map& m, const std::string& desc, bool is_static = false)
     {
         PROF_START_COUNTER(cost);
         m.clear();
-        PROF_OUTPUT_MULTI_COUNT_CPU((ss.str() + "clear").c_str(), 1, cost.stop_and_save().duration_ticks());
+        PROF_OUTPUT_MULTI_COUNT_CPU((ss.str() + "clear").c_str(), 1, cost.stop_and_save().cost());
         ASSERT_TEST_EQ((int)m.size(), 0, desc + ":has error");
 
     }
@@ -202,7 +202,7 @@ s32 MapStringStress(Map& m, const std::string& desc, bool is_static = false)
         {
             m.erase(string_data[i]);
         }
-        PROF_OUTPUT_MULTI_COUNT_CPU((ss.str() + "erase").c_str(), LOAD_CAPACITY, cost.stop_and_save().duration_ticks());
+        PROF_OUTPUT_MULTI_COUNT_CPU((ss.str() + "erase").c_str(), LOAD_CAPACITY, cost.stop_and_save().cost());
         ASSERT_TEST_EQ((int)m.size(), 0, desc + ":has error");
         for (int i = 0; i < LOAD_CAPACITY; i++)
         {
@@ -225,7 +225,7 @@ s32 MapStringStress(Map& m, const std::string& desc, bool is_static = false)
         {
             m.erase(string_data[LOAD_CAPACITY - i - 1]);
         }
-        PROF_OUTPUT_MULTI_COUNT_CPU((ss.str() + "revert erase key (capacity)").c_str(), LOAD_CAPACITY, cost.stop_and_save().duration_ticks());
+        PROF_OUTPUT_MULTI_COUNT_CPU((ss.str() + "revert erase key (capacity)").c_str(), LOAD_CAPACITY, cost.stop_and_save().cost());
         ASSERT_TEST_EQ((int)m.size(), 0, desc + ":has error");
         for (int i = 0; i < LOAD_CAPACITY; i++)
         {
@@ -248,7 +248,7 @@ s32 MapStringStress(Map& m, const std::string& desc, bool is_static = false)
         {
             m.erase(m.begin());
         }
-        PROF_OUTPUT_MULTI_COUNT_CPU((ss.str() + "erase begin (capacity)").c_str(), LOAD_CAPACITY, cost.stop_and_save().duration_ticks());
+        PROF_OUTPUT_MULTI_COUNT_CPU((ss.str() + "erase begin (capacity)").c_str(), LOAD_CAPACITY, cost.stop_and_save().cost());
         ASSERT_TEST_EQ((int)m.size(), 0, desc + ":has error");
     }
 
@@ -269,7 +269,7 @@ s32 MapStringStress(Map& m, const std::string& desc, bool is_static = false)
                 LogError() << " stress test error";
             }
         }
-        PROF_OUTPUT_MULTI_COUNT_CPU((ss.str() + "find(capacity)").c_str(), 1000 * 10000, cost.stop_and_save().duration_ticks());
+        PROF_OUTPUT_MULTI_COUNT_CPU((ss.str() + "find(capacity)").c_str(), 1000 * 10000, cost.stop_and_save().cost());
     }
 
 
@@ -291,7 +291,7 @@ s32 SetStress(Map& m, const std::string& desc, bool is_static = false)
         {
             m.insert(V(i));
         }
-        PROF_OUTPUT_MULTI_COUNT_CPU((ss.str() + "insert").c_str(), LOAD_CAPACITY, cost.stop_and_save().duration_ticks());
+        PROF_OUTPUT_MULTI_COUNT_CPU((ss.str() + "insert").c_str(), LOAD_CAPACITY, cost.stop_and_save().cost());
         if (is_static)
         {
             m.insert(V(0));
@@ -305,7 +305,7 @@ s32 SetStress(Map& m, const std::string& desc, bool is_static = false)
     {
         PROF_START_COUNTER(cost);
         m.clear();
-        PROF_OUTPUT_MULTI_COUNT_CPU((ss.str() + "clear").c_str(), 1, cost.stop_and_save().duration_ticks());
+        PROF_OUTPUT_MULTI_COUNT_CPU((ss.str() + "clear").c_str(), 1, cost.stop_and_save().cost());
         ASSERT_TEST_EQ((int)m.size(), 0, desc + ":has error");
 
     }
@@ -322,7 +322,7 @@ s32 SetStress(Map& m, const std::string& desc, bool is_static = false)
         {
             m.erase(i);
         }
-        PROF_OUTPUT_MULTI_COUNT_CPU((ss.str() + "erase").c_str(), LOAD_CAPACITY, cost.stop_and_save().duration_ticks());
+        PROF_OUTPUT_MULTI_COUNT_CPU((ss.str() + "erase").c_str(), LOAD_CAPACITY, cost.stop_and_save().cost());
         ASSERT_TEST_EQ((int)m.size(), 0, desc + ":has error");
         for (int i = 0; i < LOAD_CAPACITY; i++)
         {
@@ -345,7 +345,7 @@ s32 SetStress(Map& m, const std::string& desc, bool is_static = false)
         {
             m.erase(V(i));
         }
-        PROF_OUTPUT_MULTI_COUNT_CPU((ss.str() + "revert erase key (capacity)").c_str(), LOAD_CAPACITY, cost.stop_and_save().duration_ticks());
+        PROF_OUTPUT_MULTI_COUNT_CPU((ss.str() + "revert erase key (capacity)").c_str(), LOAD_CAPACITY, cost.stop_and_save().cost());
         ASSERT_TEST_EQ((int)m.size(), 0, desc + ":has error");
         for (int i = 0; i < LOAD_CAPACITY; i++)
         {
@@ -368,7 +368,7 @@ s32 SetStress(Map& m, const std::string& desc, bool is_static = false)
         {
             m.erase(m.begin());
         }
-        PROF_OUTPUT_MULTI_COUNT_CPU((ss.str() + "erase begin (capacity)").c_str(), LOAD_CAPACITY, cost.stop_and_save().duration_ticks());
+        PROF_OUTPUT_MULTI_COUNT_CPU((ss.str() + "erase begin (capacity)").c_str(), LOAD_CAPACITY, cost.stop_and_save().cost());
         ASSERT_TEST_EQ((int)m.size(), 0, desc + ":has error");
     }
 
@@ -389,7 +389,7 @@ s32 SetStress(Map& m, const std::string& desc, bool is_static = false)
                 LogError() << " stress test error";
             }
         }
-        PROF_OUTPUT_MULTI_COUNT_CPU((ss.str() + "find(capacity)").c_str(), 1000 * 10000, cost.stop_and_save().duration_ticks());
+        PROF_OUTPUT_MULTI_COUNT_CPU((ss.str() + "find(capacity)").c_str(), 1000 * 10000, cost.stop_and_save().cost());
     }
 
 
