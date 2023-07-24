@@ -169,139 +169,139 @@ namespace zclock_impl
     
     struct vmdata
     {
-        //don't use u64 or s64; uint64_t maybe is long ;
+        //don't use u64 or long long; uint64_t maybe is long ;
         unsigned long long vm_size;
         unsigned long long rss_size;
         unsigned long long shr_size;
     };
 
-    template<clock_type _Ty>
-    inline s64 get_tick()
+    template<clock_type _C>
+    inline long long get_tick()
     {
         return 0;
     }
 
     template<>
-    inline s64 get_tick<T_CLOCK_FENCE_RDTSC>()
+    inline long long get_tick<T_CLOCK_FENCE_RDTSC>()
     {
 #ifdef WIN32
         _mm_lfence();
-        return (s64)__rdtsc();
+        return (long long)__rdtsc();
 #else
-        u32 lo, hi;
+        unsigned int lo, hi;
         __asm__ __volatile__("lfence;rdtsc" : "=a" (lo), "=d" (hi) ::);
-        u64 val = ((u64)hi << 32) | lo;
-        return (s64)val;
+        unsigned long long val = ((unsigned long long)hi << 32) | lo;
+        return (long long)val;
 #endif
     }
 
     template<>
-    inline s64 get_tick<T_CLOCK_BTB_FENCE_RDTSC>()
+    inline long long get_tick<T_CLOCK_BTB_FENCE_RDTSC>()
     {
 #ifdef WIN32
-        s64 ret;
+        long long ret;
         _mm_lfence();
-        ret = (s64)__rdtsc();
+        ret = (long long)__rdtsc();
         _mm_lfence();
         return ret;
 #else
-        u32 lo, hi;
+        unsigned int lo, hi;
         __asm__ __volatile__("lfence;rdtsc;lfence" : "=a" (lo), "=d" (hi) ::);
-        u64 val = ((u64)hi << 32) | lo;
-        return (s64)val;
+        unsigned long long val = ((unsigned long long)hi << 32) | lo;
+        return (long long)val;
 #endif
     }
 
 
     template<>
-    inline s64 get_tick<T_CLOCK_VOLATILE_RDTSC>()
+    inline long long get_tick<T_CLOCK_VOLATILE_RDTSC>()
     {
 #ifdef WIN32
-        return (s64)__rdtsc();
+        return (long long)__rdtsc();
 #else
         unsigned long hi, lo;
         __asm__ __volatile__("rdtsc" : "=a"(lo), "=d"(hi) ::);
-        u64 val = (((u64)hi) << 32 | ((u64)lo));
-        return (s64)val;
+        unsigned long long val = (((unsigned long long)hi) << 32 | ((unsigned long long)lo));
+        return (long long)val;
 #endif
     }
 
     template<>
-    inline s64 get_tick<T_CLOCK_PURE_RDTSC>()
+    inline long long get_tick<T_CLOCK_PURE_RDTSC>()
     {
 #ifdef WIN32
-        return (s64)__rdtsc();
+        return (long long)__rdtsc();
 #else
         unsigned long hi, lo;
         __asm__("rdtsc" : "=a"(lo), "=d"(hi));
-        u64 val = (((u64)hi) << 32 | ((u64)lo));
-        return (s64)val;
+        unsigned long long val = (((unsigned long long)hi) << 32 | ((unsigned long long)lo));
+        return (long long)val;
 #endif
     }
 
     template<>
-    inline s64 get_tick<T_CLOCK_LOCK_RDTSC>()
+    inline long long get_tick<T_CLOCK_LOCK_RDTSC>()
     {
 #ifdef WIN32
         _mm_mfence();
-        return (s64)__rdtsc();
+        return (long long)__rdtsc();
 #else
         unsigned long hi, lo;
         __asm__("lock addq $0, 0(%%rsp); rdtsc" : "=a"(lo), "=d"(hi)::"memory");
-        u64 val = (((u64)hi) << 32 | ((u64)lo));
-        return (s64)val;
+        unsigned long long val = (((unsigned long long)hi) << 32 | ((unsigned long long)lo));
+        return (long long)val;
 #endif
     }
 
 
     template<>
-    inline s64 get_tick<T_CLOCK_MFENCE_RDTSC>()
+    inline long long get_tick<T_CLOCK_MFENCE_RDTSC>()
     {
 #ifdef WIN32
-        s64 ret = 0;
+        long long ret = 0;
         _mm_mfence();
-        ret = (s64)__rdtsc();
+        ret = (long long)__rdtsc();
         _mm_mfence();
         return ret;
 #else
         unsigned long lo, hi;
         __asm__ __volatile__("mfence;rdtsc;mfence" : "=a" (lo), "=d" (hi) ::);
-        u64 val = ((u64)hi << 32) | lo;
-        return (s64)val;
+        unsigned long long val = ((unsigned long long)hi << 32) | lo;
+        return (long long)val;
 #endif
     }
 
     template<>
-    inline s64 get_tick<T_CLOCK_BTB_MFENCE_RDTSC>()
+    inline long long get_tick<T_CLOCK_BTB_MFENCE_RDTSC>()
     {
 #ifdef WIN32
         _mm_mfence();
-        return (s64)__rdtsc();
+        return (long long)__rdtsc();
 #else
         unsigned long lo, hi;
         __asm__ __volatile__("mfence;rdtsc" : "=a" (lo), "=d" (hi) :: "memory");
-        u64 val = ((u64)hi << 32) | lo;
-        return (s64)val;
+        unsigned long long val = ((unsigned long long)hi << 32) | lo;
+        return (long long)val;
 #endif
     }
 
     template<>
-    inline s64 get_tick<T_CLOCK_RDTSCP>()
+    inline long long get_tick<T_CLOCK_RDTSCP>()
     {
 #ifdef WIN32
-        u32 ui;
-        return (s64)__rdtscp(&ui);
+        unsigned int ui;
+        return (long long)__rdtscp(&ui);
 #else
         unsigned long hi, lo;
         __asm__ __volatile__("rdtscp" : "=a"(lo), "=d"(hi)::"memory");
-        u64 val = (((u64)hi) << 32 | ((u64)lo));
-        return (s64)val;
+        unsigned long long val = (((unsigned long long)hi) << 32 | ((unsigned long long)lo));
+        return (long long)val;
 #endif
     }
 
 
     template<>
-    inline s64 get_tick<T_CLOCK_CLOCK>()
+    inline long long get_tick<T_CLOCK_CLOCK>()
     {
 #if (defined WIN32)
         LARGE_INTEGER win_freq;
@@ -316,17 +316,17 @@ namespace zclock_impl
     }
 
     template<>
-    inline s64 get_tick<T_CLOCK_SYS>()
+    inline long long get_tick<T_CLOCK_SYS>()
     {
 #if (defined WIN32)
         FILETIME ft;
         GetSystemTimeAsFileTime(&ft);
-        u64 tsc = ft.dwHighDateTime;
+        unsigned long long tsc = ft.dwHighDateTime;
         tsc <<= 32;
         tsc |= ft.dwLowDateTime;
         tsc /= 10;
         tsc -= 11644473600000000ULL;
-        return (s64)tsc * 1000; //ns
+        return (long long)tsc * 1000; //ns
 #else
         struct timeval tm;
         gettimeofday(&tm, nullptr);
@@ -335,32 +335,32 @@ namespace zclock_impl
     }
 
     template<>
-    inline s64 get_tick<T_CLOCK_CHRONO>()
+    inline long long get_tick<T_CLOCK_CHRONO>()
     {
         return std::chrono::high_resolution_clock().now().time_since_epoch().count();
     }
 
     template<>
-    inline s64 get_tick<T_CLOCK_STEADY_CHRONO>()
+    inline long long get_tick<T_CLOCK_STEADY_CHRONO>()
     {
         return std::chrono::steady_clock().now().time_since_epoch().count();
     }
 
     template<>
-    inline s64 get_tick<T_CLOCK_SYS_CHRONO>()
+    inline long long get_tick<T_CLOCK_SYS_CHRONO>()
     {
         return std::chrono::system_clock().now().time_since_epoch().count();
     }
 
     template<>
-    inline s64 get_tick<T_CLOCK_SYS_MS>()
+    inline long long get_tick<T_CLOCK_SYS_MS>()
     {
         return std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
     }
 
 
 
-    inline vmdata get_vmdata()
+    inline vmdata get_self_mem()
     {
         vmdata vm = { 0ULL, 0ULL, 0ULL };
 #ifdef WIN32
@@ -369,8 +369,8 @@ namespace zclock_impl
         if (GetProcessMemoryInfo(hproc, &pmc, sizeof(pmc)))
         {
             CloseHandle(hproc);// ignore  
-            vm.vm_size = (u64)pmc.WorkingSetSize;
-            vm.rss_size = (u64)pmc.WorkingSetSize;
+            vm.vm_size = (unsigned long long)pmc.WorkingSetSize;
+            vm.rss_size = (unsigned long long)pmc.WorkingSetSize;
         }
 #else
         const char* file = "/proc/self/statm";
@@ -380,7 +380,7 @@ namespace zclock_impl
             char line_buff[256];
             while (fgets(line_buff, sizeof(line_buff), fp) != NULL)
             {
-                s32 ret = sscanf(line_buff, "%lld %lld %lld ", &vm.vm_size, &vm.rss_size, &vm.shr_size);
+                int ret = sscanf(line_buff, "%lld %lld %lld ", &vm.vm_size, &vm.rss_size, &vm.shr_size);
                 if (ret == 3)
                 {
                     vm.vm_size *= 4096;
@@ -471,8 +471,8 @@ namespace zclock_impl
     {
         double mhz = 1;
 #ifdef __APPLE__
-        s32 mib[2];
-        u32 freq;
+        int mib[2];
+        unsigned int freq;
         size_t len;
         mib[0] = CTL_HW;
         mib[1] = HW_CPU_FREQ;
@@ -516,7 +516,7 @@ namespace zclock_impl
                     break;
                 }
 
-                s32 ret = sscanf(p, "%lf", &mhz);
+                int ret = sscanf(p, "%lf", &mhz);
                 if (ret <= 0)
                 {
                     mhz = 1;
@@ -533,7 +533,7 @@ namespace zclock_impl
 
 
 
-    template<clock_type _Ty>
+    template<clock_type _C>
     inline double get_frequency()
     {
         return 1.0;
@@ -636,76 +636,82 @@ namespace zclock_impl
         return chrono_frequency;
     }
 
-    template<clock_type _Ty>
+    template<clock_type _C>
     inline double get_inverse_frequency()
     {
-        const static double inverse_frequency_per_ns = 1.0 / (get_frequency<_Ty>() <= 0.0 ? 1.0 : get_frequency<_Ty>());
+        const static double inverse_frequency_per_ns = 1.0 / (get_frequency<_C>() <= 0.0 ? 1.0 : get_frequency<_C>());
         return inverse_frequency_per_ns;
     }
+
+
+
+
+    template<clock_type _C = T_CLOCK_VOLATILE_RDTSC>
+    class zclock_base
+    {
+    public:
+        static constexpr clock_type C = _C;
+
+    private:
+        long long begin_;
+        long long ticks_;
+    public:
+        long long get_begin() const { return begin_; }
+        long long get_ticks() const { return ticks_; }
+        long long get_end() const { return begin_ + ticks_; }
+
+        void set_begin(long long val) { begin_ = val; }
+        void set_ticks(long long ticks) { ticks_ = ticks; }
+    public:
+        zclock_base()
+        {
+            begin_ = 0;
+            ticks_ = 0;
+        }
+        zclock_base(long long start_clock)
+        {
+            begin_ = start_clock;
+            ticks_ = 0;
+        }
+        zclock_base(const zclock_base& c)
+        {
+            begin_ = c.begin_;
+            ticks_ = c.ticks_;
+        }
+        void start()
+        {
+            begin_ = get_tick<_C>();
+            ticks_ = 0;
+        }
+
+        zclock_base& save()
+        {
+            ticks_ = get_tick<_C>() - begin_;
+            return *this;
+        }
+
+        zclock_base& stop_and_save() { return save(); }
+
+
+        long long cost()const { return ticks_; }
+        long long cost_ns()const { return (long long)(ticks_ * get_inverse_frequency<_C>()); }
+        long long cost_ms()const { return cost_ns() / 1000 / 1000; }
+        double cost_s() const { return (double)cost_ns() / (1000.0 * 1000.0 * 1000.0); }
+
+        //utils  
+    public:
+        static long long now() { return get_tick<_C>(); }
+        static long long sys_now_ns() { return get_tick<T_CLOCK_SYS>(); }
+        static long long sys_now_us() { return get_tick<T_CLOCK_SYS>() / 1000; }
+        static long long sys_now_ms() { return std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count(); }
+        static double sys_now_s() { return std::chrono::duration<double>(std::chrono::system_clock().now().time_since_epoch()).count(); }
+        static vmdata get_self_mem() { return get_self_mem(); }
+        static vmdata get_sys_mem() { return get_sys_mem(); }
+    };
 }
 
-
-
-
-template<zclock_impl::clock_type _Ty = zclock_impl::T_CLOCK_VOLATILE_RDTSC>
-class zclock_base
-{
-private:
-    s64 start_tick_;
-    s64 ticks_;
-public:
-    s64 get_started_clock() const { return start_tick_; }
-    s64 get_ticks() const { return ticks_; }
-    s64 get_stopped_clock() const { return start_tick_ + ticks_; }
-
-    void set_start_clock(s64 val) { start_tick_ = val; }
-    void set_ticks(s64 ticks) { ticks_ = ticks; }
-public:
-    zclock_base()
-    {
-        start_tick_ = 0;
-        ticks_ = 0;
-    }
-    zclock_base(s64 start_clock)
-    {
-        start_tick_ = start_clock;
-        ticks_ = 0;
-    }
-    zclock_base(const zclock_base& c)
-    {
-        start_tick_ = c.start_tick_;
-        ticks_ = c.ticks_;
-    }
-    void start()
-    {
-        start_tick_ = zclock_impl::get_tick<_Ty>();
-        ticks_ = 0;
-    }
-
-    zclock_base& save()
-    {
-        ticks_ = zclock_impl::get_tick<_Ty>() - start_tick_;
-        return *this;
-    }
-
-    zclock_base& stop_and_save() { return save(); }
-
-
-    s64 duration_ticks()const { return ticks_; }
-    s64 duration_ns()const { return (s64)(ticks_ * zclock_impl::get_inverse_frequency<_Ty>()); }
-    s64 duration_ms()const { return duration_ns() / 1000 / 1000; }
-    double duration_second() const { return (double)duration_ns() / (1000.0 * 1000.0 * 1000.0); }
-
-    //utils
-public:
-    static long long now() { return zclock_impl::get_tick<_Ty>(); }
-    static s64 now_ms() { return std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count(); }
-    static double now_s() { return std::chrono::duration<double>(std::chrono::system_clock().now().time_since_epoch()).count(); }
-    static zclock_impl::vmdata get_vmdata() { return zclock_impl::get_vmdata(); }
-};
-
-
-using zclock = zclock_base<>;
+template<zclock_impl::clock_type _C = zclock_impl::T_CLOCK_VOLATILE_RDTSC>
+using zclock = zclock_impl::zclock_base<_C>;
 
 
 
