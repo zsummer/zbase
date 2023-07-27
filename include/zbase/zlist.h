@@ -162,8 +162,8 @@ public:
 
     using reverse_iterator = std::reverse_iterator<iterator>;
     using const_reverse_iterator = std::reverse_iterator<const_iterator>;
-    using space_type = typename std::aligned_storage<sizeof(_Ty), alignof(_Ty)>::type;
-
+    using inner_space_type = typename std::aligned_storage<sizeof(_Ty), alignof(_Ty)>::type;
+    using space_type = typename std::conditional<std::is_trivial<_Ty>::value, _Ty, inner_space_type>::type;
 public:
     struct node_type
     {

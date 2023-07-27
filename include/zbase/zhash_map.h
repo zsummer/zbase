@@ -215,7 +215,10 @@ public:
     using value_type = Value;
     using reference = value_type&;
     using const_reference = const value_type&;
-    using space_type = typename std::aligned_storage<sizeof(value_type), alignof(value_type)>::type;
+
+    using inner_space_type = typename std::aligned_storage<sizeof(value_type), alignof(value_type)>::type;
+    using space_type = typename std::conditional<std::is_trivial<value_type>::value, value_type, inner_space_type>::type;
+
     struct node_type
     {
         size_type next;

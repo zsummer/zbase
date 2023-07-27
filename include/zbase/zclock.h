@@ -188,7 +188,8 @@ namespace zclock_impl
         _mm_lfence();
         return (long long)__rdtsc();
 #else
-        unsigned int lo, hi;
+        unsigned int lo = 0;
+        unsigned int hi = 0;
         __asm__ __volatile__("lfence;rdtsc" : "=a" (lo), "=d" (hi) ::);
         unsigned long long val = ((unsigned long long)hi << 32) | lo;
         return (long long)val;
@@ -199,13 +200,14 @@ namespace zclock_impl
     inline long long get_tick<T_CLOCK_BTB_FENCE_RDTSC>()
     {
 #ifdef WIN32
-        long long ret;
+        long long ret = 0;
         _mm_lfence();
         ret = (long long)__rdtsc();
         _mm_lfence();
         return ret;
 #else
-        unsigned int lo, hi;
+        unsigned int lo = 0;
+        unsigned int hi = 0;
         __asm__ __volatile__("lfence;rdtsc;lfence" : "=a" (lo), "=d" (hi) ::);
         unsigned long long val = ((unsigned long long)hi << 32) | lo;
         return (long long)val;
@@ -219,7 +221,8 @@ namespace zclock_impl
 #ifdef WIN32
         return (long long)__rdtsc();
 #else
-        unsigned long hi, lo;
+        unsigned int lo = 0;
+        unsigned int hi = 0;
         __asm__ __volatile__("rdtsc" : "=a"(lo), "=d"(hi) ::);
         unsigned long long val = (((unsigned long long)hi) << 32 | ((unsigned long long)lo));
         return (long long)val;
@@ -232,7 +235,8 @@ namespace zclock_impl
 #ifdef WIN32
         return (long long)__rdtsc();
 #else
-        unsigned long hi, lo;
+        unsigned int lo = 0;
+        unsigned int hi = 0;
         __asm__("rdtsc" : "=a"(lo), "=d"(hi));
         unsigned long long val = (((unsigned long long)hi) << 32 | ((unsigned long long)lo));
         return (long long)val;
@@ -246,7 +250,8 @@ namespace zclock_impl
         _mm_mfence();
         return (long long)__rdtsc();
 #else
-        unsigned long hi, lo;
+        unsigned int lo = 0;
+        unsigned int hi = 0;
         __asm__("lock addq $0, 0(%%rsp); rdtsc" : "=a"(lo), "=d"(hi)::"memory");
         unsigned long long val = (((unsigned long long)hi) << 32 | ((unsigned long long)lo));
         return (long long)val;
@@ -264,7 +269,8 @@ namespace zclock_impl
         _mm_mfence();
         return ret;
 #else
-        unsigned long lo, hi;
+        unsigned int lo = 0;
+        unsigned int hi = 0;
         __asm__ __volatile__("mfence;rdtsc;mfence" : "=a" (lo), "=d" (hi) ::);
         unsigned long long val = ((unsigned long long)hi << 32) | lo;
         return (long long)val;
@@ -278,7 +284,8 @@ namespace zclock_impl
         _mm_mfence();
         return (long long)__rdtsc();
 #else
-        unsigned long lo, hi;
+        unsigned int lo = 0;
+        unsigned int hi = 0;
         __asm__ __volatile__("mfence;rdtsc" : "=a" (lo), "=d" (hi) :: "memory");
         unsigned long long val = ((unsigned long long)hi << 32) | lo;
         return (long long)val;
@@ -289,10 +296,11 @@ namespace zclock_impl
     inline long long get_tick<T_CLOCK_RDTSCP>()
     {
 #ifdef WIN32
-        unsigned int ui;
+        unsigned int ui = 0;
         return (long long)__rdtscp(&ui);
 #else
-        unsigned long hi, lo;
+        unsigned int lo = 0;
+        unsigned int hi = 0;
         __asm__ __volatile__("rdtscp" : "=a"(lo), "=d"(hi)::"memory");
         unsigned long long val = (((unsigned long long)hi) << 32 | ((unsigned long long)lo));
         return (long long)val;
