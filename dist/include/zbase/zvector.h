@@ -65,6 +65,7 @@ using f64 = double;
 
 
 
+
 template<class pointer, class reference, class value_type>
 class zvector_iterator : public std::iterator<std::random_access_iterator_tag, value_type>
 {
@@ -118,7 +119,11 @@ private:
 // sso optimize vector; 
 //used small data optimization; 
 //merge high-frequency alloc small memory   
-template<class _Ty, u32 _Size, u32 _FixedSize, class _Alloc = std::allocator<typename std::aligned_storage<sizeof(_Ty), alignof(_Ty)>::type>>
+
+template<class _Ty>
+using zvector_aligned_space_helper = typename std::conditional<std::is_trivial<_Ty>::value, _Ty, typename std::aligned_storage<sizeof(_Ty), alignof(_Ty)>::type>::type;
+
+template<class _Ty, u32 _Size, u32 _FixedSize, class _Alloc = std::allocator<zvector_aligned_space_helper<_Ty>>>
 class zvector
 {
 public:
@@ -141,9 +146,7 @@ public:
     using reverse_iterator = std::reverse_iterator<iterator>;
     using const_reverse_iterator = std::reverse_iterator<const_iterator>;
 
-
-    using inner_space_type = typename std::aligned_storage<sizeof(_Ty), alignof(_Ty)>::type;
-    using space_type = typename std::conditional<std::is_trivial<_Ty>::value, _Ty, inner_space_type>::type;
+    using space_type = zvector_aligned_space_helper<_Ty>;
     using space_type_ptr = space_type*;
 private:
     pointer ZBASE_ALIAS ptr(size_type i) const noexcept { return reinterpret_cast<pointer>(const_cast<space_type*>(&real_ptr_[i])); }
@@ -160,7 +163,7 @@ public:
         clear(); 
         if (real_ptr_ != &data_[0])
         {
-            alloc_.deallocate((inner_space_type*)(real_ptr_), _Size);
+            alloc_.deallocate((space_type*)(real_ptr_), _Size);
             real_ptr_ = &data_[0];
         }
     }
@@ -600,7 +603,7 @@ public:
             clear();
             if (real_ptr_ != data_)
             {
-                alloc_.deallocate((inner_space_type*)(real_ptr_), _Size);
+                alloc_.deallocate((space_type*)(real_ptr_), _Size);
                 real_ptr_ = &data_[0];
             }
         }
@@ -620,6 +623,9 @@ public:
         return *this;
     }
 
+private://gdb view 
+    //using real_type = _Ty[_Size];
+    //__attribute__((noinline))  const real_type* real_ptr()const { return (real_type*)real_ptr_; }
 private:
     space_type data_[_FixedSize > 0? _FixedSize : 1];
     space_type_ptr real_ptr_;
