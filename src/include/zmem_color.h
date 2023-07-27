@@ -63,7 +63,7 @@ template<class _Ty>
 using shm_list = std::list<_Ty, zallocator<_Ty, MEM_COLOR_LIST>>;
 
 template<class _Ty, size_t _Size, size_t _FixedSize>
-using shm_zlist_ext = zlist_ext<_Ty, _Size, _FixedSize, zallocator<typename std::aligned_storage<sizeof(_Ty), alignof(_Ty)>::type, MEM_COLOR_SEG_LIST>>;
+using shm_zlist_ext = zlist_ext<_Ty, _Size, _FixedSize, zallocator<zlist_aligned_space_helper<_Ty>, MEM_COLOR_SEG_LIST>>;
 
 template<class _Ty>
 using shm_deque = std::deque<_Ty, zallocator<_Ty, MEM_COLOR_QUEUE>>;

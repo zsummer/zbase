@@ -1,6 +1,6 @@
 version:
-last_sha1(./src)=ab87a2070b4394ec8d0bb85a94590ebc81430c9f
-last_date(./src)=2023-07-24 15:34:26 +0800
+last_sha1(./src)=374a9124fb1044beb98189489722130e127d99cb
+last_date(./src)=2023-07-24 19:51:04 +0800
 
 git log -1 --stat ./src:
-commit ab87a2070b4394ec8d0bb85a94590ebc81430c9f Author: zsummer <yawei.zhang@foxmail.com> Date: Mon Jul 24 15:34:08 2023 +0800 clean naming src/zprof_record.h | 49 ++++++++++++++++++++++++++----------------------- src/zprof_report.h | 43 +++++++++++++++---------------------------- 2 files changed, 41 insertions(+), 51 deletions(-)
+commit 374a9124fb1044beb98189489722130e127d99cb Author: zsummer <yawei.zhang@foxmail.com> Date: Mon Jul 24 19:51:04 2023 +0800 fix typo src/zprof_record.h | 20 ++++++++++---------- 1 file changed, 10 insertions(+), 10 deletions(-)

@@ -152,7 +152,12 @@ bool operator != (const zlist_ext_iterator<list_type>& n1, const zlist_ext_itera
 //_Size == _FixedSize 大小相等时为全静态, 此时与zlist的区别在于, zlist的node和value绑在一起, value小时 zlist因不需要取指针性能更好,  value大时 zlist_ext因分离数据性能会更好一些.  
 //_FixedSize == 0 时为全动态   
 //这里使用了指针, 用在共享内存时候需要保证指针地址固定, 以及修改动态内存分配接口,.   
-template<class _Ty, size_t _Size, size_t _FixedSize, class _Alloc = std::allocator<typename std::aligned_storage<sizeof(_Ty), alignof(_Ty)>::type>>
+
+template<class _Ty>
+using zlist_aligned_space_helper = typename std::conditional<std::is_trivial<_Ty>::value, _Ty, typename std::aligned_storage<sizeof(_Ty), alignof(_Ty)>::type>::type;
+
+
+template<class _Ty, size_t _Size, size_t _FixedSize, class _Alloc = std::allocator<zlist_aligned_space_helper<_Ty>> >
 class zlist_ext
 {
 public:
@@ -179,8 +184,8 @@ public:
 
     using reverse_iterator = std::reverse_iterator<iterator>;
     using const_reverse_iterator = std::reverse_iterator<const_iterator>;
-    using space_type = typename std::aligned_storage<sizeof(_Ty), alignof(_Ty)>::type;
 
+    using space_type = zlist_aligned_space_helper<_Ty>;
 public:
     struct node_type
     {
