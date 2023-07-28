@@ -11,8 +11,6 @@
 #define _ZMEM_COLOR_H_
 
 #include <stdint.h>
-#include "zallocator.h"
-#include "zlist_ext.h"
 #include <map>
 #include <set>
 #include <vector>
@@ -24,17 +22,23 @@
 #include <queue>
 #include <cstddef>
 
+#include "zallocator.h"
+#include "zlist_ext.h"
+#include "zvector.h"
+
+
 
 enum zmem_color_enum
 {
     MEM_COLOR_NULL = 0,
     MEM_COLOR_STRING = 1,
     MEM_COLOR_VECTOR = 2,
-    MEM_COLOR_MAP = 3,
-    MEM_COLOR_SET = 4,
-    MEM_COLOR_LIST = 5,
-    MEM_COLOR_SEG_LIST = 6,
-    MEM_COLOR_QUEUE = 7,
+    MEM_COLOR_ZVECTOR = 3,
+    MEM_COLOR_MAP = 4,
+    MEM_COLOR_SET = 5,
+    MEM_COLOR_LIST = 6,
+    MEM_COLOR_SEG_LIST = 7,
+    MEM_COLOR_QUEUE = 8,
     MEM_COLOR_MAX,
 };
 
@@ -44,6 +48,9 @@ using shm_string = std::basic_string<char, std::char_traits<char>, zallocator<ch
 
 template<class _Ty>
 using shm_vector = std::vector<_Ty, zallocator<_Ty, MEM_COLOR_VECTOR>>;
+
+template<class _Ty, size_t _Size, size_t _FixedSize>
+using shm_zvector = zvector<_Ty, _Size, _FixedSize, zallocator<zvector_aligned_space_helper<_Ty>, MEM_COLOR_ZVECTOR>>;
 
 template<class K, class T, class P = std::less<K> >
 using shm_map = std::map<K, T, P, zallocator<std::pair<const K, T>, MEM_COLOR_MAP> >;
