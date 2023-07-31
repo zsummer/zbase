@@ -394,9 +394,14 @@ namespace zfile_mapping_impl
                 return 1;
             }
 #if !defined(__APPLE__) && !defined(WIN32) 
+            //fsync(file_fd_);
+            s32 ret = posix_fadvise(file_fd_, 0, 0, POSIX_FADV_DONTNEED);
+            if (ret != 0)
+            {
+                return ret;
+            }
             fsync(file_fd_);
-            posix_fadvise(file_fd_, 0, 0, POSIX_FADV_DONTNEED);
-            fsync(file_fd_);
+            //fsync_range(file_fd_, FFILESYNC, 0, file_size_); //not support 
 #endif
             return 0;
         }
