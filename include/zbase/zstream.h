@@ -471,6 +471,16 @@ public:
         return 0;
     }
 
+    s32 reset()
+    {
+        offset_ = 0;
+        if (buf_ != nullptr)
+        {
+            buf_[0] = '\0';
+        }
+        return 0;
+    }
+
     //__attribute__((format(printf, 3, 4))) 
     template<typename ... Args>
     inline zstream& fmt(const char* fmt_string, Args&& ... args)

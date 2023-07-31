@@ -1,6 +1,6 @@
 version:
-last_sha1(./src)=43c09f43bc7eef32c50162cddfa301fe57f0c291
-last_date(./src)=2023-07-28 13:45:42 +0800
+last_sha1(./src)=da6ce12b5679e57e9f575ae4980c2e9ad80ab7d0
+last_date(./src)=2023-07-31 14:56:01 +0800
 
 git log -1 --stat ./src:
-commit 43c09f43bc7eef32c50162cddfa301fe57f0c291 Author: zsummer <yawei.zhang@foxmail.com> Date: Fri Jul 28 13:45:31 2023 +0800 MEMORY COLOR src/include/zmem_color.h | 48 ++++++++++++++++++++++++------------------------ 1 file changed, 24 insertions(+), 24 deletions(-)
+commit da6ce12b5679e57e9f575ae4980c2e9ad80ab7d0 Author: zsummer <yawei.zhang@foxmail.com> Date: Mon Jul 31 14:56:01 2023 +0800 add more detail state src/include/zfile_mapping.h | 7 ++++--- src/include/zstream.h | 10 ++++++++++ 2 files changed, 14 insertions(+), 3 deletions(-)
