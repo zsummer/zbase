@@ -149,7 +149,8 @@ namespace zprof
         _mm_lfence();
         return (long long)__rdtsc();
 #else
-        unsigned int lo, hi;
+        unsigned int lo = 0;
+        unsigned int hi = 0;
         __asm__ __volatile__("lfence;rdtsc" : "=a" (lo), "=d" (hi) ::);
         unsigned long long val = ((unsigned long long)hi << 32) | lo;
         return (long long)val;
@@ -160,13 +161,14 @@ namespace zprof
     inline long long get_tick<T_CLOCK_BTB_FENCE_RDTSC>()
     {
 #ifdef WIN32
-        long long ret;
+        long long ret = 0;
         _mm_lfence();
         ret = (long long)__rdtsc();
         _mm_lfence();
         return ret;
 #else
-        unsigned int lo, hi;
+        unsigned int lo = 0;
+        unsigned int hi = 0;
         __asm__ __volatile__("lfence;rdtsc;lfence" : "=a" (lo), "=d" (hi) ::);
         unsigned long long val = ((unsigned long long)hi << 32) | lo;
         return (long long)val;
@@ -180,7 +182,8 @@ namespace zprof
 #ifdef WIN32
         return (long long)__rdtsc();
 #else
-        unsigned long hi, lo;
+        unsigned int lo = 0;
+        unsigned int hi = 0;
         __asm__ __volatile__("rdtsc" : "=a"(lo), "=d"(hi) ::);
         unsigned long long val = (((unsigned long long)hi) << 32 | ((unsigned long long)lo));
         return (long long)val;
@@ -193,7 +196,8 @@ namespace zprof
 #ifdef WIN32
         return (long long)__rdtsc();
 #else
-        unsigned long hi, lo;
+        unsigned int lo = 0;
+        unsigned int hi = 0;
         __asm__("rdtsc" : "=a"(lo), "=d"(hi));
         unsigned long long val = (((unsigned long long)hi) << 32 | ((unsigned long long)lo));
         return (long long)val;
@@ -207,7 +211,8 @@ namespace zprof
         _mm_mfence();
         return (long long)__rdtsc();
 #else
-        unsigned long hi, lo;
+        unsigned int lo = 0;
+        unsigned int hi = 0;
         __asm__("lock addq $0, 0(%%rsp); rdtsc" : "=a"(lo), "=d"(hi)::"memory");
         unsigned long long val = (((unsigned long long)hi) << 32 | ((unsigned long long)lo));
         return (long long)val;
@@ -225,7 +230,8 @@ namespace zprof
         _mm_mfence();
         return ret;
 #else
-        unsigned long lo, hi;
+        unsigned int lo = 0;
+        unsigned int hi = 0;
         __asm__ __volatile__("mfence;rdtsc;mfence" : "=a" (lo), "=d" (hi) ::);
         unsigned long long val = ((unsigned long long)hi << 32) | lo;
         return (long long)val;
@@ -239,7 +245,8 @@ namespace zprof
         _mm_mfence();
         return (long long)__rdtsc();
 #else
-        unsigned long lo, hi;
+        unsigned int lo = 0;
+        unsigned int hi = 0;
         __asm__ __volatile__("mfence;rdtsc" : "=a" (lo), "=d" (hi) :: "memory");
         unsigned long long val = ((unsigned long long)hi << 32) | lo;
         return (long long)val;
@@ -250,10 +257,11 @@ namespace zprof
     inline long long get_tick<T_CLOCK_RDTSCP>()
     {
 #ifdef WIN32
-        unsigned int ui;
+        unsigned int ui = 0;
         return (long long)__rdtscp(&ui);
 #else
-        unsigned long hi, lo;
+        unsigned int lo = 0;
+        unsigned int hi = 0;
         __asm__ __volatile__("rdtscp" : "=a"(lo), "=d"(hi)::"memory");
         unsigned long long val = (((unsigned long long)hi) << 32 | ((unsigned long long)lo));
         return (long long)val;
@@ -2563,25 +2571,35 @@ private:
 //RAII小函数  
 //一次性记录并直接输出到日志 不需要提前注册任何条目  
 //整体性能影响要稍微高于<注册条目>  但消耗部分并不影响记录本身. 使用在常见的一次性流程或者demo场景中.    
-template <long long COUNT = 1LL, zprof::RecordLevel PROF_LEVEL = zprof::RECORD_LEVEL_NORMAL,
+template <zprof::RecordLevel PROF_LEVEL = zprof::RECORD_LEVEL_NORMAL,
     zprof::clock_type C = zprof::CLOCK_DEFAULT>
 class ProfAutoAnonRecord
 {
 public:
-    ProfAutoAnonRecord(const char* desc)
+    ProfAutoAnonRecord(const char* desc, long long cnt = 1)
     {
         strncpy(desc_, desc, PROF_NAME_MAX_SIZE);
-        desc_[PROF_NAME_MAX_SIZE - 1] = '\0';
+        desc_[PROF_NAME_MAX_SIZE - 1] = '\0'; 
+        cnt_ = cnt;
         clock_.start();
     }
     ~ProfAutoAnonRecord()
     {
-        ProfRecordWrap<ProfCountIsGreatOne<COUNT>::is_bat, PROF_LEVEL>(ProfInstType::INNER_NULL, COUNT, clock_.save().cost());
+        //ProfCountIsGreatOne
+        if (cnt_ == 1)
+        {
+            ProfRecordWrap<false, PROF_LEVEL>(ProfInstType::INNER_NULL, cnt_, clock_.save().cost());
+        }
+        else
+        {
+            ProfRecordWrap<true, PROF_LEVEL>(ProfInstType::INNER_NULL, cnt_, clock_.save().cost());
+        }
         ProfInst.output_temp_record(desc_);
     }
 
     zprof::Clock<C>& clock() { return clock_; }
 private:
+    long long cnt_;
     zprof::Clock<C> clock_;
     char desc_[PROF_NAME_MAX_SIZE];
 };
@@ -2715,9 +2733,9 @@ private:
 //-------自动计时器(raii包装, 定义时记录开始时间, 销毁时直接输出性能信息到日志)-----------
 #define PROF_DEFINE_AUTO_ANON_RECORD(var, desc) ProfAutoAnonRecord<> var(desc)
 //-------自动计时器(raii包装, 定义时记录开始时间, 销毁时直接输出性能信息到日志)-----------
-#define PROF_DEFINE_AUTO_MULTI_ANON_RECORD(var, count, desc) ProfAutoAnonRecord<count> var(desc)
+#define PROF_DEFINE_AUTO_MULTI_ANON_RECORD(var, count, desc) ProfAutoAnonRecord<> var(desc, count)
 //-------自动计时器(raii包装, 定义时记录开始时间, 销毁时直接输出性能信息到日志)-----------
-#define PROF_DEFINE_AUTO_ADVANCE_ANON_RECORD(var, count, level, ct, desc) ProfAutoAnonRecord<count, level, ct> var(desc)
+#define PROF_DEFINE_AUTO_ADVANCE_ANON_RECORD(var, level, ct, desc) ProfAutoAnonRecord<count, level, ct> var(desc, count)
 
 
 

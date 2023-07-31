@@ -437,7 +437,7 @@ class zfile_mapping
 #endif // WIN32
 
     file_mapping mapping_;
-
+    std::string path_;
 public:
     zfile_mapping()
     {
@@ -451,6 +451,7 @@ public:
 
     s32 mapping_res(const char* file_path, bool readonly = true, bool remapping = false)
     {
+        path_ = file_path;
         return mapping_.mapping_res(file_path, readonly, remapping);
     }
 
@@ -464,9 +465,9 @@ public:
         return mapping_.unmap_res();
     }
 
-    s32 remove_file(const char* file_path)
+    s32 remove_file()
     {
-        return mapping_.remove_file(file_path);
+        return mapping_.remove_file(path_.c_str());
     }
 
     s32 trim_cache()
