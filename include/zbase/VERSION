@@ -1,6 +1,6 @@
 version:
-last_sha1(./src)=4d25c9f1a816ced2a8d509d013f8c61df2a441ce
-last_date(./src)=2023-08-01 14:26:18 +0800
+last_sha1(./src)=87a78ee7df206c4bdfac0bb4ebf229db8a1f9ef4
+last_date(./src)=2023-08-02 00:12:05 +0800
 
 git log -1 --stat ./src:
-commit 4d25c9f1a816ced2a8d509d013f8c61df2a441ce Author: zsummer <yawei.zhang@foxmail.com> Date: Tue Aug 1 14:26:02 2023 +0800 zmalloc state desc update src/include/zmalloc.h | 14 +++++++------- 1 file changed, 7 insertions(+), 7 deletions(-)
+commit 87a78ee7df206c4bdfac0bb4ebf229db8a1f9ef4 Author: zsummer <yawei.zhang@foxmail.com> Date: Wed Aug 2 00:12:05 2023 +0800 vector3 src/include/zvector3.h | 179 +++++++++++++++++++++++++++++++++++++++++++++++++ 1 file changed, 179 insertions(+)
