@@ -1,6 +1,6 @@
 version:
-last_sha1(./src)=6fdf7d2133258f835b47e1db87780304fd3a3b26
-last_date(./src)=2023-08-01 11:29:16 +0800
+last_sha1(./src)=4d25c9f1a816ced2a8d509d013f8c61df2a441ce
+last_date(./src)=2023-08-01 14:26:18 +0800
 
 git log -1 --stat ./src:
-commit 6fdf7d2133258f835b47e1db87780304fd3a3b26 Author: zsummer <yawei.zhang@foxmail.com> Date: Tue Aug 1 11:29:00 2023 +0800 ztrace back src/include/ztrace.h | 115 ++++++++++++++++++++++++++++++++++++++++++++++++++- 1 file changed, 113 insertions(+), 2 deletions(-)
+commit 4d25c9f1a816ced2a8d509d013f8c61df2a441ce Author: zsummer <yawei.zhang@foxmail.com> Date: Tue Aug 1 14:26:02 2023 +0800 zmalloc state desc update src/include/zmalloc.h | 14 +++++++------- 1 file changed, 7 insertions(+), 7 deletions(-)
