@@ -1,24 +1,45 @@
 
 
 /*
-* Copyright (C) 2019 YaweiZhang <yawei.zhang@foxmail.com>.
+* Copyright (C) 2015 YaweiZhang <yawei.zhang@foxmail.com>.
 * All rights reserved
 * This file is part of the zbase, used MIT License.
 */
 
+//old repo : https://github.com/zsummer/traceback  
 
 
 #pragma once 
 #ifndef ZTRACE_H
 #define ZTRACE_H
 
+#ifdef WIN32
+#ifndef _CRT_SECURE_NO_WARNINGS
+#define _CRT_SECURE_NO_WARNINGS
+#endif
+#include <iostream>
+#include <windows.h>
+#include <DbgHelp.h>
+#include <string>
+#pragma comment(lib, "Dbghelp")
+#else
+#include <execinfo.h>
+#include <unistd.h>
+#endif
 
+#include <stdio.h>
+#include <signal.h>
+#include <stdlib.h>
+#include <iostream>
+#include <sstream>
+#include <algorithm>
 #include <stdint.h>
 #include <type_traits>
 #include <iterator>
 #include <cstddef>
 #include <memory>
 #include <algorithm>
+#include <string>
 
 
 //default use format compatible short type .  
@@ -90,7 +111,7 @@ using f64 = double;
 // * 也可以存储业务来源ID, 快速排查调用的关键来源  
 
 
-template<class _Ty, s32 _Depth>
+template<class _Ty =u32, s32 _Depth = 80>
 class ztrace_stacker
 {
 public:
@@ -167,6 +188,9 @@ public:
     s32 max_top()const { return max_depth -1; }
     const _Ty& at(s32 id)const { return stacker_[id]; }
     
+    //utils
+    static std::string traceback();
+public:
 private:
     _Ty stacker_[_Depth];
     s32 size_;
@@ -204,6 +228,93 @@ using zcallstacker = ztrace_stacker<const char*, _Depth>;
 
 
 
+
+
+
+template<class _Ty, s32 _Depth>
+inline std::string ztrace_stacker<_Ty, _Depth>::traceback()
+{
+    std::stringstream ss;
+#ifdef WIN32
+
+    SymSetOptions(SYMOPT_UNDNAME | SYMOPT_DEFERRED_LOADS);
+    if (!SymInitialize(GetCurrentProcess(), NULL, TRUE))
+    {
+        ss << "SymInitialize returned error " << GetLastError();
+        return ss.str();
+    }
+
+    //     typedef USHORT(WINAPI *CaptureStackBackTraceType)(__in ULONG, __in ULONG, __out PVOID*, __out_opt PULONG);
+    //     CaptureStackBackTraceType capture = (CaptureStackBackTraceType)(GetProcAddress(LoadLibraryA("kernel32.dll"), "RtlCaptureStackBackTrace"));
+    //     if (capture == NULL) return;
+    const int stackMax = 128;
+    void* trace[stackMax];
+    //    int count = (capture)(0, stackMax, trace, NULL);
+    int count = (CaptureStackBackTrace)(0, stackMax, trace, NULL);
+    for (int i = 1; i < count; i++)
+    {
+        ULONG64 buffer[(sizeof(SYMBOL_INFO) + MAX_SYM_NAME * sizeof(TCHAR) + sizeof(ULONG64) - 1) / sizeof(ULONG64)];
+        PSYMBOL_INFO pSymbol = (PSYMBOL_INFO)buffer;
+        pSymbol->SizeOfStruct = sizeof(SYMBOL_INFO);
+        pSymbol->MaxNameLen = MAX_SYM_NAME;
+        DWORD64 dwDisplacement = 0;
+        if (SymFromAddr(GetCurrentProcess(), (DWORD64)trace[i], &dwDisplacement, pSymbol))
+        {
+            ss << "bt[" << i - 1 << "]       --[ " << pSymbol->Name << " ]--              from     ";
+        }
+        else
+        {
+            ss << "bt[" << i - 1 << "]   " << "error[" << GetLastError() << "]              from     ";
+        }
+
+        IMAGEHLP_LINE64 lineInfo = { sizeof(IMAGEHLP_LINE64) };
+        DWORD dwLineDisplacement;
+        if (SymGetLineFromAddr64(GetCurrentProcess(), (DWORD64)trace[i], &dwLineDisplacement, &lineInfo))
+        {
+            std::string pathfile = lineInfo.FileName;
+            if (pathfile.empty())
+            {
+                ss << "\r\n";
+                continue;
+            }
+            std::for_each(pathfile.begin(), pathfile.end(), [](char& ch) { if (ch == '/') ch = '\\'; });
+            auto pos = pathfile.find_last_of('\\');
+            if (pos != std::string::npos) pathfile[pos] = '/';
+            pos = pathfile.find_last_of('\\');
+            if (pos != std::string::npos) pathfile[pos] = '/'; else pos = -1;
+            ss << pathfile.substr(pos + 1) << ":" << lineInfo.LineNumber;
+        }
+        else
+        {
+            ss << "------:0";
+        }
+        ss << "\r\n";
+        if (strcmp(pSymbol->Name, "main") == 0) break;
+    }
+#else
+    void* stack[200];
+    size_t size = backtrace(stack, 200);
+    char** stackSymbol = backtrace_symbols(stack, size);
+    ss << "backtrace: ";
+    for (size_t i = 1; i < size; i++)
+    {
+        ss << stack[i] << "  ";
+    }
+    ss << "\r\n";
+    for (size_t i = 1; i < size && stackSymbol != NULL; i++)
+    {
+        ss << "bt[" << i - 1 << "] " << stackSymbol[i] << "\r\n";
+    }
+    free(stackSymbol);
+
+    /*
+    gdb info line * 0x40000000
+    addr2line -f -C -e ./test  0x400fce  0x401027  0x7f2bfb401b45  0x400ee9
+    */
+
+#endif
+    return std::move(ss.str());
+}
 
 
 

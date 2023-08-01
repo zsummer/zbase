@@ -58,6 +58,7 @@ void func4()
 void func5()
 {
     CALL_STACKER_GUARD();
+    
 }
 
 class StackOverTest
@@ -124,6 +125,7 @@ s32 ztrace_test()
         ls << inst().at(i);
     }
 
+    LogInfo() << ztrace_stacker<>::traceback();
     return 0;
 }
 
