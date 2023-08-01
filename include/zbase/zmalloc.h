@@ -1160,7 +1160,7 @@ inline void zmalloc::debug_state_log(StreamLog logwrap)
 
     logwrap() << "* [analysis]: mem usage rate(related inner frag):" << req_total_bytes_ * 100.0 / (alloc_total_bytes_ ? alloc_total_bytes_ : 1) << "%";
 
-    logwrap() << "* [analysis]: used memory:" << (alloc_total_bytes_ - free_total_bytes_)/1024.0/1024.0 <<"m, hold sys memory:" << (alloc_block_bytes_ - free_block_bytes_)/1024.0/1024.0 <<"m.";
+    logwrap() << "* [analysis]: in use memory:" << (alloc_total_bytes_ - free_total_bytes_)/1024.0/1024.0 <<"m, hold sys memory:" << (alloc_block_bytes_ - free_block_bytes_)/1024.0/1024.0 <<"m.";
 
     block_type* block_head = used_block_list_;
         
@@ -1216,7 +1216,7 @@ inline void zmalloc::debug_color_log(StreamLog logwrap, u32 begin_color, u32 end
             color_count += alloc_counter_[color][index];
             color_free += free_counter_[color][index] * bin_size_[big_level][index];
             logwrap() << "    [color:" << user_color << "][bin:" << bin_id << "]\t[size:" << bin_size_[big_level][index] << "]\t[alloc:" << alloc_counter_[color][index] << "]\t[free:" << free_counter_[color][index]
-                << "]\t[usedc:" << alloc_counter_[color][index] - free_counter_[color][index] << "]\t[used:" << (alloc_counter_[color][index] - free_counter_[color][index]) * bin_size_[big_level][index] * 1.0 / (1024 * 1024) << "m].";
+                << "]\t[usec:" << alloc_counter_[color][index] - free_counter_[color][index] << "]\t[useb:" << (alloc_counter_[color][index] - free_counter_[color][index]) * bin_size_[big_level][index] * 1.0 / (1024 * 1024) << "m].";
         }
 
         if (alloc_counter_[base_level | CHUNK_IS_BIG][BIG_MAX_BIN_ID])
@@ -1225,8 +1225,8 @@ inline void zmalloc::debug_color_log(StreamLog logwrap, u32 begin_color, u32 end
             color_count += alloc_counter_[base_level | CHUNK_IS_BIG][BIG_MAX_BIN_ID];
             color_free += free_counter_[base_level | CHUNK_IS_BIG][BIG_LOG_BYTES_BIN_ID];
             logwrap() << "    [color:" << user_color << "][bin:" << BINMAP_SIZE + BIG_MAX_BIN_ID << "]\t[size: dynamic]\t[alloc:" << alloc_counter_[base_level | CHUNK_IS_BIG][BIG_MAX_BIN_ID] << "]\t[free:" << free_counter_[base_level | CHUNK_IS_BIG][BIG_MAX_BIN_ID]
-                << "]\t[usedc:" << alloc_counter_[base_level | CHUNK_IS_BIG][BIG_MAX_BIN_ID] - free_counter_[base_level | CHUNK_IS_BIG][BIG_MAX_BIN_ID]
-                << "]\t[used:" << (alloc_counter_[base_level | CHUNK_IS_BIG][BIG_LOG_BYTES_BIN_ID] - free_counter_[base_level | CHUNK_IS_BIG][BIG_LOG_BYTES_BIN_ID]) * 1.0 / (1024 * 1024) << "m].";
+                << "]\t[usec:" << alloc_counter_[base_level | CHUNK_IS_BIG][BIG_MAX_BIN_ID] - free_counter_[base_level | CHUNK_IS_BIG][BIG_MAX_BIN_ID]
+                << "]\t[useb:" << (alloc_counter_[base_level | CHUNK_IS_BIG][BIG_LOG_BYTES_BIN_ID] - free_counter_[base_level | CHUNK_IS_BIG][BIG_LOG_BYTES_BIN_ID]) * 1.0 / (1024 * 1024) << "m].";
         }
 
 
@@ -1234,9 +1234,9 @@ inline void zmalloc::debug_color_log(StreamLog logwrap, u32 begin_color, u32 end
         {
             double total_used = (alloc_total_bytes_ - free_total_bytes_) > 0 ? (alloc_total_bytes_ - free_total_bytes_) : 1.0;
             logwrap() << "    * color:" << user_color << " analysis] alloc:" << color_alloc * 1.0 / 1024 << "k, \tfree:" << color_free * 1.0 / 1024
-                << "k, \tcur used bin size sum:" << (color_alloc - color_free) * 1.0 / 1024 / 1024 << "m, \t used bin size sum of total:" << (color_alloc - color_free) * 100 / total_used 
-                << "%,  bin size (>alloc size) sum of total:" << color_alloc * 100.0 / (alloc_total_bytes_ ? alloc_total_bytes_:1) << "%.";
-            logwrap() << "    * color:" << user_color << " analysis] req avg:" << color_alloc * 1.0 / color_count / 1024 << "k, \t req count:" << color_count << ",  req of total:" << color_count * 100.0 / req_total_count_ << "%.";
+                << "k, \tin use:" << (color_alloc - color_free) * 1.0 / 1024 / 1024 << "m, \t in use of total:" << (color_alloc - color_free) * 100 / total_used 
+                << "%,  history alloc of total req bytes:" << color_alloc * 100.0 / (alloc_total_bytes_ ? alloc_total_bytes_:1) << "%.";
+            logwrap() << "    * color:" << user_color << " analysis] req avg:" << color_alloc * 1.0 / color_count / 1024 << "kbytes, \t req cnt:" << color_count << ",  req of total:" << color_count * 100.0 / req_total_count_ << "%.";
             logwrap() << "    ------    ";
         }
     }
