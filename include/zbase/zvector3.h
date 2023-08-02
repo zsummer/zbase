@@ -11,7 +11,7 @@
 
 #include <math.h>
 #include <cmath>
-
+#include <type_traits>
 
 //default use format compatible short type .  
 #if !defined(ZBASE_USE_AHEAD_TYPE) && !defined(ZBASE_USE_DEFAULT_TYPE)
@@ -84,15 +84,21 @@ public:
     zvector3 cross_2d(const zvector3& v) const { return det_2d(v); }
     _Flt square_length()const { return dot(*this); }
     _Flt square_length_2d()const { return dot_2d(*this); }
+    _Flt square_distance()const { return square_length(); }
+    _Flt square_distance_2d()const { return square_length_2d(); }
     _Flt length()const { return sqrtf(square_length()); }
     _Flt length_2d()const { return sqrtf(square_length_2d()); }
+    _Flt distance()const { return length(); }
+    _Flt distance_2d()const { return length_2d(); }
+
+
     bool is_zero(_Flt prcs = LOW_PRECISION) const { return fabs(x) < prcs && fabs(y) < prcs && fabs(z) < prcs; }
     bool is_valid() const{return !std::isnan(x) && !std::isnan(y) && !std::isnan(z) && !std::isinf(x) && !std::isinf(y) && !std::isinf(z);}
 
-    bool normalize()
+    template<class Flt = _Flt>
+    bool normalize(const typename std::enable_if<std::is_same<float, Flt>::value, Flt>::type = 0.0f)
     {
         _Flt len = length();
-        //if (len == (_Flt)0.0)
         if (fabs(len) < F32_PRECISION)
         {
             return false;
@@ -100,6 +106,24 @@ public:
         *this /= len;
         return true;
     }
+    template<class Flt = _Flt>
+    bool normalize(const typename std::enable_if<std::is_same<double, Flt>::value, Flt>::type = 0.0f)
+    {
+        _Flt len = length();
+        if (fabs(len) < F64_PRECISION)
+        {
+            return false;
+        }
+        *this /= len;
+        return true;
+    }
+
+    zvector3 const_normalize() const { zvector3 ret = *this; ret.normalize(); return ret; }
+
+    bool normalize_2d(){z = 0.0f;return normalize(); }
+    zvector3 const_normalize_2d() const { zvector3 ret = *this; ret.normalize_2d(); return ret; }
+
+
 
     bool from_angle(_Flt angle)
     {
@@ -129,14 +153,12 @@ public:
     }
     static zvector3<_Flt> new_from_uv(_Flt u, _Flt v)
     {
-        return zvector3<_Flt>(sin(PI * v) * cos(PI * 2 * u), sin(PI * v) * sin(PI * 2 * u), cos(PI * v));
+        return zvector3<_Flt>(sin(PI * v) * cos(PI * 2 * u), sin(PI * v) * sin(PI  * 2 * u), cos(PI * v));
     }
     static zvector3<_Flt> new_from_uv2(_Flt u, _Flt v)
     {
         return zvector3<_Flt>(cos(PI * v) * cos(PI * u), sin(PI * v) * cos(PI * u), sin(PI * v));
     }
-    inline bool operator == (const zvector3 &v) const { return abs(x -v.x) < F32_PRECISION && abs(y - v.y) < F32_PRECISION && abs(z - v.z) < F32_PRECISION; }
-    inline bool operator != (const zvector3 &v) const { return !(*this == v); }
 
     zvector3 operator + (const zvector3 & v) const { return { x + v.x, y + v.y, z + v.z }; }
     zvector3 & operator += (const zvector3 & v) { x += v.x, y += v.y, z += v.z; return *this; }
