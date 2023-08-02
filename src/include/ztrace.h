@@ -112,7 +112,7 @@ using f64 = double;
 
 
 template<class _Ty =u32, s32 _Depth = 80>
-class ztrace_stacker
+class ztrace
 {
 public:
     enum TRACE_ERRCODE
@@ -126,7 +126,7 @@ public:
     static constexpr s32 max_depth = _Depth;
 
 public:
-    ztrace_stacker()
+    ztrace()
     {
         static_assert(std::is_trivial<_Ty>::value, "");
         reset(false);
@@ -223,7 +223,7 @@ private:
 
 //don't store to shm 
 template<s32 _Depth>
-using zcallstacker = ztrace_stacker<const char*, _Depth>;
+using zcallstacker = ztrace<const char*, _Depth>;
 
 
 
@@ -232,7 +232,7 @@ using zcallstacker = ztrace_stacker<const char*, _Depth>;
 
 
 template<class _Ty, s32 _Depth>
-inline std::string ztrace_stacker<_Ty, _Depth>::traceback()
+inline std::string ztrace<_Ty, _Depth>::traceback()
 {
     std::stringstream ss;
 #ifdef WIN32

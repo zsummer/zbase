@@ -125,7 +125,7 @@ s32 ztrace_test()
         ls << inst().at(i);
     }
 
-    LogInfo() << ztrace_stacker<>::traceback();
+    LogInfo() << ztrace<>::traceback();
     return 0;
 }
 

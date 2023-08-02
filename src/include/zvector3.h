@@ -6,8 +6,8 @@
 
 
 #pragma once
-#ifndef  ZPOINT3_H
-#define ZPOINT3_H
+#ifndef  ZVECTOR3_H
+#define ZVECTOR3_H
 
 #include <math.h>
 #include <cmath>
@@ -89,7 +89,6 @@ public:
     bool is_zero(_Flt prcs = LOW_PRECISION) const { return fabs(x) < prcs && fabs(y) < prcs && fabs(z) < prcs; }
     bool is_valid() const{return !std::isnan(x) && !std::isnan(y) && !std::isnan(z) && !std::isinf(x) && !std::isinf(y) && !std::isinf(z);}
 
-    //单位化
     bool normalize()
     {
         _Flt len = length();
@@ -111,7 +110,6 @@ public:
         return true;
     }
 
-    //球面
     _Flt to_agnle() const
     {
         _Flt radian = dot({ 1.0f, 0.0f, 0.0f });
@@ -124,8 +122,8 @@ public:
 
     bool from_uv(_Flt u, _Flt v)
     {
-        x = sin(PI * v) * cos(PI2 * u);
-        y = sin(PI * v) * sin(PI2 * u);
+        x = sin(PI * v) * cos(PI * u);
+        y = sin(PI * v) * sin(PI * u);
         z = cos(PI * v);
         return true;
     }
