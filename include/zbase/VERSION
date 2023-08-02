@@ -1,6 +1,6 @@
 version:
-last_sha1(./src)=87a78ee7df206c4bdfac0bb4ebf229db8a1f9ef4
-last_date(./src)=2023-08-02 00:12:05 +0800
+last_sha1(./src)=c128dd928b3f355a0db13bc3b8f8f08b50e82969
+last_date(./src)=2023-08-02 19:50:24 +0800
 
 git log -1 --stat ./src:
-commit 87a78ee7df206c4bdfac0bb4ebf229db8a1f9ef4 Author: zsummer <yawei.zhang@foxmail.com> Date: Wed Aug 2 00:12:05 2023 +0800 vector3 src/include/zvector3.h | 179 +++++++++++++++++++++++++++++++++++++++++++++++++ 1 file changed, 179 insertions(+)
+commit c128dd928b3f355a0db13bc3b8f8f08b50e82969 Author: zsummer <yawei.zhang@foxmail.com> Date: Wed Aug 2 19:50:24 2023 +0800 rename src/include/ztrace.h | 8 ++++---- src/include/zvector3.h | 10 ++++------ 2 files changed, 8 insertions(+), 10 deletions(-)
