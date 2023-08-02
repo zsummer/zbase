@@ -32,6 +32,10 @@ s32 zvector3_bench_test()
 {
     zvector3<> pos;
     ASSERT_TEST(pos.is_zero());
+    ASSERT_TEST(!pos.normalize());
+    pos = { 1, 1, 1 };
+    ASSERT_TEST(pos.normalize());
+    ASSERT_TEST(abs(pos.length() - 1.0) < zvector3<>::F32_PRECISION);
     return 0;
 }
 
