@@ -189,7 +189,7 @@ public:
     const _Ty& at(s32 id)const { return stacker_[id]; }
     
     //utils
-    static std::string traceback();
+    static std::string traceback(bool short_trace = true);
 public:
 private:
     _Ty stacker_[_Depth];
@@ -232,7 +232,7 @@ using zcallstacker = ztrace<const char*, _Depth>;
 
 
 template<class _Ty, s32 _Depth>
-inline std::string ztrace<_Ty, _Depth>::traceback()
+inline std::string ztrace<_Ty, _Depth>::traceback(bool short_trace)
 {
     std::stringstream ss;
 #ifdef WIN32
@@ -300,10 +300,13 @@ inline std::string ztrace<_Ty, _Depth>::traceback()
     {
         ss << stack[i] << "  ";
     }
-    ss << "\r\n";
-    for (size_t i = 1; i < size && stackSymbol != NULL; i++)
+    if (!short_trace)
     {
-        ss << "bt[" << i - 1 << "] " << stackSymbol[i] << "\r\n";
+        ss << "\r\n";
+        for (size_t i = 1; i < size && stackSymbol != NULL; i++)
+        {
+            ss << "bt[" << i - 1 << "] " << stackSymbol[i] << "\r\n";
+        }
     }
     free(stackSymbol);
 
@@ -313,7 +316,7 @@ inline std::string ztrace<_Ty, _Depth>::traceback()
     */
 
 #endif
-    return std::move(ss.str());
+    return ss.str();
 }
 
 
