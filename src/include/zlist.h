@@ -405,7 +405,7 @@ private:
 //            LogError() << "release used node error";
         return false;
     }
-    void inject(u32 pos_id, u32 new_id)
+    void inject_node(u32 pos_id, u32 new_id)
     {
         data_[new_id].next = pos_id;
         data_[new_id].front = data_[pos_id].front;
@@ -433,7 +433,7 @@ private:
         {
             return END_ID;
         }
-        inject(id, new_id);
+        inject_node(id, new_id);
         *node_cast(data_[new_id]) = value;
         return new_id;
     }
@@ -446,7 +446,7 @@ private:
         {
             return END_ID;
         }
-        inject(id, new_id);
+        inject_node(id, new_id);
         new (&data_[new_id].space) _Ty(value);
         return new_id;
     }
@@ -460,7 +460,7 @@ private:
         {
             return END_ID;
         }
-        inject(id, new_id);
+        inject_node(id, new_id);
         new (&data_[new_id].space) _Ty(args ...);
         return new_id;
     }

@@ -660,6 +660,79 @@ s32 list_test()
     return 0;
 }
 
+s32 list_test_u32()
+{
+    zlist<u32, 20> numbers = { 1,9,8,7 };
+    ASSERT_TEST_EQ(numbers.size(), 4ULL, "");
+    zarray<u32, 100> target = { 1,9,8,7 };
+    u32 i = 0;
+    for (auto& n : numbers)
+    {
+        ASSERT_TEST_EQ(target[i++], n, "");
+    }
+    numbers.push_back(9);
+    numbers.push_front(9);
+    ASSERT_TEST_EQ(numbers.size(), 6ULL, "");
+    ASSERT_TEST_EQ(numbers.front(), 9, "");
+    ASSERT_TEST_EQ(numbers.back(), 9, "");
+    numbers.pop_back();
+    numbers.pop_front();
+    ASSERT_TEST_EQ(numbers.size(), 4ULL, "");
+    ASSERT_TEST_EQ(numbers.front(), 1, "");
+    ASSERT_TEST_EQ(numbers.back(), 7, "");
+    numbers.erase(++numbers.begin(), --numbers.end());
+    ASSERT_TEST_EQ(numbers.size(), 2ULL, "");
+    ASSERT_TEST_EQ(numbers.front(), 1, "");
+    ASSERT_TEST_EQ(numbers.back(), 7, "");
+    numbers.insert(++numbers.begin(), 9);
+    numbers.insert(--numbers.end(), 8);
+    ASSERT_TEST_EQ(numbers.size(), 4ULL, "");
+    ASSERT_TEST_EQ(numbers.front(), 1, "");
+    ASSERT_TEST_EQ(numbers.back(), 7, "");
+
+    zlist<std::string, 20> strlist;
+    strlist.push_back("sss");
+    strlist.clear();
+
+    zlist<u32, 3> clear_test = { 1,3,5 };
+    clear_test.clear();
+    clear_test.push_back(2);
+    clear_test.push_back(3);
+    clear_test.push_back(1);
+    clear_test.clear();
+    ASSERT_TEST_EQ(clear_test.size(), 0ULL, "");
+
+
+
+
+    zlist<u32, 100> bound_test;
+    ASSERT_TEST_EQ(bound_test.is_valid_node((void*)((u64)&bound_test - 1)), false, "");
+
+    ASSERT_TEST_EQ(bound_test.is_valid_node((void*)((u64)&bound_test + sizeof(bound_test))), false, "");
+    ASSERT_TEST_EQ(!bound_test.is_valid_node((void*)((u64)&bound_test + sizeof(zlist<u32, 100>::node_type) * 99)), false, "");
+
+
+    for (size_t i = 0; i < 100; i++)
+    {
+        u32 f = rand() % 50;
+        bound_test.insert(bound_test.lower_bound(bound_test.begin(), bound_test.end(), f, [](u32 f, u32 s) {return f > s; }), f);
+    }
+    for (auto iter = bound_test.begin(); iter != bound_test.end(); ++iter)
+    {
+        auto iter2 = iter;
+        iter2++;
+        if (iter2 != bound_test.end())
+        {
+            if (*iter < *(iter2))
+            {
+                *(u64*)NULL = 0;
+            }
+        }
+    }
+
+    return 0;
+}
+
 
 template<class C>
 s32 ZSortInsertLogN(C& c, size_t s)
@@ -975,6 +1048,7 @@ s32 coverage_test()
 
     ASSERT_TEST_EQ(array_test(), 0, " array_test()");
     ASSERT_TEST_EQ(list_test(), 0, " list_test()");
+    ASSERT_TEST_EQ(list_test_u32(), 0, " list_test_u32()");
     ASSERT_TEST_EQ(by_order_test(), 0, " by_order_test()");
     ASSERT_TEST_EQ(copy_test((zlist<size_t, 100>*)NULL), 0, "copy_test((zlist<size_t, 100>*)NULL)");
     ASSERT_TEST_EQ(copy_test((zarray<size_t, 100>*)NULL), 0, "copy_test((zarray<size_t, 100>*)NULL)");
