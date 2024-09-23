@@ -137,6 +137,24 @@ int main(int argc, char *argv[])
     ASSERT_TEST(zstream_bench_test() == 0);
 
     LogInfo() << "all test finish .";
+
+    std::unordered_map<int, int> um;  
+    um[1] = 1;
+    um[2] = 2;
+    std::unordered_map<int, int>::iterator iter = um.find(1);
+    LogInfo() << &iter->second << ":" << iter->second;
+
+    for (int i = 0; i < 20; i++)
+    {
+        um[i] = i;
+    }
+
+    LogInfo() << &iter->second << ":" << iter->second;
+
+
+
+
+
     return 0;
 }
 

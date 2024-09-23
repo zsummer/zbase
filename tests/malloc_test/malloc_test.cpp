@@ -11,7 +11,7 @@
 #include "zprof.h"
 #include "test_common.h"
 #include "zmalloc_test.h"
-
+#include "stmalloc.h"
 
 int main(int argc, char *argv[])
 {
@@ -24,6 +24,19 @@ int main(int argc, char *argv[])
         PROF_DEFINE_AUTO_ANON_RECORD(guard, "start fnlog use");
         FNLog::FastStartDebugLogger();
     }
+
+    if (true)
+    {
+        STMalloc st_malloc_inst;
+        st_malloc_inst.Init(NULL, NULL);
+        g_st_malloc = &st_malloc_inst;
+
+        void * p = st_malloc(300 * 1024);
+        memset(p, 0, 300 * 1024);
+        st_malloc(300 * 1024);
+
+    }
+
 
     LogDebug() << " main begin test. ";
     volatile double cycles = 0.0f;
