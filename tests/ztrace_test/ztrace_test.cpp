@@ -20,7 +20,7 @@
 #include <thread>
 
 
-void job(std::promise<int> pms)
+void job(std::promise<int>& pms)
 {
     std::this_thread::sleep_for(std::chrono::milliseconds(3000));
     LogInfo() << "do pms set val";
@@ -38,9 +38,9 @@ int main(int argc, char *argv[])
     std::promise<int> pms;
     std::future<int> ft = pms.get_future();
 
-    std::thread work(&job, pms);
+    std::thread work(&job, std::ref(pms));
 
-   
+    work.join();
     LogInfo() << ft.get();
     return 0;
 }
