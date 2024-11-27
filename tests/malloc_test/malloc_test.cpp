@@ -25,12 +25,10 @@ int main(int argc, char *argv[])
         FNLog::FastStartDebugLogger();
     }
 
-    if (true)
+    if (false)
     {
-        STMalloc st_malloc_inst;
-        st_malloc_inst.Init(NULL, NULL);
-        g_st_malloc = &st_malloc_inst;
-
+        g_st_malloc = new STMalloc;
+        g_st_malloc->Init(NULL, NULL);
         void * p = st_malloc(300 * 1024);
         memset(p, 0, 300 * 1024);
         st_malloc(300 * 1024);
