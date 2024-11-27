@@ -15,12 +15,12 @@
 #include "zlist.h"
 #include "zarray.h"
 #include "test_common.h"
-#include "zvector3.h"
+#include "zpoint.h"
 
 
-s32 zvector3_test()
+s32 zpoint_test()
 {
-    zvector3<> pos;
+    zpoint<> pos;
     ASSERT_TEST(pos.is_zero());
     return 0;
 }
@@ -28,14 +28,14 @@ s32 zvector3_test()
 
 
 
-s32 zvector3_bench_test()
+s32 zpoint_bench_test()
 {
-    zvector3<> pos;
+    zpoint<> pos;
     ASSERT_TEST(pos.is_zero());
     ASSERT_TEST(!pos.normalize());
     pos = { 1, 1, 1 };
     ASSERT_TEST(pos.normalize());
-    ASSERT_TEST(abs(pos.length() - 1.0) < zvector3<>::F32_PRECISION);
+    ASSERT_TEST(abs(pos.length() - 1.0) < zpoint<>::F32_PRECISION);
     return 0;
 }
 
@@ -47,9 +47,9 @@ int main(int argc, char *argv[])
 
     LogDebug() << " main begin test. ";
 
-    ASSERT_TEST(zvector3_test() == 0);
+    ASSERT_TEST(zpoint_test() == 0);
 
-    ASSERT_TEST(zvector3_bench_test() == 0);
+    ASSERT_TEST(zpoint_bench_test() == 0);
 
     LogInfo() << "all test finish .";
     return 0;

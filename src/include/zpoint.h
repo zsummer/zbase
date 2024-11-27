@@ -6,8 +6,8 @@
 
 
 #pragma once
-#ifndef  ZVECTOR3_H
-#define ZVECTOR3_H
+#ifndef  ZPOINT_H
+#define ZPOINT_H
 
 #include <math.h>
 #include <cmath>
@@ -57,7 +57,7 @@ using f64 = double;
 
 
 template<class _Flt = float>
-struct zvector3
+struct zpoint
 {
 public:
     static_assert(std::is_same<_Flt, float>::value || std::is_same<_Flt, double>::value, "");
@@ -70,18 +70,18 @@ public:
     static constexpr double F64_PRECISION = 0.0000000000000001;
 public:
     _Flt x, y, z;
-    zvector3(_Flt fx, _Flt fy, _Flt fz):x(fx),y(fy),z(fz){}
-    zvector3(const zvector3 & ) = default;
-    zvector3() :zvector3(0.0f, 0.0f, 0.0f) {};
-    zvector3 & operator =(const zvector3 & v3) = default;
+    zpoint(_Flt fx, _Flt fy, _Flt fz):x(fx),y(fy),z(fz){}
+    zpoint(const zpoint & ) = default;
+    zpoint() :zpoint(0.0f, 0.0f, 0.0f) {};
+    zpoint & operator =(const zpoint & v3) = default;
 
     void reset() { x = 0.0f; y = 0.0f; z = 0.0f; }
-    _Flt dot(const zvector3& v) const { return x * v.x + y * v.y + z * v.z; };
-    _Flt dot_2d(const zvector3& v) const { return x * v.x + y * v.y; };
-    zvector3 det(const zvector3& v) const { return { y * v.z - z * v.y , z * v.x - x * v.z , x * v.y - y * v.x }; };
-    zvector3 det_2d(const zvector3& v) const { return { 0.0f , 0.0 , x * v.y - y * v.x }; };
-    zvector3 cross(const zvector3& v) const { return det(v); }
-    zvector3 cross_2d(const zvector3& v) const { return det_2d(v); }
+    _Flt dot(const zpoint& v) const { return x * v.x + y * v.y + z * v.z; };
+    _Flt dot_2d(const zpoint& v) const { return x * v.x + y * v.y; };
+    zpoint det(const zpoint& v) const { return { y * v.z - z * v.y , z * v.x - x * v.z , x * v.y - y * v.x }; };
+    zpoint det_2d(const zpoint& v) const { return { 0.0f , 0.0 , x * v.y - y * v.x }; };
+    zpoint cross(const zpoint& v) const { return det(v); }
+    zpoint cross_2d(const zpoint& v) const { return det_2d(v); }
     _Flt square_length()const { return dot(*this); }
     _Flt square_length_2d()const { return dot_2d(*this); }
     _Flt square_distance()const { return square_length(); }
@@ -118,10 +118,10 @@ public:
         return true;
     }
 
-    zvector3 const_normalize() const { zvector3 ret = *this; ret.normalize(); return ret; }
+    zpoint const_normalize() const { zpoint ret = *this; ret.normalize(); return ret; }
 
     bool normalize_2d(){z = 0.0f;return normalize(); }
-    zvector3 const_normalize_2d() const { zvector3 ret = *this; ret.normalize_2d(); return ret; }
+    zpoint const_normalize_2d() const { zpoint ret = *this; ret.normalize_2d(); return ret; }
 
 
 
@@ -151,32 +151,32 @@ public:
         z = cos(PI * v);
         return true;
     }
-    static zvector3<_Flt> new_from_uv(_Flt u, _Flt v)
+    static zpoint<_Flt> new_from_uv(_Flt u, _Flt v)
     {
-        return zvector3<_Flt>(sin(PI * v) * cos(PI * 2 * u), sin(PI * v) * sin(PI  * 2 * u), cos(PI * v));
+        return zpoint<_Flt>(sin(PI * v) * cos(PI * 2 * u), sin(PI * v) * sin(PI  * 2 * u), cos(PI * v));
     }
-    static zvector3<_Flt> new_from_uv2(_Flt u, _Flt v)
+    static zpoint<_Flt> new_from_uv2(_Flt u, _Flt v)
     {
-        return zvector3<_Flt>(cos(PI * v) * cos(PI * u), sin(PI * v) * cos(PI * u), sin(PI * v));
+        return zpoint<_Flt>(cos(PI * v) * cos(PI * u), sin(PI * v) * cos(PI * u), sin(PI * v));
     }
 
-    zvector3 operator + (const zvector3 & v) const { return { x + v.x, y + v.y, z + v.z }; }
-    zvector3 & operator += (const zvector3 & v) { x += v.x, y += v.y, z += v.z; return *this; }
-    zvector3 operator - (const zvector3 & v) const { return { x - v.x, y - v.y, z - v.z }; }
-    zvector3 & operator -= (const zvector3 & v) { x -= v.x, y -= v.y, z -= v.z; return *this; }
-    zvector3 operator * (const zvector3 & v) const { return { x * v.x, y * v.y, z * v.z }; }
-    zvector3 & operator *= (const zvector3 & v) { x *= v.x, y *= v.y, z *= v.z; return *this; }
-    zvector3 operator / (const zvector3 & v) const { return { x / v.x, y / v.y, z / v.z }; }
-    zvector3 & operator /= (const zvector3 & v) { x /= v.x, y /= v.y, z /= v.z; return *this; }
+    zpoint operator + (const zpoint & v) const { return { x + v.x, y + v.y, z + v.z }; }
+    zpoint & operator += (const zpoint & v) { x += v.x, y += v.y, z += v.z; return *this; }
+    zpoint operator - (const zpoint & v) const { return { x - v.x, y - v.y, z - v.z }; }
+    zpoint & operator -= (const zpoint & v) { x -= v.x, y -= v.y, z -= v.z; return *this; }
+    zpoint operator * (const zpoint & v) const { return { x * v.x, y * v.y, z * v.z }; }
+    zpoint & operator *= (const zpoint & v) { x *= v.x, y *= v.y, z *= v.z; return *this; }
+    zpoint operator / (const zpoint & v) const { return { x / v.x, y / v.y, z / v.z }; }
+    zpoint & operator /= (const zpoint & v) { x /= v.x, y /= v.y, z /= v.z; return *this; }
 
-    zvector3 operator + (_Flt val) const { return { x + val, y + val, z + val }; }
-    zvector3 & operator += (_Flt val) { x += val, y += val, z += val; return *this; }
-    zvector3 operator - (_Flt val) const { return { x - val, y - val, z - val }; }
-    zvector3 & operator -= (_Flt val) { x -= val, y -= val, z -= val; return *this; }
-    zvector3 operator * (_Flt scalar) const { return { x * scalar, y * scalar, z * scalar }; }
-    zvector3 & operator *= (_Flt scalar) { x *= scalar, y *= scalar, z *= scalar; return *this; }
-    zvector3 operator / (_Flt scalar) const { return { x / scalar, y / scalar, z / scalar }; }
-    zvector3 & operator /= (_Flt scalar) { x /= scalar, y /= scalar, z /= scalar; return *this; }
+    zpoint operator + (_Flt val) const { return { x + val, y + val, z + val }; }
+    zpoint & operator += (_Flt val) { x += val, y += val, z += val; return *this; }
+    zpoint operator - (_Flt val) const { return { x - val, y - val, z - val }; }
+    zpoint & operator -= (_Flt val) { x -= val, y -= val, z -= val; return *this; }
+    zpoint operator * (_Flt scalar) const { return { x * scalar, y * scalar, z * scalar }; }
+    zpoint & operator *= (_Flt scalar) { x *= scalar, y *= scalar, z *= scalar; return *this; }
+    zpoint operator / (_Flt scalar) const { return { x / scalar, y / scalar, z / scalar }; }
+    zpoint & operator /= (_Flt scalar) { x /= scalar, y /= scalar, z /= scalar; return *this; }
 
 
     //utils
