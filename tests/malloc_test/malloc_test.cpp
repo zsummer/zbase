@@ -11,7 +11,7 @@
 #include "zprof.h"
 #include "test_common.h"
 #include "zmalloc_test.h"
-#include "stmalloc.h"
+#include "tcmalloc/stmalloc.h"
 
 int main(int argc, char *argv[])
 {

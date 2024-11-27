@@ -8,7 +8,7 @@
 #include "zarray.h"
 #include "test_common.h"
 #include "zmalloc.h"
-#include "stmalloc.h"
+#include "tcmalloc/stmalloc.h"
 #include "zmem_color.h"
 #define Now() std::chrono::duration<double>(std::chrono::system_clock().now().time_since_epoch()).count()
 
