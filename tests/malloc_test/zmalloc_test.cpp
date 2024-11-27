@@ -116,7 +116,8 @@ s32 zmalloc_stress()
     buffers->clear();
     PROF_OUTPUT_SELF_MEM("base alloc/free test finish");
     LogInfo() << "";
-    LogInfo() << "begin stress test";
+    LogInfo() << "begin stress test: continuous segmentation(one seg = cover_size/80) coverage.   continuous alloc & continuous free  and  write 4 byte";
+    LogInfo() << "-------------------------------------------------------------------";
     for (size_t loop= 0; loop < 80; loop++)
     {
         unsigned long long begin_size = cover_size / 80 * loop;
@@ -151,6 +152,43 @@ s32 zmalloc_stress()
     zmalloc::instance().clear_cache();
     PROF_OUTPUT_SELF_MEM("zmalloc finish");
 
+    for (size_t loop = 0; loop < 80; loop++)
+    {
+        if (loop % 5 != 0)
+        {
+            continue;//做对比用 保持和sys/st的剔除一致 
+        }
+        unsigned long long begin_size = cover_size / 80 * loop;
+        unsigned long long end_size = cover_size / 80 * (loop + 1);
+        char mbuf[70];
+        sprintf(mbuf, "global_zmalloc(%llu ~ %llu)", begin_size, end_size);
+        char fbuf[70];
+        sprintf(fbuf, "global_zfree(%llu ~ %llu)", begin_size, end_size);
+
+        PROF_START_COUNTER(cost);
+        for (u64 i = begin_size; i < end_size; i++)
+        {
+            u32 test_size = rand_array[i] % (zmalloc::BIG_MAX_REQUEST);
+            void* p = global_zmalloc(test_size);
+            *(u32*)p = (u32)i;
+            buffers->push_back(p);
+        }
+
+        PROF_OUTPUT_MULTI_COUNT_CPU(mbuf, buffers->size(), cost.stop_and_save().cost());
+        if (loop < 2 || loop >37)
+        {
+            //LogDebug() << zmalloc::instance().debug_color_string();
+        }
+        PROF_START_COUNTER(cost);
+        for (auto p : *buffers)
+        {
+            global_zfree(p);
+        }
+        PROF_OUTPUT_MULTI_COUNT_CPU(fbuf, buffers->size(), cost.stop_and_save().cost());
+        buffers->clear();
+    }
+    zmalloc::instance().clear_cache();
+    PROF_OUTPUT_SELF_MEM("zmalloc finish");
     /*  //有问题  
     buffers->clear();
     for (size_t loop = 0; loop < 40; loop++)
@@ -177,9 +215,9 @@ s32 zmalloc_stress()
 
     for (size_t loop = 0; loop < 80; loop++)
     {
-        if (loop%10 != 0)
+        if (loop%5 != 0)
         {
-            continue;//做对比用 剔除部分数据提高测试速度
+            continue;//做对比用 sys 分配太慢 剔除部分数据提高测试速度
         }
         unsigned long long begin_size = cover_size / 80 * loop;
         unsigned long long end_size = cover_size / 80 * (loop + 1);
@@ -210,9 +248,9 @@ s32 zmalloc_stress()
     PROF_OUTPUT_SELF_MEM("sys malloc finish");
     for (size_t loop = 0; loop < 80; loop++)
     {
-        if (loop % 10 != 0)
+        if (loop % 2 != 0)
         {
-            continue;//做对比用 剔除部分数据提高测试速度
+            continue;//做对比用 st 分配太慢 剔除部分数据提高测试速度
         }
         unsigned long long begin_size = cover_size / 80 * loop;
         unsigned long long end_size = cover_size / 80 * (loop + 1);
@@ -238,7 +276,7 @@ s32 zmalloc_stress()
         }
         PROF_OUTPUT_MULTI_COUNT_CPU(fbuf, buffers->size(), cost.stop_and_save().cost());
         buffers->clear();
-        if (loop > 5)
+        if (loop >  6)
         {
             LogInfo() << "this st malloc has problem,  loop finish. ";
             break;
@@ -247,7 +285,9 @@ s32 zmalloc_stress()
     PROF_OUTPUT_SELF_MEM("st malloc finish");
 
     LogInfo() << "";
-    LogInfo() << "begin double list rand malloc&free stress test";
+    LogInfo() << "begin stress test: solo coverage(0~2k).   rand act to alloc *2 & rand act to free ";
+    LogInfo() << "-------------------------------------------------------------------";
+
     if (true)
     {
         buffers->clear();
@@ -368,8 +408,9 @@ s32 zmalloc_stress()
     PROF_OUTPUT_SELF_MEM("sys malloc finish");
 
 
-
-
+    LogInfo() << "";
+    LogInfo() << "begin stress test: solo coverage(0~2k).   rand act to alloc *2 & rand act to free.  fixed size= $fixed_size";
+    LogInfo() << "-------------------------------------------------------------------";
     for (size_t loop = 0; loop < 80; loop++)
     {
         unsigned long long begin_size = cover_size / 80 * loop;
