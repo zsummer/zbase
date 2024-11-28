@@ -189,29 +189,6 @@ s32 zmalloc_stress()
     }
     zmalloc::instance().clear_cache();
     PROF_OUTPUT_SELF_MEM("zmalloc finish");
-    /*  //有问题  
-    buffers->clear();
-    for (size_t loop = 0; loop < 40; loop++)
-    {
-        PROF_START_COUNTER(cost);
-        for (u64 i = cover_size / 40 * loop; i < cover_size / 40 * (loop + 1); i++)
-        {
-            u32 test_size = rand_array[i] % (zmalloc::BIG_MAX_REQUEST);
-            void* p = st_malloc(test_size + 1);
-            *(u32*)p = (u32)i;
-            buffers->push_back(p);
-        }
-        PROF_OUTPUT_MULTI_COUNT_CPU("st_malloc(0~512k)", buffers->size(), cost.stop_and_save().cost());
-        PROF_START_COUNTER(cost);
-        for (auto p : *buffers)
-        {
-            st_free(p);
-        }
-        PROF_OUTPUT_MULTI_COUNT_CPU("st_free(0~512k)", buffers->size(), cost.stop_and_save().cost());
-        buffers->clear();
-    }
-    PROF_OUTPUT_SELF_MEM("st malloc finish");
-    */
 
     for (size_t loop = 0; loop < 80; loop++)
     {
@@ -248,10 +225,6 @@ s32 zmalloc_stress()
     PROF_OUTPUT_SELF_MEM("sys malloc finish");
     for (size_t loop = 0; loop < 80; loop++)
     {
-        if (loop % 2 != 0)
-        {
-            continue;//做对比用 st 分配太慢 剔除部分数据提高测试速度
-        }
         unsigned long long begin_size = cover_size / 80 * loop;
         unsigned long long end_size = cover_size / 80 * (loop + 1);
         char mbuf[70];
@@ -301,6 +274,26 @@ s32 zmalloc_stress()
             {
                 continue;
             }
+            if (buffers->full())
+            {
+                for (u32 i = 0; i < buffers->max_size() / 2; i++)
+                {
+                    global_zfree(buffers->back());
+                    buffers->pop_back();
+                    free_count++;
+                }
+            }
+            if (buffers2->full())
+            {
+                for (u32 i = 0; i < buffers2->max_size() / 2; i++)
+                {
+                    global_zfree(buffers2->back());
+                    buffers2->pop_back();
+                    free_count++;
+                }
+            }
+
+
             u32 push_size1 = rand_array[i] % (2048);
             u32 push_size2 = rand_array[cover_size - i] % (2048);
             if ((push_size1 + push_size2) % 3 == 0 || buffers->size() > (u32)rand() % 1000 || buffers->full())
@@ -328,7 +321,7 @@ s32 zmalloc_stress()
         }
         PROF_OUTPUT_MULTI_COUNT_CPU("rand zmalloc/zfree(0~2k)", alloc_count + free_count, cost.stop_and_save().cost());
         zstate->check_panic();
-        if (true)
+        if (false)
         {
             LogDebug() << "zmalloc state log:";
             auto new_log = []() { return std::move(LOG_STREAM_DEFAULT_LOGGER(0, FNLog::PRIORITY_DEBUG, 0, 0, FNLog::LOG_PREFIX_NULL)); };
@@ -348,10 +341,10 @@ s32 zmalloc_stress()
         }
         buffers->clear();
         buffers2->clear();
-        LogDebug() << "zmalloc clear all buffers state log:";
-        auto new_log = []() { return std::move(LOG_STREAM_DEFAULT_LOGGER(0, FNLog::PRIORITY_DEBUG, 0, 0, FNLog::LOG_PREFIX_NULL)); };
-        zmalloc::instance().debug_state_log(new_log);
-        zmalloc::instance().debug_color_log(new_log, 0, (zmalloc::CHUNK_COLOR_MASK_WITH_LEVEL + 1) / 2);
+        //LogDebug() << "zmalloc clear all buffers state log:";
+        //auto new_log = []() { return std::move(LOG_STREAM_DEFAULT_LOGGER(0, FNLog::PRIORITY_DEBUG, 0, 0, FNLog::LOG_PREFIX_NULL)); };
+        //zmalloc::instance().debug_state_log(new_log);
+        //zmalloc::instance().debug_color_log(new_log, 0, (zmalloc::CHUNK_COLOR_MASK_WITH_LEVEL + 1) / 2);
     }
     PROF_OUTPUT_SELF_MEM("z malloc finish");
     if (true)
@@ -367,6 +360,25 @@ s32 zmalloc_stress()
             {
                 continue;
             }
+            if (buffers->full())
+            {
+                for (u32 i = 0; i < buffers->max_size()/2; i++)
+                {
+                    free(buffers->back());
+                    buffers->pop_back();
+                    free_count++;
+                }
+            }
+            if (buffers2->full())
+            {
+                for (u32 i = 0; i < buffers2->max_size() / 2; i++)
+                {
+                    free(buffers2->back());
+                    buffers2->pop_back();
+                    free_count++;
+                }
+            }
+
             u32 push_size1 = rand_array[i] % (2048) + 1;
             u32 push_size2 = rand_array[cover_size - i] % (2048) + 1;
             if ((push_size1 + push_size2) % 3 == 0 || buffers->size() > (u32)rand() % 1000 || buffers->full())
@@ -407,9 +419,81 @@ s32 zmalloc_stress()
     }
     PROF_OUTPUT_SELF_MEM("sys malloc finish");
 
+    if (true)
+    {
+        buffers->clear();
+        buffers2->clear();
+        PROF_START_COUNTER(cost);
+        u64 alloc_count = 0;
+        u64 free_count = 0;
+        for (u64 i = 0; i < cover_size; i++)
+        {
+            if (rand() % 5 == 0)
+            {
+                continue;
+            }
+            if (buffers->full())
+            {
+                for (u32 i = 0; i < buffers->max_size() / 2; i++)
+                {
+                    st_free(buffers->back());
+                    buffers->pop_back();
+                    free_count++;
+                }
+            }
+            if (buffers2->full())
+            {
+                for (u32 i = 0; i < buffers2->max_size() / 2; i++)
+                {
+                    st_free(buffers2->back());
+                    buffers2->pop_back();
+                    free_count++;
+                }
+            }
+
+            u32 push_size1 = rand_array[i] % (2048) + 1;
+            u32 push_size2 = rand_array[cover_size - i] % (2048) + 1;
+            if ((push_size1 + push_size2) % 3 == 0 || buffers->size() > (u32)rand() % 1000 || buffers->full())
+            {
+                if (!buffers->empty())
+                {
+                    st_free(buffers->back());
+                    buffers->pop_back();
+                    free_count++;
+                }
+            }
+            if ((push_size1 + push_size2) % 7 == 0 || buffers->size() > (u32)rand() % 1000 || buffers2->full())
+            {
+                if (!buffers2->empty())
+                {
+                    st_free(buffers2->back());
+                    buffers2->pop_back();
+                    free_count++;
+                }
+            }
+
+            buffers->push_back( st_malloc(push_size1));
+            buffers2->push_back(st_malloc(push_size2));
+            alloc_count += 2;
+        }
+        PROF_OUTPUT_MULTI_COUNT_CPU("rand st malloc/free(0~2k)", alloc_count + free_count, cost.stop_and_save().cost());
+        for (auto p : *buffers)
+        {
+            st_free(p);
+        }
+        for (auto p : *buffers2)
+        {
+            st_free(p);
+        }
+
+        buffers->clear();
+        buffers2->clear();
+    }
+    PROF_OUTPUT_SELF_MEM("st malloc finish");
+
 
     LogInfo() << "";
-    LogInfo() << "begin stress test: solo coverage(0~2k).   rand act to alloc *2 & rand act to free.  fixed size= $fixed_size";
+    LogInfo() << "begin stress test: solo coverage(0~2k).   rand act to alloc *2 & rand act to free.  fixed size= " << fixed_size;
     LogInfo() << "-------------------------------------------------------------------";
     for (size_t loop = 0; loop < 80; loop++)
     {
