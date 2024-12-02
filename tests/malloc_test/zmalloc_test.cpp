@@ -854,6 +854,11 @@ s32 zmalloc_test()
 {
     ASSERT_TEST_EQ(zmalloc_base_test(), 0, " zmalloc_base_test()");
     ASSERT_TEST_EQ(zmalloc_stress(), 0, " zmalloc_stress()");
+
+    auto new_log = []() { return std::move(LOG_STREAM_DEFAULT_LOGGER(0, FNLog::PRIORITY_DEBUG, 0, 0, FNLog::LOG_PREFIX_NULL)); };
+    zmalloc::instance().debug_state_log(new_log);
+    zmalloc::instance().debug_color_log(new_log, 0, (zmalloc::CHUNK_COLOR_MASK_WITH_LEVEL + 1) / 2);
+
     return 0;
 }
 

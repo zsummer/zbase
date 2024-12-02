@@ -344,7 +344,7 @@ public:
     free_chunk_type bin_[BITMAP_LEVEL][BINMAP_SIZE];
     free_chunk_type bin_end_[BITMAP_LEVEL][BINMAP_SIZE];
 #if ZMALLOC_OPEN_COUNTER
-    u32 bin_size_[BITMAP_LEVEL][BINMAP_SIZE];
+    u32 bin_size_[BITMAP_LEVEL][BINMAP_SIZE]; //size = chunk head + req size + inner frag 
     u64 alloc_counter_[CHUNK_COLOR_MASK_WITH_LEVEL + 1][BINMAP_SIZE];
     u64 free_counter_[CHUNK_COLOR_MASK_WITH_LEVEL + 1][BINMAP_SIZE];
 
@@ -763,11 +763,11 @@ void* zmalloc::alloc_memory(u64 req_bytes)
         }
         for (u32 bin_id = 0; bin_id < BINMAP_SIZE; bin_id++)
         {
-            bin_size_[!CHUNK_IS_BIG][bin_id] = (bin_id) << FINE_GRAINED_SHIFT;
+            bin_size_[!CHUNK_IS_BIG][bin_id] = ((bin_id) << FINE_GRAINED_SHIFT ) + 16;
         }
         for (u32 bin_id = 0; bin_id < BINMAP_SIZE; bin_id++)
         {
-            bin_size_[CHUNK_IS_BIG][bin_id] = zmalloc_resolve_order_size(bin_id + 1);
+            bin_size_[CHUNK_IS_BIG][bin_id] = zmalloc_resolve_order_size(bin_id) + 16;
         }
     }
     req_total_bytes_ += req_bytes;
