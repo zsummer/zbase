@@ -737,6 +737,11 @@ zmalloc::free_chunk_type* zmalloc::exploit_new_chunk(free_chunk_type* devide_chu
 template<u16 COLOR>
 void* zmalloc::alloc_memory(u64 req_bytes)
 {
+#ifdef ZMALLOC_USED_SYS  //contrast sys alloc
+    return default_block_alloc(req_bytes);
+#endif 
+
+
     static_assert(COLOR * 2 < CHUNK_COLOR_MASK, "confilct color enum & inner flags");
     static_assert(CHUNK_IS_BIG == 1, "");
     static_assert(CHUNK_IS_IN_USED > CHUNK_COLOR_MASK_WITH_LEVEL, "");
@@ -962,6 +967,10 @@ void* zmalloc::alloc_memory(u64 req_bytes)
 
 u64 zmalloc::free_memory(void* addr)
 {
+#ifdef ZMALLOC_USED_SYS  //contrast sys alloc
+    return default_block_free(addr);
+#endif 
+
     if (addr == NULL)
     {
         //LogError() << "free null";
