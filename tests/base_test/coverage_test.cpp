@@ -1043,6 +1043,41 @@ s32 destroy_test()
     return 0;
 }
 
+s32 zvector_find_test()
+{
+    if (true)
+    {
+        zvector<int, 100> z;
+        z.push_back(3);
+        z.push_back(1);
+        z.push_back(2);
+        z.push_back(1);
+        z.push_back(2);
+        z.push_back(3);
+        ASSERT_TEST_EQ(*z.find(2), 2, "");
+        ASSERT_TEST_EQ(*z.find(3), 3, "");
+        ASSERT_TEST_NOLOG(z.find(3) == z.begin(), "");
+        ASSERT_TEST_NOLOG(z.rfind(3) == z.rbegin(), "");
+        ASSERT_TEST_NOLOG(z.rfind(5) == z.rend(), "");
+    }
+    if (true)
+    {
+        zvector<int, 100, 0> z;
+        z.push_back(3);
+        z.push_back(1);
+        z.push_back(2);
+        z.push_back(1);
+        z.push_back(2);
+        z.push_back(3);
+        ASSERT_TEST_EQ(*z.find(2), 2, "");
+        ASSERT_TEST_EQ(*z.find(3), 3, "");
+        ASSERT_TEST_NOLOG(z.find(3)== z.begin(), "");
+        ASSERT_TEST_NOLOG(z.rfind(3)== z.rbegin(), "");
+        ASSERT_TEST_NOLOG(z.rfind(5) == z.rend(), "");
+    }
+    return 0;
+}
+
 s32 coverage_test()
 {
 
@@ -1053,6 +1088,7 @@ s32 coverage_test()
     ASSERT_TEST_EQ(copy_test((zlist<size_t, 100>*)NULL), 0, "copy_test((zlist<size_t, 100>*)NULL)");
     ASSERT_TEST_EQ(copy_test((zarray<size_t, 100>*)NULL), 0, "copy_test((zarray<size_t, 100>*)NULL)");
     ASSERT_TEST(destroy_test() == 0);
+    ASSERT_TEST(zvector_find_test() == 0);
     return 0;
 }
 

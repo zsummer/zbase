@@ -123,7 +123,7 @@ private:
 template<class _Ty>
 using zvector_aligned_space_helper = typename std::conditional<std::is_trivial<_Ty>::value, _Ty, typename std::aligned_storage<sizeof(_Ty), alignof(_Ty)>::type>::type;
 
-template<class _Ty, u32 _Size, u32 _FixedSize, class _Alloc = std::allocator<zvector_aligned_space_helper<_Ty>>>
+template<class _Ty, u32 _Size, u32 _FixedSize = _Size, class _Alloc = std::allocator<zvector_aligned_space_helper<_Ty>>>
 class zvector
 {
 public:
@@ -231,6 +231,11 @@ public:
     const size_type size() const noexcept { return count_; }
     const bool empty() const noexcept { return begin() == end(); }
     const bool full() const noexcept { return size() == max_size(); }
+
+    iterator find(const _Ty& v) noexcept { return std::find(begin(), end(), v); }
+    const_iterator find(const _Ty& v) const noexcept { return std::find(begin(), end(), v); }
+    reverse_iterator rfind(const _Ty& v) noexcept { return std::find(rbegin(), rend(), v); }
+    const_reverse_iterator rfind(const _Ty& v) const noexcept { return std::find(rbegin(), rend(), v); }
 
 
     iterator check_realloc(size_type expect, iterator iter_pos)
