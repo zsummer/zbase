@@ -477,6 +477,7 @@ public:
             return end();
         }
         iterator new_iter = inject(pos, count);
+        pos = new_iter;
         for (size_t i = 0; i < count; i++)
         {
             *pos++ = value;
@@ -492,6 +493,7 @@ public:
             return end();
         }
         iterator new_iter = inject(pos, count);
+        pos = new_iter;
         for (size_t i = 0; i < count; i++)
         {
             new (pos++) _Ty(value);
@@ -507,6 +509,7 @@ public:
             return end();
         }
         iterator new_iter = inject(pos, 1);
+        pos = new_iter;
         *pos++ = value;
         return new_iter;
     }
@@ -519,6 +522,7 @@ public:
             return end();
         }
         iterator new_iter = inject(pos, 1);
+        pos = new_iter;
         new (&* (pos++)) _Ty(value);
         return new_iter;
     }
