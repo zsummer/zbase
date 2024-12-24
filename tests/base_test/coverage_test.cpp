@@ -1059,6 +1059,14 @@ s32 zvector_find_test()
         ASSERT_TEST_NOLOG(z.find(3) == z.begin(), "");
         ASSERT_TEST_NOLOG(z.rfind(3) == z.rbegin(), "");
         ASSERT_TEST_NOLOG(z.rfind(5) == z.rend(), "");
+        z.assign((u32)100, 1);
+        ASSERT_TEST_NOLOG(z.full(), "");
+        if (true)
+        {
+            zvector<int, 100> zz(std::move(z));
+        }
+        z.assign((u32)100, 1);
+        ASSERT_TEST_NOLOG(z.full(), "");
     }
     if (true)
     {
@@ -1074,6 +1082,14 @@ s32 zvector_find_test()
         ASSERT_TEST_NOLOG(z.find(3)== z.begin(), "");
         ASSERT_TEST_NOLOG(z.rfind(3)== z.rbegin(), "");
         ASSERT_TEST_NOLOG(z.rfind(5) == z.rend(), "");
+        z.assign((u32)100, 1);
+        ASSERT_TEST_NOLOG(z.full(), "");
+        if (true)
+        {
+            zvector<int, 100, 0> zz(std::move(z));
+        }
+        z.assign((u32)100, 1);
+        ASSERT_TEST_NOLOG(z.full(), "");
     }
     return 0;
 }
