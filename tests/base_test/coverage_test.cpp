@@ -1094,6 +1094,42 @@ s32 zvector_find_test()
     return 0;
 }
 
+s32 zhash_map_test()
+{
+    zhash_map<int, int, 100>  h;
+    for (u32 i = 0; i < 100; i++)
+    {
+        h.insert(std::make_pair(i, i));
+    }
+    ASSERT_TEST_NOLOG(h.full(), "");
+
+    if (true)
+    {
+        const zhash_map<int, int, 100> hh(h);
+        ASSERT_TEST_NOLOG(hh.full(), "");
+        for (const auto& kv : hh )
+        {
+            ASSERT_TEST_NOLOG(kv.first == kv.second, "");
+            ASSERT_TEST_NOLOG(kv.first < 100 && kv.first >= 0, "");
+        }
+
+    }
+
+
+
+
+
+
+    for (u32 i = 0; i < 100; i++)
+    {
+        h.erase(i);
+    }
+    ASSERT_TEST_NOLOG(h.empty(), "");
+
+    return 0;
+}
+
+
 s32 coverage_test()
 {
 
@@ -1105,6 +1141,7 @@ s32 coverage_test()
     ASSERT_TEST_EQ(copy_test((zarray<size_t, 100>*)NULL), 0, "copy_test((zarray<size_t, 100>*)NULL)");
     ASSERT_TEST(destroy_test() == 0);
     ASSERT_TEST(zvector_find_test() == 0);
+    ASSERT_TEST(zhash_map_test() == 0);
     return 0;
 }
 
