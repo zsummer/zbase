@@ -20,7 +20,7 @@
 
 
 bool g_bark = false;
-void test(const char* desc, long long ms)
+void test(const char* desc, double ms)
 {
     desc = desc ? desc : "";
     g_bark = true;
@@ -29,12 +29,13 @@ void test(const char* desc, long long ms)
 
 s32 zclock_test()
 {
+
     if (true)
     {
         g_bark = false;
         if (true)
         {
-            zclock_diagnostic_ns<const char*> c("ns ", 1000 * 1000 * 1000, &test);
+            zclock_diagnostic<const char*> c("test", 1.0, &test);
             std::this_thread::sleep_for(std::chrono::milliseconds(1500));
         }
         ASSERT_TEST(g_bark);
@@ -45,23 +46,14 @@ s32 zclock_test()
         g_bark = false;
         if (true)
         {
-            zclock_diagnostic_ms<const char*> c("ms ", 1000, &test);
-            std::this_thread::sleep_for(std::chrono::milliseconds(1500));
-        }
-        ASSERT_TEST(g_bark);
-    }
-
-    if (true)
-    {
-        g_bark = false;
-        if (true)
-        {
-            zclock_diagnostic_ms<const char*> c("ms ", 1000, &test);
-            std::this_thread::sleep_for(std::chrono::milliseconds(500));
-            c.diagnostic_ms();
+            zclock_diagnostic<const char*> c("test ", 1.0, &test);
+            std::this_thread::sleep_for(std::chrono::milliseconds(300));
+            c.diagnostic("1");
+            std::this_thread::sleep_for(std::chrono::milliseconds(400));
+            c.diagnostic("2");
             g_bark = false;
             c.reset_clock();
-            std::this_thread::sleep_for(std::chrono::milliseconds(700));
+            std::this_thread::sleep_for(std::chrono::milliseconds(500));
         }
         ASSERT_TEST(!g_bark);
     }

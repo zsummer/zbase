@@ -17,92 +17,61 @@
 
 
 template<class Desc, zclock_impl::clock_type _C = zclock_impl::T_CLOCK_VOLATILE_RDTSC>
-class zclock_diagnostic_ns
+class zclock_diagnostic
 {
 public:
 public:
-    //watchdog  ms  
-    explicit zclock_diagnostic_ns(const Desc& desc, long long watchdog, std::function<void(const Desc&, long long)> dog) :desc_(desc)
+    //watchdog  second
+    explicit zclock_diagnostic(const Desc& desc, double watchdog, std::function<void(const Desc&, double)> dog) : desc_(desc)
     {
         watchdog_ = watchdog;
         dog_ = dog;
         clock_.start();
+        last_diagnostic_ = 0.0;
     }
-    ~zclock_diagnostic_ns()
+    ~zclock_diagnostic()
     {
         if (dog_ == nullptr)
         {
             return;
         }
-        long long ns = clock_.save().cost_ns();
-        if (ns >= watchdog_)
+        double s = clock_.save().cost_ns() * 1.0 / 1000 / 1000 / 1000;
+        if (s > watchdog_)
         {
-            dog_(desc_, ns);
+            dog_(desc_, s);
         }
     }
-private:
-    const Desc desc_;
-    zclock<_C> clock_;
-    long long watchdog_;
-    std::function<void(const Desc&, long long)> dog_;
-};
 
-
-template<class Desc, zclock_impl::clock_type _C = zclock_impl::T_CLOCK_VOLATILE_RDTSC>
-class zclock_diagnostic_ms 
-{
-public:
-public:
-    //watchdog  ms  
-    explicit zclock_diagnostic_ms(const Desc& desc, long long watchdog, std::function<void(const Desc&, long long)> dog) :desc_(desc)
+    void reset_clock()
     {
-        watchdog_ = watchdog * 1000 * 1000;
-        dog_ = dog;
         clock_.start();
+        last_diagnostic_ = 0;
     }
-    ~zclock_diagnostic_ms()
+
+    void diagnostic(const Desc& desc, bool use_delta = true)
     {
         if (dog_ == nullptr)
         {
             return;
         }
-        long long ns = clock_.save().cost_ns();
-        if (ns >= watchdog_)
+        double s = clock_.save().cost_ns() * 1.0 / 1000 / 1000 / 1000;
+        if (use_delta)
         {
-            dog_(desc_, ns/1000/1000);
+            dog_(desc, s - last_diagnostic_);
+            last_diagnostic_ = s;
         }
-    }
-
-    void reset_clock() 
-    { 
-        clock_.start(); 
-    }
-
-    void diagnostic_ns()
-    {
-        if (dog_ == nullptr)
+        else
         {
-            return;
+            dog_(desc, s);
         }
-        long long ns = clock_.save().cost_ns();
-        dog_(desc_, ns);
-    }
-
-    void diagnostic_ms()
-    {
-        if (dog_ == nullptr)
-        {
-            return;
-        }
-        long long ms = clock_.save().cost_ms();
-        dog_(desc_, ms);
     }
 
 private:
     const Desc desc_;
     zclock<_C> clock_;
-    long long watchdog_;
-    std::function<void(const Desc&, long long)> dog_;
+    double watchdog_;
+    double last_diagnostic_;
+    std::function<void(const Desc&, double)> dog_;
 };
 
 
