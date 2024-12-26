@@ -72,6 +72,32 @@ public:
             dog_(desc_, ns/1000/1000);
         }
     }
+
+    void reset_clock() 
+    { 
+        clock_.start(); 
+    }
+
+    void diagnostic_ns()
+    {
+        if (dog_ == nullptr)
+        {
+            return;
+        }
+        long long ns = clock_.save().cost_ns();
+        dog_(desc_, ns);
+    }
+
+    void diagnostic_ms()
+    {
+        if (dog_ == nullptr)
+        {
+            return;
+        }
+        long long ms = clock_.save().cost_ms();
+        dog_(desc_, ms);
+    }
+
 private:
     const Desc desc_;
     zclock<_C> clock_;

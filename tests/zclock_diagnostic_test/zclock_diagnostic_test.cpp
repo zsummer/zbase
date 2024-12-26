@@ -58,6 +58,10 @@ s32 zclock_test()
         {
             zclock_diagnostic_ms<const char*> c("ms ", 1000, &test);
             std::this_thread::sleep_for(std::chrono::milliseconds(500));
+            c.diagnostic_ms();
+            g_bark = false;
+            c.reset_clock();
+            std::this_thread::sleep_for(std::chrono::milliseconds(700));
         }
         ASSERT_TEST(!g_bark);
     }
