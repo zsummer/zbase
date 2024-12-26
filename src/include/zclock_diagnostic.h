@@ -15,12 +15,14 @@
 #include "zclock.h"
 
 
-template<zclock_impl::clock_type _C = zclock_impl::T_CLOCK_VOLATILE_RDTSC>
+
+template<class Desc, zclock_impl::clock_type _C = zclock_impl::T_CLOCK_VOLATILE_RDTSC>
 class zclock_diagnostic_ns
 {
 public:
-    //watchdog  ns  
-    explicit zclock_diagnostic_ns(long long watchdog, std::function<void(long long)> dog)
+public:
+    //watchdog  ms  
+    explicit zclock_diagnostic_ns(const Desc& desc, long long watchdog, std::function<void(const Desc&, long long)> dog) :desc_(desc)
     {
         watchdog_ = watchdog;
         dog_ = dog;
@@ -35,22 +37,24 @@ public:
         long long ns = clock_.save().cost_ns();
         if (ns >= watchdog_)
         {
-            dog_(ns);
+            dog_(desc_, ns);
         }
     }
 private:
+    const Desc desc_;
     zclock<_C> clock_;
     long long watchdog_;
-    std::function<void(long long)> dog_;
+    std::function<void(const Desc&, long long)> dog_;
 };
 
-template<zclock_impl::clock_type _C = zclock_impl::T_CLOCK_VOLATILE_RDTSC>
+
+template<class Desc, zclock_impl::clock_type _C = zclock_impl::T_CLOCK_VOLATILE_RDTSC>
 class zclock_diagnostic_ms 
 {
 public:
 public:
     //watchdog  ms  
-    explicit zclock_diagnostic_ms(long long watchdog, std::function<void(long long)> dog)
+    explicit zclock_diagnostic_ms(const Desc& desc, long long watchdog, std::function<void(const Desc&, long long)> dog) :desc_(desc)
     {
         watchdog_ = watchdog * 1000 * 1000;
         dog_ = dog;
@@ -65,13 +69,14 @@ public:
         long long ns = clock_.save().cost_ns();
         if (ns >= watchdog_)
         {
-            dog_(ns/1000/1000);
+            dog_(desc_, ns/1000/1000);
         }
     }
 private:
+    const Desc desc_;
     zclock<_C> clock_;
     long long watchdog_;
-    std::function<void(long long)> dog_;
+    std::function<void(const Desc&, long long)> dog_;
 };
 
 
