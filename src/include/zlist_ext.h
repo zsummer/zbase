@@ -196,7 +196,7 @@ public:
         u32 next;
         space_type *space;
     };
-    static _Ty* ZBASE_ALIAS node_cast(node_type& node) { return reinterpret_cast<_Ty*>(node.space); }
+    static _Ty* ZBASE_ALIAS node_cast(const node_type& node) { return reinterpret_cast<_Ty*>(node.space); }
 public:
 
     zlist_ext()
@@ -316,7 +316,7 @@ public:
     reference front() { return *node_cast(data_[used_head_id_]); }
     const_reference front() const { return *node_cast(data_[used_head_id_]); }
     reference back() { return *node_cast(data_[data_[END_ID].front]); }
-    const_reference back() const { *node_cast(data_[data_[END_ID].front]); }
+    const_reference back() const {return *node_cast(data_[data_[END_ID].front]); }
 
 //       static constexpr u32 static_buf_size(u32 obj_count) { return sizeof(zlist_ext<_Ty, 1>) + sizeof(node_type) * (obj_count - 1); }
 
