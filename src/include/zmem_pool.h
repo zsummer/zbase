@@ -101,14 +101,14 @@ public:
     constexpr static s64 calculate_space_size(s32 obj_size, s32 total_count) { return (HEAD_SIZE + align_size(obj_size)) * 1ULL * total_count + HEAD_SIZE; }
 
     //utils: 
-    template<class _Ty>
-    static inline u64 get_vptr()
+    template<class _Ty, class... Args>
+    static inline u64 get_vptr(Args&&... args)
     {
         if (std::is_polymorphic<_Ty>::value)
         {
             auto get_vptr_lambda = []()
             {
-                _Ty* p = new _Ty();
+                _Ty* p = new _Ty(std::forward<Args>(args) ...);
                 u64 vptr = 0;
                 //char* can safly clean warn: strict-aliasing rules  
                 memcpy(&vptr, (char*)p, sizeof(vptr));
@@ -141,13 +141,71 @@ public:
     };
 
 public:
-    inline chunk* ref(s32 chunk_id) { return  reinterpret_cast<chunk*>(space_ + chunk_size_ * chunk_id); }
-    inline char* at(s32 chunk_id) { return  &ref(chunk_id)->data_[0]; }
+    inline chunk* ref(s32 chunk_id) 
+    { 
+        return  reinterpret_cast<chunk*>(space_ + chunk_size_ * chunk_id); 
+    }
+    inline char* at(s32 chunk_id)
+    { 
+        return  &ref(chunk_id)->data_[0]; 
+    }
+
+    inline s32 resolve_chunk_id_from_obj(void* obj)
+    {
+        char* addr = (char*)obj - HEAD_SIZE;
+        if (addr < space_ || addr + chunk_size_ >= space_ + space_size_)
+        {
+            return obj_count_;
+        }
+        return (s32)((addr - space_) / chunk_size_);
+    }
+    inline s32 resolve_chunk_id_from_chunk(void* chunk)
+    {
+        char* addr = (char*)chunk;
+        if (addr < space_ || addr + chunk_size_ >= space_ + space_size_)
+        {
+            return obj_count_;
+        }
+        return (s32)((addr - space_) / chunk_size_);
+    }
+
+    inline chunk* safe_ref(s32 chunk_id)
+    {
+        if (chunk_id >= exploit_)
+        {
+            return nullptr;
+        }
+        return  reinterpret_cast<chunk*>(space_ + chunk_size_ * chunk_id);
+    }
+
+    inline char* safe_at(s32 chunk_id)
+    {
+        chunk* c = safe_ref(chunk_id);
+        if (c == nullptr)
+        {
+            return nullptr;
+        }
+        if (!c->used_)
+        {
+            return nullptr;
+        }
+        return  &c->data_[0];
+    }
+    
     inline char* fixed(s32 chunk_id) 
     { 
         static_assert(ALIGN_SIZE >= 8, "min vptr size");
-        char* p = at(chunk_id);
-        if (obj_vptr_ != 0 && obj_vptr_ != *(u64*)p)
+
+        char* p = safe_at(chunk_id);
+        if (p == nullptr)
+        {
+            return nullptr;
+        }
+        if (obj_vptr_ == 0)
+        {
+            return p;
+        }
+        if (obj_vptr_ != *(u64*)p)
         {
             *(u64*)p = obj_vptr_;
         }
@@ -155,6 +213,7 @@ public:
     }
     template<class _Ty>
     inline _Ty* cast(s32 chunk_id) { return reinterpret_cast<_Ty*>(fixed(chunk_id)); }
+    
 
 
     inline s32   chunk_size() const { return chunk_size_; }
@@ -345,6 +404,7 @@ public:
         return 0;
     }
 
+
     template<class _Ty>
     inline _Ty* create_without_construct()
     {
@@ -427,6 +487,8 @@ public:
 
     template<class _Ty>
     inline void destroy(const _Ty* obj) { pool_.destroy(obj); }
+
+    zmem_pool& orgin_pool() { return pool_; }
 private:
     constexpr static s64 SPACE_SIZE = zmem_pool::calculate_space_size(USER_SIZE, TOTAL_COUNT);
     zmem_pool pool_;

@@ -140,6 +140,128 @@ s32 base_test()
         }
     }
 
+    if (true)
+    {
+        Node::node_seq_id = 0;
+        zmem_obj_pool<Node, 2> ds;
+        ASSERT_TEST_NOLOG(ds.empty());
+        ASSERT_TEST_NOLOG(ds.window_size() == 0);
+
+        Node * a = ds.create();
+        ASSERT_TEST_NOLOG(a != nullptr);
+        ASSERT_TEST_NOLOG(ds.health(a, true) == 0);
+        ASSERT_TEST_NOLOG(ds.orgin_pool().window_size() == 1);
+        ASSERT_TEST_NOLOG(ds.orgin_pool().resolve_chunk_id_from_obj(a) == 0);
+        ASSERT_TEST_NOLOG(ds.orgin_pool().resolve_chunk_id_from_chunk(ds.orgin_pool().safe_ref(0)) == 0);
+
+        ASSERT_TEST_NOLOG(ds.orgin_pool().safe_at(0) != nullptr);
+        ASSERT_TEST_NOLOG(ds.orgin_pool().safe_at(1) == nullptr);
+        ASSERT_TEST_NOLOG(ds.orgin_pool().safe_at(2) == nullptr);
+        ASSERT_TEST_NOLOG(ds.orgin_pool().cast<Node>(0) != nullptr);
+        ASSERT_TEST_NOLOG(ds.orgin_pool().cast<Node>(1) == nullptr);
+        ASSERT_TEST_NOLOG(ds.orgin_pool().cast<Node>(2) == nullptr);
+
+
+        Node* b = ds.create();
+        ASSERT_TEST_NOLOG(ds.full());
+        ASSERT_TEST_NOLOG(!ds.empty());
+        ASSERT_TEST_NOLOG(b != nullptr);
+        ASSERT_TEST_NOLOG(ds.health(a, true) == 0);
+        ASSERT_TEST_NOLOG(ds.health(b, true) == 0);
+        ASSERT_TEST_NOLOG(ds.orgin_pool().window_size() == 2);
+        ASSERT_TEST_NOLOG(ds.orgin_pool().resolve_chunk_id_from_obj(a) == 0);
+        ASSERT_TEST_NOLOG(ds.orgin_pool().resolve_chunk_id_from_obj(b) == 1);
+        ASSERT_TEST_NOLOG(ds.orgin_pool().resolve_chunk_id_from_chunk(ds.orgin_pool().safe_ref(0)) == 0);
+        ASSERT_TEST_NOLOG(ds.orgin_pool().resolve_chunk_id_from_chunk(ds.orgin_pool().safe_ref(1)) == 1);
+
+        ASSERT_TEST_NOLOG(ds.orgin_pool().safe_at(0) != nullptr);
+        ASSERT_TEST_NOLOG(ds.orgin_pool().safe_at(1) != nullptr);
+        ASSERT_TEST_NOLOG(ds.orgin_pool().safe_at(2) == nullptr);
+        ASSERT_TEST_NOLOG(ds.orgin_pool().cast<Node>(0) != nullptr);
+        ASSERT_TEST_NOLOG(ds.orgin_pool().cast<Node>(1) != nullptr);
+        ASSERT_TEST_NOLOG(ds.orgin_pool().cast<Node>(2) == nullptr);
+
+        Node* c = ds.create();
+        ASSERT_TEST_NOLOG(c == nullptr);
+        ASSERT_TEST_NOLOG(ds.health(a, true) == 0);
+        ASSERT_TEST_NOLOG(ds.health(b, true) == 0);
+        ASSERT_TEST_NOLOG(ds.orgin_pool().window_size() == 2);
+        ASSERT_TEST_NOLOG(ds.orgin_pool().resolve_chunk_id_from_obj(a) == 0);
+        ASSERT_TEST_NOLOG(ds.orgin_pool().resolve_chunk_id_from_obj(b) == 1);
+        ASSERT_TEST_NOLOG(ds.orgin_pool().resolve_chunk_id_from_chunk(ds.orgin_pool().safe_ref(0)) == 0);
+        ASSERT_TEST_NOLOG(ds.orgin_pool().resolve_chunk_id_from_chunk(ds.orgin_pool().safe_ref(1)) == 1);
+
+        ASSERT_TEST_NOLOG(ds.orgin_pool().safe_at(0) != nullptr);
+        ASSERT_TEST_NOLOG(ds.orgin_pool().safe_at(1) != nullptr);
+        ASSERT_TEST_NOLOG(ds.orgin_pool().safe_at(2) == nullptr);
+        ASSERT_TEST_NOLOG(ds.orgin_pool().cast<Node>(0) != nullptr);
+        ASSERT_TEST_NOLOG(ds.orgin_pool().cast<Node>(1) != nullptr);
+        ASSERT_TEST_NOLOG(ds.orgin_pool().cast<Node>(2) == nullptr);
+
+        ds.back(a);
+        ASSERT_TEST_NOLOG(ds.health(a, false) == 0);
+        ASSERT_TEST_NOLOG(ds.health(a, true) != 0);
+        ASSERT_TEST_NOLOG(ds.health(b, true) == 0);
+        ASSERT_TEST_NOLOG(ds.orgin_pool().window_size() == 2);
+        ASSERT_TEST_NOLOG(ds.orgin_pool().resolve_chunk_id_from_obj(a) == 0);
+        ASSERT_TEST_NOLOG(ds.orgin_pool().resolve_chunk_id_from_obj(b) == 1);
+        ASSERT_TEST_NOLOG(ds.orgin_pool().resolve_chunk_id_from_chunk(ds.orgin_pool().safe_ref(0)) == 0);
+        ASSERT_TEST_NOLOG(ds.orgin_pool().resolve_chunk_id_from_chunk(ds.orgin_pool().safe_ref(1)) == 1);
+
+        ASSERT_TEST_NOLOG(ds.orgin_pool().safe_at(0) == nullptr);
+        ASSERT_TEST_NOLOG(ds.orgin_pool().safe_at(1) != nullptr);
+        ASSERT_TEST_NOLOG(ds.orgin_pool().safe_at(2) == nullptr);
+        ASSERT_TEST_NOLOG(ds.orgin_pool().cast<Node>(0) == nullptr);
+        ASSERT_TEST_NOLOG(ds.orgin_pool().cast<Node>(1) != nullptr);
+        ASSERT_TEST_NOLOG(ds.orgin_pool().cast<Node>(2) == nullptr);
+
+
+        a = ds.create();
+        ASSERT_TEST_NOLOG(ds.size() == 2);
+        ASSERT_TEST_NOLOG(ds.health(a, true) == 0);
+        ASSERT_TEST_NOLOG(ds.health(b, true) == 0);
+        ASSERT_TEST_NOLOG(ds.orgin_pool().window_size() == 2);
+        ASSERT_TEST_NOLOG(ds.orgin_pool().resolve_chunk_id_from_obj(a) == 0);
+        ASSERT_TEST_NOLOG(ds.orgin_pool().resolve_chunk_id_from_obj(b) == 1);
+        ASSERT_TEST_NOLOG(ds.orgin_pool().resolve_chunk_id_from_chunk(ds.orgin_pool().safe_ref(0)) == 0);
+        ASSERT_TEST_NOLOG(ds.orgin_pool().resolve_chunk_id_from_chunk(ds.orgin_pool().safe_ref(1)) == 1);
+
+        ASSERT_TEST_NOLOG(ds.orgin_pool().safe_at(0) != nullptr);
+        ASSERT_TEST_NOLOG(ds.orgin_pool().safe_at(1) != nullptr);
+        ASSERT_TEST_NOLOG(ds.orgin_pool().safe_at(2) == nullptr);
+        ASSERT_TEST_NOLOG(ds.orgin_pool().cast<Node>(0) != nullptr);
+        ASSERT_TEST_NOLOG(ds.orgin_pool().cast<Node>(1) != nullptr);
+        ASSERT_TEST_NOLOG(ds.orgin_pool().cast<Node>(2) == nullptr);
+
+
+
+        ASSERT_TEST_NOLOG(ds.back(a) == 0);
+        ASSERT_TEST_NOLOG(ds.back(b) == 0);
+
+        ASSERT_TEST_NOLOG(ds.size() == 0);
+        ASSERT_TEST_NOLOG(ds.health(a, true) != 0);
+        ASSERT_TEST_NOLOG(ds.health(a, false) == 0);
+        ASSERT_TEST_NOLOG(ds.health(b, true) != 0);
+        ASSERT_TEST_NOLOG(ds.health(b, false) == 0);
+        ASSERT_TEST_NOLOG(ds.orgin_pool().window_size() == 2);
+        ASSERT_TEST_NOLOG(ds.orgin_pool().resolve_chunk_id_from_obj(a) == 0);
+        ASSERT_TEST_NOLOG(ds.orgin_pool().resolve_chunk_id_from_obj(b) == 1);
+        ASSERT_TEST_NOLOG(ds.orgin_pool().resolve_chunk_id_from_chunk(ds.orgin_pool().safe_ref(0)) == 0);
+        ASSERT_TEST_NOLOG(ds.orgin_pool().resolve_chunk_id_from_chunk(ds.orgin_pool().safe_ref(1)) == 1);
+
+        ASSERT_TEST_NOLOG(ds.orgin_pool().safe_at(0) == nullptr);
+        ASSERT_TEST_NOLOG(ds.orgin_pool().safe_at(1) == nullptr);
+        ASSERT_TEST_NOLOG(ds.orgin_pool().safe_at(2) == nullptr);
+        ASSERT_TEST_NOLOG(ds.orgin_pool().cast<Node>(0) == nullptr);
+        ASSERT_TEST_NOLOG(ds.orgin_pool().cast<Node>(1) == nullptr);
+        ASSERT_TEST_NOLOG(ds.orgin_pool().cast<Node>(2) == nullptr);
+
+
+        ASSERT_TEST_NOLOG(ds.health(nullptr, true) != 0);
+        ASSERT_TEST_NOLOG(ds.health(nullptr, false) != 0);
+
+    }
+
 
     return 0;
 }
