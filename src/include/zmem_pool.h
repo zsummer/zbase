@@ -106,7 +106,7 @@ public:
     {
         if (std::is_polymorphic<_Ty>::value)
         {
-            auto get_vptr_lambda = []()
+            auto get_vptr_lambda = [&]()
             {
                 _Ty* p = new _Ty(std::forward<Args>(args) ...);
                 u64 vptr = 0;
