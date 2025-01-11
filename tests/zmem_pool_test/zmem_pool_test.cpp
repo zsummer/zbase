@@ -260,6 +260,10 @@ s32 base_test()
         ASSERT_TEST_NOLOG(ds.health(nullptr, true) != 0);
         ASSERT_TEST_NOLOG(ds.health(nullptr, false) != 0);
 
+        //check debug error 
+        ASSERT_TEST_NOLOG(ds.orgin_pool().debug_error_ == 0);
+
+
     }
 
 

@@ -30,10 +30,17 @@
 #include <Windows.h>
 #endif
 
+
+
+// init new memory with 0xfd    
+//#define ZDEBUG_UNINIT_MEMORY
+
+// backed memory immediately fill 0xdf 
+//#define ZDEBUG_DEATH_MEMORY  
+
+// open and check fence 
 //#define ZMALLOC_OPEN_FENCE 1
 
-//#define ZDEBUG_DEATH_MEMORY
-//#define ZDEBUG_UNINIT_MEMORY
 
 #ifndef ZMALLOC_OPEN_COUNTER
 #define ZMALLOC_OPEN_COUNTER 1
@@ -1004,7 +1011,7 @@ u64 zmalloc::free_memory(void* addr)
     {
         char* clean_addr = ((char*)chunk) + sizeof(chunk_type);
         u32 size = chunk->this_size - sizeof(chunk_type);
-        memset(clean_addr, 0xfd, size);
+        memset(clean_addr, 0xdf, size);
     }
 #endif
     if (zmalloc_chunk_is_dirct(chunk))

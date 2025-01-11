@@ -12,6 +12,8 @@
 #include "fn_log.h"
 #include "zprof.h"
 #include "test_common.h"
+#include "zlist.h"
+#include "zlist_ext.h"
 
 s32 coverage_test();
 s32 likely_test();
@@ -28,6 +30,8 @@ int main(int argc, char *argv[])
     ASSERT_TEST(coverage_test() == 0);
     ASSERT_TEST(likely_test() == 0);
 
+    ASSERT_TEST(zlist_debug_error_helper<>::debug_error_ == 0);
+    ASSERT_TEST(zlist_ext_debug_error_helper<>::debug_error_ == 0);
 
     PROF_DO_MERGE();
     PROF_OUTPUT_REPORT();

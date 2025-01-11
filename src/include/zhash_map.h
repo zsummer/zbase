@@ -56,7 +56,14 @@ using f64 = double;
 #define ZBASE_ALIAS
 #endif
 
+// init new memory with 0xfd    
+//#define ZDEBUG_UNINIT_MEMORY
 
+// backed memory immediately fill 0xdf 
+//#define ZDEBUG_DEATH_MEMORY  
+
+// open and check fence 
+// not support
 
 
 template<class node_type, class value_type, u32 INVALID_NODE_ID, u32 HASH_COUNT>
@@ -285,7 +292,7 @@ protected:
             first_valid_node_id_ = next_b(first_valid_node_id_+1).cur_node_id_;
         }
 #ifdef ZDEBUG_DEATH_MEMORY
-        memset(&node_pool_[node_id].val_space, 0xfd, sizeof(space_type));
+        memset(&node_pool_[node_id].val_space, 0xdf, sizeof(space_type));
 #endif // ZDEBUG_DEATH_MEMORY
     }
 

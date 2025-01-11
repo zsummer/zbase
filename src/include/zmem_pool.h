@@ -57,8 +57,15 @@ using f64 = double;
 #endif
 
 
+// init new memory with 0xfd    
 //#define ZDEBUG_UNINIT_MEMORY
-//#define ZDEBUG_DEATH_MEMORY
+
+// backed memory immediately fill 0xdf 
+//#define ZDEBUG_DEATH_MEMORY  
+
+// open and check fence 
+//#define ZDEBUG_CHECK_POOL_HEALTH
+
 
 /* type_traits:
 *
@@ -75,11 +82,14 @@ using f64 = double;
 */
 
 
+
+
 class zmem_pool
 {
 public:
     s32 obj_size_;
     s32 name_id_;
+    s32 debug_error_;
     u64 obj_vptr_;
     s32 obj_count_;
     s32 exploit_;
@@ -88,6 +98,9 @@ public:
     s32 free_id_;
     char* space_;
     s64  space_size_;
+
+    
+
     static constexpr u32 FENCE_4 = 0xbeafbeaf;
     static constexpr s32 HEAD_SIZE = 8;
     static constexpr u64 HEAD_USED = (1ULL << 63) | FENCE_4;
@@ -359,7 +372,7 @@ public:
 
 #ifdef ZDEBUG_UNINIT_MEMORY
             memset(&c->data_, 0xfd, chunk_size_ - HEAD_SIZE);
-#endif // ZDEBUG_UNINIT_MEMORY
+#endif 
             return &c->data_;
         }
         if (exploit_ < obj_count_)
@@ -373,7 +386,7 @@ public:
             ref(exploit_)->fence_ = FENCE_4;
 #ifdef ZDEBUG_UNINIT_MEMORY
             memset(&c->data_, 0xfd, chunk_size_ - HEAD_SIZE);
-#endif // ZDEBUG_UNINIT_MEMORY
+#endif 
             return &c->data_;
         }
         return NULL;
@@ -381,17 +394,23 @@ public:
 
     inline s32 back(void* obj)
     {
-        /*
+
+#ifdef ZDEBUG_CHECK_POOL_HEALTH
         s32 ret = health(obj, true);
         if (ret != 0)
         {
             //memory leak when health check fail  
-            return ret;
+            debug_error_++;
         }
-        */
+#endif 
         //check success 
         char* addr = (char*)obj - HEAD_SIZE;
         chunk* c = (chunk*)addr;
+        if (c->fence_ != FENCE_4)
+        {
+            debug_error_++;
+        }
+
         c->head_ = HEAD_UNUSED;
         //c->fence_ = FENCE_4;
         //c->used_ = 0;
@@ -399,8 +418,8 @@ public:
         free_id_ = (s32)((addr - space_)/chunk_size_);
         used_count_--;
 #ifdef ZDEBUG_DEATH_MEMORY
-        memset(obj, 0xfd, chunk_size_ - HEAD_SIZE);
-#endif // ZDEBUG_DEATH_MEMORY
+        memset(obj, 0xdf, chunk_size_ - HEAD_SIZE);
+#endif 
         return 0;
     }
 

@@ -60,7 +60,13 @@ using f64 = double;
 
 
 
+// init new memory with 0xfd    
+//#define ZDEBUG_UNINIT_MEMORY
 
+// backed memory immediately fill 0xdf 
+//#define ZDEBUG_DEATH_MEMORY  
+
+// open and check fence 
 //#define ZLIST_EXT_USED_FENCE
 
 #if __GNUG__
@@ -148,13 +154,24 @@ bool operator != (const zlist_ext_iterator<list_type>& n1, const zlist_ext_itera
 */
 
 
+template<s32 _ID = 0>
+class zlist_ext_debug_error_helper
+{
+public:
+    // record error when open fence; don't worry about thead safety. 
+    static s32 debug_error_;
+};
+template<s32 _ID>
+s32 zlist_ext_debug_error_helper<_ID>::debug_error_ = 0;
+
+template<class _Ty>
+using zlist_aligned_space_helper = typename std::conditional<std::is_trivial<_Ty>::value, _Ty, typename std::aligned_storage<sizeof(_Ty), alignof(_Ty)>::type>::type;
+
+
 //分段双向链表, 使用两块平坦连续内存, 第一块为静态, 第二块为动态.  
 //_Size == _FixedSize 大小相等时为全静态, 此时与zlist的区别在于, zlist的node和value绑在一起, value小时 zlist因不需要取指针性能更好,  value大时 zlist_ext因分离数据性能会更好一些.  
 //_FixedSize == 0 时为全动态   
 //这里使用了指针, 用在共享内存时候需要保证指针地址固定, 以及修改动态内存分配接口,.   
-
-template<class _Ty>
-using zlist_aligned_space_helper = typename std::conditional<std::is_trivial<_Ty>::value, _Ty, typename std::aligned_storage<sizeof(_Ty), alignof(_Ty)>::type>::type;
 
 
 template<class _Ty, size_t _Size, size_t _FixedSize, class _Alloc = std::allocator<zlist_aligned_space_helper<_Ty>> >
@@ -490,11 +507,13 @@ private:
     {
         if (id >= END_ID)
         {
+            zlist_ext_debug_error_helper<>::debug_error_++;
             return false;
         }
 #ifdef ZLIST_EXT_USED_FENCE
         if (data_[id + 1].fence != FENCE_VAL)
         {
+            zlist_ext_debug_error_helper<>::debug_error_++;
             return false;
         }
 #endif
@@ -502,11 +521,13 @@ private:
 #ifdef ZLIST_EXT_USED_FENCE
         if (node.fence != FENCE_VAL)
         {
+            zlist_ext_debug_error_helper<>::debug_error_++;
             return false;
         }
 #endif
         if (used_head_id_ >= END_ID)
         {
+            zlist_ext_debug_error_helper<>::debug_error_++;
             return false; //empty
         }
         if (!std::is_trivial<_Ty>::value)
@@ -696,6 +717,7 @@ public:
     {
         return comp_bound(first, last, value, greater);
     }
+
 private:
     u32 used_count_;
     u32 free_id_;
