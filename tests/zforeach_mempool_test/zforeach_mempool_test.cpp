@@ -79,6 +79,10 @@ public:
         for (u32 i = begin_id; i < end_id; i++)
         {
             Object* obj = object_pool_.cast<Object>(i);
+            if (obj == nullptr)
+            {
+                continue; // not in use 
+            }
             obj->OnTick(sub.userkey_, now_ms);
             if (has_error_ != 0)
             {
@@ -127,12 +131,18 @@ s32 base_test()
     s32 ret = object_pool_.init_with_object<Object>(0, kObjects, new char[space_size], space_size);
     ASSERT_TEST(ret == 0);
     memset(object_pool_.space_, 0, object_pool_.space_size_);
+    for (s32 i = 0; i < kObjects; i++)
+    {
+        ASSERT_TEST_NOLOG(object_pool_.exploit() != nullptr);
+    }
+
 
     zforeach<TestForeach> inst[kForeachInsts];
     for (s32 i = 0; i < foreach_insts_; i++)
     {
         s32 ret = inst[i].init(i, 0, kObjects, base_frame_len_, foreach_user_frame_len_[i]);
         ASSERT_TEST(ret == 0);
+
     }
     
     if (true)
