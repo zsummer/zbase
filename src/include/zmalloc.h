@@ -23,7 +23,7 @@
 #include <stdlib.h>
 #include <cstddef>
 #include <type_traits>
-
+#include <tuple>
 #ifdef WIN32
 #define WIN32_LEAN_AND_MEAN
 #include <WinSock2.h>
@@ -217,6 +217,11 @@ public:
     static const u32 BITMAP_LEVEL = 2;
     static const u32 DEFAULT_BLOCK_SIZE = (8 * 1024 * 1024);
 
+    static const u32 SLOT_BINMAP_SIZE = 256;
+//    static const u32 SLOT_MAX_SIZE = DEFAULT_BLOCK_SIZE; //direct block 
+//    static const u32 SLOT_BLOCK_SIZE = DEFAULT_BLOCK_SIZE; //direct block 
+    
+
 public:
     inline static u32 zmalloc_size() { return sizeof(zmalloc); }
     inline static zmalloc& instance() { return *instance_ptr(); }
@@ -225,10 +230,15 @@ public:
     inline static void* default_block_alloc(u64 );
     inline static u64 default_block_free(void*);
     inline void set_block_callback(block_alloc_func block_alloc, block_free_func block_free);
+
+    inline s32 init();
     template<u16 COLOR = 0>
     inline void* alloc_memory(u64 bytes);
     inline u64  free_memory(void* addr);
-        
+    
+    //block bind to slot;  one slot one fixed size 
+    inline void* alloc_slot(u16 slot_id, u64 bytes, u64 limit_block_size);
+    inline u64 free_slot(void* addr);
 
     inline s32 check_health();
     inline void check_panic();
@@ -349,13 +359,18 @@ public:
 
     free_chunk_type* dv_[BITMAP_LEVEL];
     free_chunk_type bin_[BITMAP_LEVEL][BINMAP_SIZE];
-    free_chunk_type bin_end_[BITMAP_LEVEL][BINMAP_SIZE];
+    free_chunk_type bin_end_[BITMAP_LEVEL][BINMAP_SIZE]; // can optimize; pair<bin, bin_end> 
+
 #if ZMALLOC_OPEN_COUNTER
     u32 bin_size_[BITMAP_LEVEL][BINMAP_SIZE]; //size = chunk head + req size + inner frag 
     u64 alloc_counter_[CHUNK_COLOR_MASK_WITH_LEVEL + 1][BINMAP_SIZE];
     u64 free_counter_[CHUNK_COLOR_MASK_WITH_LEVEL + 1][BINMAP_SIZE];
 
 #endif // ZMALLOC_OPEN_COUNTER
+
+    std::tuple<u32, u32, u32> slot_size_[SLOT_BINMAP_SIZE];
+    free_chunk_type slot_bin_[SLOT_BINMAP_SIZE];
+    free_chunk_type slot_bin_end_[SLOT_BINMAP_SIZE];
 };
 
 #define global_zmalloc(bytes) zmalloc::instance().alloc_memory(bytes)
@@ -740,6 +755,45 @@ zmalloc::free_chunk_type* zmalloc::exploit_new_chunk(free_chunk_type* devide_chu
 #pragma warning( disable : 4146 )  
 #endif // _WIN32
 
+inline s32 zmalloc::init()
+{
+    if (!inited_)
+    {
+        auto cache_max_reserve_block_count = max_reserve_block_count_;
+        auto cache_block_alloc = block_alloc_;
+        auto cache_block_free = block_free_;
+        auto block_allloc_power_of_2 = block_power_is_2_;
+        memset(this, 0, sizeof(zmalloc));
+        max_reserve_block_count_ = cache_max_reserve_block_count;
+        block_alloc_ = cache_block_alloc;
+        block_free_ = cache_block_free;
+        block_power_is_2_ = block_allloc_power_of_2;
+        inited_ = 1;
+        for (u32 level = 0; level < BITMAP_LEVEL; level++)
+        {
+            for (u32 bin_id = 0; bin_id < BINMAP_SIZE; bin_id++)
+            {
+                bin_[level][bin_id].next_node = &bin_end_[level][bin_id];
+                bin_end_[level][bin_id].prev_node = &bin_[level][bin_id];
+            }
+        }
+        for (u32 bin_id = 0; bin_id < BINMAP_SIZE; bin_id++)
+        {
+            bin_size_[!CHUNK_IS_BIG][bin_id] = ((bin_id) << FINE_GRAINED_SHIFT) + 16;
+        }
+        for (u32 bin_id = 0; bin_id < BINMAP_SIZE; bin_id++)
+        {
+            bin_size_[CHUNK_IS_BIG][bin_id] = zmalloc_resolve_order_size(bin_id) + 16;
+        }
+        for (u32 slot = 0; slot < SLOT_BINMAP_SIZE; slot++)
+        {
+            slot_bin_[slot].next_node = &slot_bin_end_[slot];
+            slot_bin_end_[slot].prev_node = &slot_bin_[slot];
+        }
+
+    }
+    return 0;
+}
 
 template<u16 COLOR>
 void* zmalloc::alloc_memory(u64 req_bytes)
@@ -755,32 +809,7 @@ void* zmalloc::alloc_memory(u64 req_bytes)
     static_assert(CHUNK_IS_DIRECT > (CHUNK_COLOR_MASK_WITH_USED | CHUNK_COLOR_MASK_WITH_LEVEL), "");
     if (!inited_)
     {
-        auto cache_max_reserve_block_count = max_reserve_block_count_;
-        auto cache_block_alloc = block_alloc_;
-        auto cache_block_free = block_free_;
-        auto block_allloc_power_of_2 = block_power_is_2_;
-        memset(this, 0, sizeof(zmalloc));
-        max_reserve_block_count_= cache_max_reserve_block_count;
-        block_alloc_ = cache_block_alloc;
-        block_free_ = cache_block_free;
-        block_power_is_2_ = block_allloc_power_of_2;
-        inited_ = 1;
-        for (u32 level = 0; level < BITMAP_LEVEL; level++)
-        {
-            for (u32 bin_id = 0; bin_id < BINMAP_SIZE; bin_id++)
-            {
-                bin_[level][bin_id].next_node = &bin_end_[level][bin_id];
-                bin_end_[level][bin_id].prev_node = &bin_[level][bin_id];
-            }
-        }
-        for (u32 bin_id = 0; bin_id < BINMAP_SIZE; bin_id++)
-        {
-            bin_size_[!CHUNK_IS_BIG][bin_id] = ((bin_id) << FINE_GRAINED_SHIFT ) + 16;
-        }
-        for (u32 bin_id = 0; bin_id < BINMAP_SIZE; bin_id++)
-        {
-            bin_size_[CHUNK_IS_BIG][bin_id] = zmalloc_resolve_order_size(bin_id) + 16;
-        }
+        init();
     }
     req_total_bytes_ += req_bytes;
     req_total_count_++;
@@ -1551,7 +1580,194 @@ void zmalloc::check_align(void* addr)
 }
 
   
+//block bind to slot;  one slot one fixed size 
+inline void* zmalloc::alloc_slot(u16 slot_id, u64 bytes, u64 block_size)
+{
+#ifdef ZMALLOC_USED_SYS  //contrast sys alloc
+    return default_block_alloc(req_bytes);
+#endif 
+    if (!inited_)
+    {
+        init();
+    }
+    req_total_bytes_ += bytes;
+    req_total_count_++;
+    if (slot_id >= SLOT_BINMAP_SIZE)
+    {
+        return nullptr;
+    }
 
+    if (bytes == 0)
+    {
+        return nullptr;
+    }
+
+    if (std::get<0>(slot_size_[slot_id]) < bytes)
+    {
+        if (std::get<0>(slot_size_[slot_id]) != 0)
+        {
+            return nullptr;
+        }
+        
+        if (zmalloc_align_default_value(bytes) + CHUNK_PADDING_SIZE + sizeof(free_chunk_type) * 2 + sizeof(block_type) > block_size)
+        {
+            return nullptr;
+        }
+
+
+        /*
+        if (block_size <   DEFAULT_BLOCK_SIZE)
+        {
+            block_size = DEFAULT_BLOCK_SIZE;
+        }
+        */
+        
+        std::get<0>(slot_size_[slot_id]) = (u32)zmalloc_align_default_value(bytes);
+        std::get<1>(slot_size_[slot_id]) = (u32)zmalloc_align_default_value(block_size);
+        std::get<2>(slot_size_[slot_id]) = (u32)zmalloc_align_default_value(zmalloc_align_default_value(block_size) + sizeof(block_type) + CHUNK_PADDING_SIZE + sizeof(free_chunk_type) * 2);
+        std::get<2>(slot_size_[slot_id]) -= sizeof(block_type) + sizeof(free_chunk_type) * 2;
+    }
+    zmalloc::free_chunk_type* chunk = NULL;
+    do
+    {
+        if (slot_bin_[slot_id].next_node == &slot_bin_end_[slot_id])
+        {
+            chunk = alloc_block(std::get<1>(slot_size_[slot_id]), CHUNK_IS_BIG | CHUNK_IS_DIRECT);
+            if (chunk == nullptr)
+            {
+                return nullptr;
+            }
+            slot_bin_end_[slot_id].prev_node = chunk;
+            slot_bin_[slot_id].next_node = chunk;
+            chunk->prev_node = &slot_bin_[slot_id];
+            chunk->next_node = &slot_bin_end_[slot_id];
+
+            chunk = nullptr;
+        }
+
+        if (slot_bin_[slot_id].next_node->this_size >= (std::get<0>(slot_size_[slot_id]) + CHUNK_PADDING_SIZE) * 2)
+        {
+            chunk = exploit_new_chunk(slot_bin_[slot_id].next_node, std::get<0>(slot_size_[slot_id]) + CHUNK_PADDING_SIZE);
+            break;
+        }
+        else if (slot_bin_[slot_id].next_node->this_size >= (std::get<0>(slot_size_[slot_id]) + CHUNK_PADDING_SIZE))
+        {
+            chunk = slot_bin_[slot_id].next_node;
+            slot_bin_[slot_id].next_node = slot_bin_[slot_id].next_node->next_node;
+            slot_bin_[slot_id].next_node->prev_node = &slot_bin_[slot_id];
+            break;
+        }
+        else
+        {
+            return nullptr;
+        }
+
+    } while (false);
+
+    zmalloc_set_chunk(chunk, CHUNK_IS_IN_USED);
+    chunk->fence = CHUNK_FENCE;
+    chunk->bin_id = slot_id;
+
+#ifdef ZDEBUG_UNINIT_MEMORY
+    memset((void*)(zmalloc_u64_cast(chunk) + CHUNK_PADDING_SIZE), 0xfd, chunk->this_size - CHUNK_PADDING_SIZE);
+#endif // ZDEBUG_UNINIT_MEMORY
+    alloc_total_bytes_ += chunk->this_size;
+    zmalloc_check_align((void*)(zmalloc_u64_cast(chunk) + CHUNK_PADDING_SIZE));
+    return (void*)(zmalloc_u64_cast(chunk) + CHUNK_PADDING_SIZE);
+}
+
+
+inline u64 zmalloc::free_slot(void* addr)
+{
+#ifdef ZMALLOC_USED_SYS  //contrast sys alloc
+    return default_block_free(addr);
+#endif 
+
+    if (addr == NULL)
+    {
+        //LogError() << "free null";
+        return 0;
+    }
+    free_chunk_type* chunk = zmalloc_free_chunk_cast(zmalloc_u64_cast(addr) - CHUNK_PADDING_SIZE);
+    if (!zmalloc_chunk_in_use(chunk))
+    {
+        //LogError() << "free error";
+        runtime_errors_++;
+        return 0;
+    }
+    zmalloc_check_chunk(chunk);
+
+#if ZMALLOC_OPEN_FENCE
+    if (!zmalloc_check_fence(chunk) || !zmalloc_check_fence(zmalloc_next_chunk(chunk)))
+    {
+        runtime_errors_++;
+        return 0;
+    }
+#endif
+    //RECORD_FREE(ALLOC_ZMALLOC, chunk->this_size);
+    free_total_count_++;
+    free_total_bytes_ += chunk->this_size;
+
+    u32 slot_id = chunk->bin_id;
+    u64 bytes = chunk->this_size - CHUNK_PADDING_SIZE;
+
+
+
+    zmalloc_unset_chunk(chunk, CHUNK_COLOR_MASK_WITH_USED);
+
+
+    if (!zmalloc_chunk_in_use(zmalloc_front_chunk(chunk)))
+    {
+        free_chunk_type* prev_node = zmalloc_front_chunk(chunk);
+
+        prev_node->prev_node->next_node = prev_node->next_node;
+        prev_node->next_node->prev_node = prev_node->prev_node;
+
+        prev_node->this_size += chunk->this_size;
+        prev_node->flags |= chunk->flags;
+        chunk = prev_node;
+        zmalloc_next_chunk(chunk)->prev_size = chunk->this_size;
+        zmalloc_check_chunk(chunk);
+    }
+
+    if (!zmalloc_chunk_in_use(zmalloc_next_chunk(chunk)))
+    {
+        free_chunk_type* next_node = zmalloc_free_chunk_cast(zmalloc_next_chunk(chunk));
+
+        next_node->prev_node->next_node = next_node->next_node;
+        next_node->next_node->prev_node = next_node->prev_node;
+
+        chunk->this_size += next_node->this_size;
+        chunk->flags |= next_node->flags;
+        zmalloc_next_chunk(chunk)->prev_size = chunk->this_size;
+        zmalloc_check_chunk(chunk);
+    }
+    zmalloc_check_free_chunk(chunk);
+
+#ifdef ZDEBUG_DEATH_MEMORY
+    if (true)
+    {
+        char* clean_addr = ((char*)chunk) + sizeof(chunk_type);
+        u32 size = chunk->this_size - sizeof(chunk_type);
+        memset(clean_addr, 0xdf, size);
+    }
+#endif
+
+    if (chunk->this_size > std::get<2>(slot_size_[slot_id]) - std::get<0>(slot_size_[slot_id]))
+    {
+        block_type* block = zmalloc_get_block(chunk);
+        free_block(block);
+        return bytes;
+    }
+
+    chunk->next_node = slot_bin_[slot_id].next_node;
+    chunk->prev_node = &slot_bin_[slot_id];
+
+    slot_bin_[slot_id].next_node->prev_node = chunk;
+    slot_bin_[slot_id].next_node = chunk;
+    
+    return bytes;
+}
 
 
 #endif

@@ -18,7 +18,7 @@
 #include <cstddef>
 #include <memory>
 #include <algorithm>
-
+#include <cstring>
 
 //default use format compatible short type .  
 #if !defined(ZBASE_USE_AHEAD_TYPE) && !defined(ZBASE_USE_DEFAULT_TYPE)
