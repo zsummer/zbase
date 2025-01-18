@@ -48,22 +48,40 @@ int main(int argc, char *argv[])
                     zmalloc::instance().free_slot(pp[n]);
                 }
                 pp[n] = zmalloc::instance().alloc_slot(1, 100, 1000);
-
+                
                 if (pp[n - 2] != nullptr)
                 {
                     zmalloc::instance().free_slot(pp[n-2]);
                 }
                 pp[n - 2] = zmalloc::instance().alloc_slot(1, 100, 1000);
-
-                if (pp[n + 4] == nullptr)
+              
+                if (pp[n + 4] != nullptr)
                 {
                     zmalloc::instance().free_slot(pp[n + 4]);
                 }
                 pp[n + 4] = zmalloc::instance().alloc_slot(1, 100, 1000);
+              
             }
+            for (size_t i = 0; i < 100; i++)
+            {
+                if (pp[i] != nullptr)
+                {
+                    zmalloc::instance().free_slot(pp[i]);
+                }
+            }
+
             cost.set_cnt(zmalloc::instance().free_total_count_ + zmalloc::instance().req_total_count_);
+
         }
+
+
+        LogDebug() << "zmalloc state log:";
+        auto new_log = []() { return std::move(LOG_STREAM_DEFAULT_LOGGER(0, FNLog::PRIORITY_DEBUG, 0, 0, FNLog::LOG_PREFIX_NULL)); };
+        zmalloc::instance().debug_state_log(new_log);
+        zmalloc::instance().debug_color_log(new_log, 0, (zmalloc::CHUNK_COLOR_MASK_WITH_LEVEL + 1) / 2);
+
     }
+
 
 
     PROF_DO_MERGE();
