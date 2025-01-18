@@ -140,6 +140,29 @@ int main(int argc, char *argv[])
             ASSERT_TEST_NOLOG(zstate->free_block_count_ == 8, "");
         }
 
+
+        if (true)
+        {
+
+            memset(zstate.get(), 0, sizeof(zmalloc));
+            zstate->set_global(zstate.get());
+
+
+            void* pp[16];
+            for (u32 i = 0; i < zmalloc::SLOT_BINMAP_SIZE; i++)
+            {
+                pp[0] = zmalloc::instance().alloc_slot(i, 200, 200 + zmalloc::CHUNK_PADDING_SIZE + sizeof(zmalloc::free_chunk_type) * 2 + sizeof(zmalloc::block_type) +i *5);
+                ASSERT_TEST_NOLOG(pp[0] != NULL, "");
+                memset(pp[0], 0, 200);
+                ASSERT_TEST_NOLOG(zmalloc::instance().free_slot(pp[0]) != 0, "");
+            }
+
+            ASSERT_TEST_NOLOG(zstate->alloc_block_count_ == zstate->free_block_count_, "");
+ 
+        }
+
+
+
     }
 
 
