@@ -39,7 +39,7 @@ int main(int argc, char *argv[])
         ASSERT_TEST_NOLOG(p == NULL, "");
         ASSERT_TEST_NOLOG(zstate->req_total_count_ == 1, "");
 
-        p = zmalloc::instance().alloc_slot(1, 100, 1000);
+        p = zmalloc::instance().alloc_slot(1, 100, 900);
         ASSERT_TEST_NOLOG(p != NULL, "");
         ASSERT_TEST_NOLOG(zstate->req_total_count_ == 2, "");
         ASSERT_TEST_NOLOG(zstate->alloc_block_count_ == 1, "");
@@ -51,14 +51,14 @@ int main(int argc, char *argv[])
 
         if (true)
         {
-            void* pp[8];
-            for (u32 i = 0; i < 8; i++)
+            void* pp[7];
+            for (u32 i = 0; i < 7; i++)
             {
-                pp[i] = zmalloc::instance().alloc_slot(1, 100, 1000);
+                pp[i] = zmalloc::instance().alloc_slot(1, 100, 900);
                 memset(pp[i], 0, 100);
                 ASSERT_TEST_NOLOG(pp[i] != NULL, "");
             }
-            for (u32 i = 0; i < 8; i++)
+            for (u32 i = 0; i < 7; i++)
             {
                 ASSERT_TEST_NOLOG(zmalloc::instance().free_slot(pp[i]) != 0, "");
             }
@@ -68,16 +68,16 @@ int main(int argc, char *argv[])
 
         if (true)
         {
-            void* pp[8];
-            for (u32 i = 0; i < 8; i++)
+            void* pp[7];
+            for (u32 i = 0; i < 7; i++)
             {
-                pp[i] = zmalloc::instance().alloc_slot(2, 100, 1000);
+                pp[i] = zmalloc::instance().alloc_slot(2, 100, 900);
                 memset(pp[i], 0, 100);
                 ASSERT_TEST_NOLOG(pp[i] != NULL, "");
             }
-            for (u32 i = 0; i < 8; i++)
+            for (u32 i = 0; i < 7; i++)
             {
-                ASSERT_TEST_NOLOG(zmalloc::instance().free_slot(pp[7-i]) != 0, "");
+                ASSERT_TEST_NOLOG(zmalloc::instance().free_slot(pp[6-i]) != 0, "");
             }
             ASSERT_TEST_NOLOG(zstate->alloc_block_count_ == 3, "");
             ASSERT_TEST_NOLOG(zstate->free_block_count_ == 3, "");
@@ -85,22 +85,22 @@ int main(int argc, char *argv[])
 
         if (true)
         {
-            void* pp[8];
-            for (u32 i = 0; i < 8; i++)
+            void* pp[7];
+            for (u32 i = 0; i < 7; i++)
             {
-                pp[i] = zmalloc::instance().alloc_slot(2, 100, 1000);
+                pp[i] = zmalloc::instance().alloc_slot(2, 100, 900);
                 memset(pp[i], 0, 100);
                 ASSERT_TEST_NOLOG(pp[i] != NULL, "");
             }
-            for (u32 i = 0; i < 4; i++)
+            for (u32 i = 0; i < 3; i++)
             {
                 ASSERT_TEST_NOLOG(zmalloc::instance().free_slot(pp[i]) != 0, "");
             }
             for (u32 i = 0; i < 3; i++)
             {
-                ASSERT_TEST_NOLOG(zmalloc::instance().free_slot(pp[7 - i]) != 0, "");
+                ASSERT_TEST_NOLOG(zmalloc::instance().free_slot(pp[6 - i]) != 0, "");
             }
-            ASSERT_TEST_NOLOG(zmalloc::instance().free_slot(pp[4]) != 0, "");
+            ASSERT_TEST_NOLOG(zmalloc::instance().free_slot(pp[3]) != 0, "");
 
             ASSERT_TEST_NOLOG(zstate->alloc_block_count_ == 4, "");
             ASSERT_TEST_NOLOG(zstate->free_block_count_ == 4, "");
@@ -108,14 +108,14 @@ int main(int argc, char *argv[])
 
         if (true)
         {
-            void* pp[16];
-            for (u32 i = 0; i < 16; i++)
+            void* pp[14];
+            for (u32 i = 0; i < 14; i++)
             {
-                pp[i] = zmalloc::instance().alloc_slot(1, 100, 1000);
+                pp[i] = zmalloc::instance().alloc_slot(1, 100, 900);
                 memset(pp[i], 0, 100);
                 ASSERT_TEST_NOLOG(pp[i] != NULL, "");
             }
-            for (u32 i = 0; i < 16; i++)
+            for (u32 i = 0; i < 14; i++)
             {
                 ASSERT_TEST_NOLOG(zmalloc::instance().free_slot(pp[i]) != 0, "");
             }
@@ -125,14 +125,14 @@ int main(int argc, char *argv[])
 
         if (true)
         {
-            void* pp[16];
-            for (u32 i = 0; i < 16; i++)
+            void* pp[14];
+            for (u32 i = 0; i < 14; i++)
             {
-                pp[i] = zmalloc::instance().alloc_slot(3, 200, 2000);
+                pp[i] = zmalloc::instance().alloc_slot(3, 200, 1500);
                 memset(pp[i], 0, 200);
                 ASSERT_TEST_NOLOG(pp[i] != NULL, "");
             }
-            for (u32 i = 0; i < 16; i++)
+            for (u32 i = 0; i < 14; i++)
             {
                 ASSERT_TEST_NOLOG(zmalloc::instance().free_slot(pp[i]) != 0, "");
             }
@@ -148,7 +148,7 @@ int main(int argc, char *argv[])
             zstate->set_global(zstate.get());
 
 
-            void* pp[16];
+            void* pp[14];
             for (u32 i = 0; i < zmalloc::SLOT_BINMAP_SIZE; i++)
             {
                 pp[0] = zmalloc::instance().alloc_slot(i, 200, 200 + zmalloc::CHUNK_PADDING_SIZE + sizeof(zmalloc::free_chunk_type) * 2 + sizeof(zmalloc::block_type) +i *5);

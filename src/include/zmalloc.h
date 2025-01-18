@@ -293,6 +293,7 @@ public:
         CHUNK_IS_IN_USED = 0x100,
         CHUNK_COLOR_MASK_WITH_USED = CHUNK_COLOR_MASK | CHUNK_IS_IN_USED,
         CHUNK_IS_DIRECT = 0x200,
+        CHUNK_IS_SLOT = 0x400,
     };
     static const u32 CHUNK_LEVEL_MASK = CHUNK_IS_BIG;
     static const u32 CHUNK_FENCE = 0xdeadbeaf;
@@ -555,6 +556,10 @@ zmalloc::free_chunk_type* zmalloc::alloc_block(u32 bytes, u32 flag)
     if (!dirct)
     {
         bytes = DEFAULT_BLOCK_SIZE;
+    }
+    else if (flag & CHUNK_IS_SLOT)
+    {
+        bytes = zmalloc_ceil_power_of_2(bytes);
     }
     else if(block_power_is_2_)
     {
@@ -1661,7 +1666,8 @@ inline void* zmalloc::alloc_slot(u16 slot_id, u64 bytes, u64 block_size)
         
         slot_[slot_id].user_size = (u32)zmalloc_align_default_value(bytes);
         slot_[slot_id].block_size = (u32)zmalloc_align_default_value(block_size);
-        slot_[slot_id].max_chunk_size = (u32)zmalloc_align_default_value(zmalloc_align_default_value(block_size) + sizeof(block_type) + CHUNK_PADDING_SIZE + sizeof(free_chunk_type) * 2);
+        slot_[slot_id].max_chunk_size = zmalloc_align_default_value((u32)block_size) + (u32)sizeof(block_type) + CHUNK_PADDING_SIZE + (u32)sizeof(free_chunk_type) * 2;
+        slot_[slot_id].max_chunk_size = zmalloc_ceil_power_of_2(slot_[slot_id].max_chunk_size);
         slot_[slot_id].max_chunk_size -= sizeof(block_type) + sizeof(free_chunk_type) * 2;
     }
     zmalloc::free_chunk_type* chunk = NULL;
@@ -1669,7 +1675,7 @@ inline void* zmalloc::alloc_slot(u16 slot_id, u64 bytes, u64 block_size)
     {
         if (slot_bin_[slot_id].next_node == &slot_bin_end_[slot_id])
         {
-            chunk = alloc_block(slot_[slot_id].block_size, CHUNK_IS_BIG | CHUNK_IS_DIRECT);
+            chunk = alloc_block(slot_[slot_id].block_size, CHUNK_IS_BIG | CHUNK_IS_DIRECT | CHUNK_IS_SLOT);
             if (chunk == nullptr)
             {
                 runtime_errors_++;
