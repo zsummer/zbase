@@ -20,7 +20,7 @@
 
 s32 zpoint_test()
 {
-    zpoint<> pos;
+    zpoint pos;
     ASSERT_TEST(pos.is_zero());
     return 0;
 }
@@ -30,12 +30,12 @@ s32 zpoint_test()
 
 s32 zpoint_bench_test()
 {
-    zpoint<> pos;
+    zpoint pos;
     ASSERT_TEST(pos.is_zero());
     ASSERT_TEST(!pos.normalize());
     pos = { 1, 1, 1 };
     ASSERT_TEST(pos.normalize());
-    ASSERT_TEST(abs(pos.length() - 1.0) < zpoint<>::F32_PRECISION);
+    ASSERT_TEST(abs(pos.length() - 1.0) < zpoint::kFloatPrecision);
     return 0;
 }
 
