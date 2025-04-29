@@ -57,8 +57,15 @@ using f64 = double;
 #endif
 
 
+// init new memory with 0xfd    
 //#define ZDEBUG_UNINIT_MEMORY
-//#define ZDEBUG_DEATH_MEMORY
+
+// backed memory immediately fill 0xdf 
+//#define ZDEBUG_DEATH_MEMORY  
+
+// open and check fence 
+//#define ZDEBUG_CHECK_POOL_HEALTH
+
 
 /* type_traits:
 *
@@ -75,11 +82,14 @@ using f64 = double;
 */
 
 
+
+
 class zmem_pool
 {
 public:
     s32 obj_size_;
     s32 name_id_;
+    s32 debug_error_;
     u64 obj_vptr_;
     s32 obj_count_;
     s32 exploit_;
@@ -88,6 +98,9 @@ public:
     s32 free_id_;
     char* space_;
     s64  space_size_;
+
+    
+
     static constexpr u32 FENCE_4 = 0xbeafbeaf;
     static constexpr s32 HEAD_SIZE = 8;
     static constexpr u64 HEAD_USED = (1ULL << 63) | FENCE_4;
@@ -101,14 +114,14 @@ public:
     constexpr static s64 calculate_space_size(s32 obj_size, s32 total_count) { return (HEAD_SIZE + align_size(obj_size)) * 1ULL * total_count + HEAD_SIZE; }
 
     //utils: 
-    template<class _Ty>
-    static inline u64 get_vptr()
+    template<class _Ty, class... Args>
+    static inline u64 get_vptr(Args&&... args)
     {
         if (std::is_polymorphic<_Ty>::value)
         {
-            auto get_vptr_lambda = []()
+            auto get_vptr_lambda = [&]()
             {
-                _Ty* p = new _Ty();
+                _Ty* p = new _Ty(std::forward<Args>(args) ...);
                 u64 vptr = 0;
                 //char* can safly clean warn: strict-aliasing rules  
                 memcpy(&vptr, (char*)p, sizeof(vptr));
@@ -141,13 +154,71 @@ public:
     };
 
 public:
-    inline chunk* ref(s32 chunk_id) { return  reinterpret_cast<chunk*>(space_ + chunk_size_ * chunk_id); }
-    inline char* at(s32 chunk_id) { return  &ref(chunk_id)->data_[0]; }
+    inline chunk* ref(s32 chunk_id) 
+    { 
+        return  reinterpret_cast<chunk*>(space_ + chunk_size_ * chunk_id); 
+    }
+    inline char* at(s32 chunk_id)
+    { 
+        return  &ref(chunk_id)->data_[0]; 
+    }
+
+    inline s32 resolve_chunk_id_from_obj(void* obj)
+    {
+        char* addr = (char*)obj - HEAD_SIZE;
+        if (addr < space_ || addr + chunk_size_ >= space_ + space_size_)
+        {
+            return obj_count_;
+        }
+        return (s32)((addr - space_) / chunk_size_);
+    }
+    inline s32 resolve_chunk_id_from_chunk(void* chunk)
+    {
+        char* addr = (char*)chunk;
+        if (addr < space_ || addr + chunk_size_ >= space_ + space_size_)
+        {
+            return obj_count_;
+        }
+        return (s32)((addr - space_) / chunk_size_);
+    }
+
+    inline chunk* safe_ref(s32 chunk_id)
+    {
+        if (chunk_id >= exploit_)
+        {
+            return nullptr;
+        }
+        return  reinterpret_cast<chunk*>(space_ + chunk_size_ * chunk_id);
+    }
+
+    inline char* safe_at(s32 chunk_id)
+    {
+        chunk* c = safe_ref(chunk_id);
+        if (c == nullptr)
+        {
+            return nullptr;
+        }
+        if (!c->used_)
+        {
+            return nullptr;
+        }
+        return  &c->data_[0];
+    }
+    
     inline char* fixed(s32 chunk_id) 
     { 
         static_assert(ALIGN_SIZE >= 8, "min vptr size");
-        char* p = at(chunk_id);
-        if (obj_vptr_ != 0 && obj_vptr_ != *(u64*)p)
+
+        char* p = safe_at(chunk_id);
+        if (p == nullptr)
+        {
+            return nullptr;
+        }
+        if (obj_vptr_ == 0)
+        {
+            return p;
+        }
+        if (obj_vptr_ != *(u64*)p)
         {
             *(u64*)p = obj_vptr_;
         }
@@ -155,6 +226,7 @@ public:
     }
     template<class _Ty>
     inline _Ty* cast(s32 chunk_id) { return reinterpret_cast<_Ty*>(fixed(chunk_id)); }
+    
 
 
     inline s32   chunk_size() const { return chunk_size_; }
@@ -300,7 +372,7 @@ public:
 
 #ifdef ZDEBUG_UNINIT_MEMORY
             memset(&c->data_, 0xfd, chunk_size_ - HEAD_SIZE);
-#endif // ZDEBUG_UNINIT_MEMORY
+#endif 
             return &c->data_;
         }
         if (exploit_ < obj_count_)
@@ -314,7 +386,7 @@ public:
             ref(exploit_)->fence_ = FENCE_4;
 #ifdef ZDEBUG_UNINIT_MEMORY
             memset(&c->data_, 0xfd, chunk_size_ - HEAD_SIZE);
-#endif // ZDEBUG_UNINIT_MEMORY
+#endif 
             return &c->data_;
         }
         return NULL;
@@ -322,17 +394,23 @@ public:
 
     inline s32 back(void* obj)
     {
-        /*
+
+#ifdef ZDEBUG_CHECK_POOL_HEALTH
         s32 ret = health(obj, true);
         if (ret != 0)
         {
             //memory leak when health check fail  
-            return ret;
+            debug_error_++;
         }
-        */
+#endif 
         //check success 
         char* addr = (char*)obj - HEAD_SIZE;
         chunk* c = (chunk*)addr;
+        if (c->fence_ != FENCE_4)
+        {
+            debug_error_++;
+        }
+
         c->head_ = HEAD_UNUSED;
         //c->fence_ = FENCE_4;
         //c->used_ = 0;
@@ -340,10 +418,11 @@ public:
         free_id_ = (s32)((addr - space_)/chunk_size_);
         used_count_--;
 #ifdef ZDEBUG_DEATH_MEMORY
-        memset(obj, 0xfd, chunk_size_ - HEAD_SIZE);
-#endif // ZDEBUG_DEATH_MEMORY
+        memset(obj, 0xdf, chunk_size_ - HEAD_SIZE);
+#endif 
         return 0;
     }
+
 
     template<class _Ty>
     inline _Ty* create_without_construct()
@@ -427,6 +506,8 @@ public:
 
     template<class _Ty>
     inline void destroy(const _Ty* obj) { pool_.destroy(obj); }
+
+    zmem_pool& orgin_pool() { return pool_; }
 private:
     constexpr static s64 SPACE_SIZE = zmem_pool::calculate_space_size(USER_SIZE, TOTAL_COUNT);
     zmem_pool pool_;

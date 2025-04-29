@@ -56,7 +56,14 @@ using f64 = double;
 #define ZBASE_ALIAS
 #endif
 
+// init new memory with 0xfd    
+//#define ZDEBUG_UNINIT_MEMORY
 
+// backed memory immediately fill 0xdf 
+//#define ZDEBUG_DEATH_MEMORY  
+
+// open and check fence 
+// not support
 
 
 template<class node_type, class value_type, u32 INVALID_NODE_ID, u32 HASH_COUNT>
@@ -74,9 +81,9 @@ struct zhash_map_iterator
         cur_node_id_ = INVALID_NODE_ID;
         max_node_id_ = 0;
     }
-    zhash_map_iterator(node_type* pool,  u32 node_id, u32 max_node_id)
+    zhash_map_iterator(const node_type* pool,  u32 node_id, u32 max_node_id)
     {
-        node_pool_ = pool;
+        node_pool_ = const_cast<node_type *>(pool);
         cur_node_id_ = node_id;
         max_node_id_ = max_node_id;
     }
@@ -226,15 +233,15 @@ public:
         space_type val_space;
     };
     using iterator = zhash_map_iterator<node_type, value_type, INVALID_NODE_ID, HASH_COUNT>;
-    using const_iterator = const iterator;
+    using const_iterator = iterator;
 protected:
     size_type buckets_[HASH_COUNT];
     node_type node_pool_[INVALID_NODE_ID+1]; // dereference end() will panic;  it's user error.  
     size_type first_valid_node_id_;
     size_type exploit_offset_; //is the last valid node index(unexploit it the next index) & the value is the buckets used nodes num. 
     size_type count_;
-    iterator mi(size_type node_id) { return iterator(node_pool_, node_id, exploit_offset_ + 1); }
-    static reference rf(node_type& b) { return *reinterpret_cast<value_type*>(&b.val_space); }
+    iterator mi(size_type node_id) const noexcept { return iterator(node_pool_, node_id, exploit_offset_ + 1); }
+    static reference rf(node_type& b)  { return *reinterpret_cast<value_type*>(&b.val_space); }
 
     void reset()
     {
@@ -285,11 +292,11 @@ protected:
             first_valid_node_id_ = next_b(first_valid_node_id_+1).cur_node_id_;
         }
 #ifdef ZDEBUG_DEATH_MEMORY
-        memset(&node_pool_[node_id].val_space, 0xfd, sizeof(space_type));
+        memset(&node_pool_[node_id].val_space, 0xdf, sizeof(space_type));
 #endif // ZDEBUG_DEATH_MEMORY
     }
 
-    iterator next_b(size_type node_id)
+    iterator next_b(size_type node_id) const
     {
         size_type exploit_offset = exploit_offset_ > NODE_COUNT ? NODE_COUNT : exploit_offset_; //clear gcc warning. it's safe. 
         for (size_type i = node_id; i <= exploit_offset; i++)

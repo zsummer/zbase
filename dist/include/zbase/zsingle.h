@@ -70,6 +70,16 @@ public:
         return inst;
     }
 
+    static T& Inst()
+    {
+        return instance();
+    }
+
+    static T* InstPtr()
+    {
+        return &instance();
+    }
+
 protected:
     zsingle() = default;
     ~zsingle() = default;
