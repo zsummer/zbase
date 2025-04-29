@@ -86,16 +86,15 @@ using f64 = double;
 //短字符串(对照长度8字节)优先solid方案 也是适合大多数场景的方案       
 //长字符串优先fast并使用len获取字符串长度.      
 
+//reuse模式会遍历对比 对于大型符号库而言需要进行辅助字典优化构建速度  
 
-class zsymbols_fast
+class zsymbols
 {
 public:
+    //每个符号有一个s32的头部用于存储长度. 该长度包含字符串'\0'的大小
     using SymbolHead = s32;
     constexpr static s32 HEAD_SIZE = sizeof(SymbolHead);
-    constexpr static s32 INVALID_SYMBOLS_ID = 0;
 
-    constexpr static s32 FIRST_EXPLOIT_OFFSET = HEAD_SIZE;
-    constexpr static s32 MIN_SPACE_SIZE = HEAD_SIZE;
 
 public:
     char* space_;
@@ -108,32 +107,31 @@ public:
         {
             return -1;
         }
-        if (space_len < MIN_SPACE_SIZE)
+        if (space_len <= 0)
         {
             return -2;
         }
-        if (exploit_offset != 0 && exploit_offset < FIRST_EXPLOIT_OFFSET)
+        if (exploit_offset < 0)
         {
             return -3;
+        }
+        if (exploit_offset> space_len)
+        {
+            return -4;
         }
 
         space_ = space;
         space_len_ = space_len;
         exploit_ = exploit_offset;
 
-        if (exploit_offset == 0)
-        {
-            SymbolHead head = 0;
-            memcpy(space_, &head, sizeof(head));
-            exploit_ += sizeof(head);
-        }
-
         return 0;
     }
 
+
+
     const char* at(s32 name_id) const 
     {
-        if (name_id < space_len_)
+        if (name_id >= HEAD_SIZE && name_id < exploit_)
         {
             return &space_[name_id];
         }
@@ -142,10 +140,10 @@ public:
 
     s32 len(s32 name_id) const
     {
-        if (name_id >= FIRST_EXPLOIT_OFFSET || name_id < exploit_)
+        if (name_id >= HEAD_SIZE && name_id < exploit_)
         {
             SymbolHead head;
-            memcpy(&head, &space_[name_id - sizeof(head)], sizeof(head)); //adapt address align .  
+            memcpy(&head, &space_[name_id - HEAD_SIZE], HEAD_SIZE); //adapt address align .  
             return head;
         }
         return 0;
@@ -155,220 +153,64 @@ public:
     {
         if (name == nullptr)
         {
-            name = "";
-            name_len = 0;
+            return -1;
         }
+        if (space_ == nullptr)
+        {
+            return -2;
+        }
+        if (space_len_ < HEAD_SIZE)
+        {
+            return -3;
+        }
+
         if (name_len == 0)
         {
             name_len = (s32)strlen(name);
         }
-        if (exploit_ < FIRST_EXPLOIT_OFFSET)
-        {
-            return INVALID_SYMBOLS_ID;
-        }
-        if (space_len_ < MIN_SPACE_SIZE)
-        {
-            return INVALID_SYMBOLS_ID;
-        }
-        if (space_ == nullptr)
-        {
-            return INVALID_SYMBOLS_ID;
-        }
-
 
         if (reuse_same_name)
         {
-            s32 offset = FIRST_EXPLOIT_OFFSET;
+            s32 offset = 0;
             SymbolHead head = 0;
 
-            while (offset + 4 <= exploit_)
+            //有效的符号长度至少是HEAD_SIZE +  一个字符长度'\0'   
+            while (offset + HEAD_SIZE + 1 <= exploit_)
             {
-                memcpy(&head, space_ + offset, sizeof(head));
-                if (offset + 4 + head + 1 > space_len_)
+                memcpy(&head, space_ + offset, HEAD_SIZE);
+                if (head != name_len)
                 {
-                    break;  //has error  
-                }
-                if (strcmp(space_ + offset + 4, name) == 0)
-                {
-                    return offset + 4;
-                }
-                offset += 4 + head + 1;
-            }
-        }
-
-        s32 new_symbol_len = HEAD_SIZE + name_len + 1;
-
-        if (exploit_ + new_symbol_len > space_len_)
-        {
-            return INVALID_SYMBOLS_ID;
-        }
-
-
-        SymbolHead head = name_len;
-        memcpy(space_ + exploit_, &head, sizeof(head));
-        memcpy(space_ + exploit_ + sizeof(head), name, (u64)name_len + 1);
-        s32 symbol_id = exploit_ + sizeof(head);
-        exploit_ += new_symbol_len;
-        return symbol_id;
-    }
-
-    s32 clone_from(const zsymbols_fast& from)
-    {
-        if (space_ == nullptr)
-        {
-            return -1;
-        }
-        if (space_ == from.space_)
-        {
-            return -2;
-        }
-
-        if (from.space_ == nullptr || from.space_len_ < MIN_SPACE_SIZE)
-        {
-            return -3;
-        }
-
-        //support shrink  
-        if (space_len_ < from.exploit_)
-        {
-            return -3;
-        }
-        memcpy(space_, from.space_, (s64)from.exploit_);
-        exploit_ = from.exploit_;
-        return 0;
-    }
-
-    template<class _Ty>
-    static inline std::string readable_class_name()
-    {
-#ifdef WIN32
-        return typeid(_Ty).name();
-#else
-        int status = 0;
-        char* p = abi::__cxa_demangle(typeid(_Ty).name(), 0, 0, &status);
-        std::string dname = p;
-        free(p);
-        return dname;
-#endif
-    }
-};
-
-
-class zsymbols_solid
-{
-public:
-    constexpr static s32 INVALID_SYMBOLS_ID = 0;
-    constexpr static s32 FIRST_EXPLOIT_OFFSET = sizeof("invalid symbol");
-    constexpr static s32 MIN_SPACE_SIZE = FIRST_EXPLOIT_OFFSET;
-
-public:
-    char* space_;
-    s32 space_len_;
-    s32 exploit_;
-
-    s32 attach(char* space, s32 space_len, s32 exploit_offset = 0)
-    {
-        if (space == nullptr)
-        {
-            return -1;
-        }
-        if (space_len < MIN_SPACE_SIZE)
-        {
-            return -2;
-        }
-        if (exploit_offset != 0 && exploit_offset < FIRST_EXPLOIT_OFFSET)
-        {
-            return -3;
-        }
-
-        space_ = space;
-        space_len_ = space_len;
-        exploit_ = exploit_offset;
-
-        if (exploit_offset == 0)
-        {
-            memcpy(space_, "invalid symbol", sizeof("invalid symbol"));
-            exploit_ += sizeof("invalid symbol");
-        }
-
-        return 0;
-    }
-
-    const char* at(s32 name_id) const
-    {
-        if (name_id < space_len_)
-        {
-            return &space_[name_id];
-        }
-        return "";
-    }
-    s32 len(s32 name_id) const
-    {
-        if (name_id >= FIRST_EXPLOIT_OFFSET && name_id < exploit_)
-        {
-            return (s32)strlen(&space_[name_id]);
-        }
-        return 0;
-    }
-    
-    s32 add(const char* name, s32 name_len, bool reuse_same_name) 
-    {
-        if (name == nullptr)
-        {
-            name = "";
-            name_len = 0;
-        }
-        if (name_len == 0)
-        {
-            name_len = (s32)strlen(name);
-        }
-        if (exploit_ < FIRST_EXPLOIT_OFFSET)
-        {
-            return INVALID_SYMBOLS_ID;
-        }
-        if (space_len_ < MIN_SPACE_SIZE)
-        {
-            return INVALID_SYMBOLS_ID;
-        }
-        if (space_ == nullptr)
-        {
-            return INVALID_SYMBOLS_ID;
-        }
-
-        s32 new_symbol_len = name_len + 1;
-        if (reuse_same_name)
-        {
-            s32 find_offset = FIRST_EXPLOIT_OFFSET;
-            while (find_offset + new_symbol_len <= space_len_)
-            {
-                if (space_[find_offset + new_symbol_len - 1] == '\0')
-                {
-                    //todo: optimize
-                    if (strcmp(&space_[find_offset], name) == 0)
-                    {
-                        return find_offset;
-                    }
-                    find_offset += new_symbol_len;
+                    offset += HEAD_SIZE + head + 1;
                     continue;
                 }
-                find_offset++;
+                if (strcmp(space_ + offset + HEAD_SIZE, name) == 0)
+                {
+                    return offset + HEAD_SIZE;
+                }
+                offset += HEAD_SIZE + head + 1;
             }
         }
 
 
+
+        s32 new_symbol_len = HEAD_SIZE + name_len + 1;
+        s32 new_symbol_id = exploit_ + HEAD_SIZE;
+
         if (exploit_ + new_symbol_len > space_len_)
         {
-            return INVALID_SYMBOLS_ID;
+            return -5;
         }
 
-        s32 symbol_id = exploit_;
-        memcpy(space_ + exploit_, name, new_symbol_len);
-        exploit_ += new_symbol_len;
+        SymbolHead head = name_len;
+        memcpy(space_ + exploit_, &head, HEAD_SIZE);
+        memcpy(space_ + exploit_ + HEAD_SIZE, name, (u64)name_len + 1);
+        space_[exploit_ + new_symbol_len - 1] = '\0';
 
-        return symbol_id;
+        exploit_ += new_symbol_len;
+        return new_symbol_id;
     }
 
-    s32 clone_from(const zsymbols_solid& from)
+    s32 clone_from(const zsymbols& from)
     {
         if (space_ == nullptr)
         {
@@ -379,7 +221,7 @@ public:
             return -2;
         }
 
-        if (from.space_ == nullptr || from.space_len_ < MIN_SPACE_SIZE)
+        if (from.space_ == nullptr || from.space_len_ < HEAD_SIZE + 1)
         {
             return -3;
         }
@@ -387,12 +229,45 @@ public:
         //support shrink  
         if (space_len_ < from.exploit_)
         {
-            return -3;
+            return -4;
         }
         memcpy(space_, from.space_, (s64)from.exploit_);
         exploit_ = from.exploit_;
         return 0;
     }
+
+    s32 clear()
+    {
+        exploit_ = 0;
+        return 0;
+    }
+    s32 reset()
+    {
+        space_ = nullptr;
+        space_len_ = 0;
+        exploit_ = 0;
+        return 0;
+    }
+
+    s32 swap(zsymbols& from)
+    {
+        if (space_ == from.space_)
+        {
+            return -1;
+        }
+
+        char* space = space_;
+        s32 space_len = space_len_;
+        s32 exploit = exploit_;
+        space_ = from.space_;
+        space_len_ = from.space_len_;
+        exploit_ = exploit;
+        from.space_ = space;
+        from.space_len_ = space_len;
+        from.exploit_ = exploit;
+        return 0;
+    }
+
 
     template<class _Ty>
     static inline std::string readable_class_name()
@@ -407,39 +282,32 @@ public:
         return dname;
 #endif
     }
-
-
 };
 
 
-template<s32 TableLen>
-class zsymbols_fast_static :public zsymbols_fast
+
+
+template<s32 BuffSize>
+class zsymbols_static :public zsymbols
 {
 public:
-    zsymbols_fast_static()
+    zsymbols_static()
     {
-        static_assert(TableLen >= zsymbols_fast::MIN_SPACE_SIZE, "");
-        attach(space_, TableLen);
+        static_assert(BuffSize >= zsymbols::HEAD_SIZE + 1, "");
+        zsymbols::space_ = nullptr;
+        zsymbols::space_len_ = 0;
+        attach(space_, BuffSize);
     }
+    s32 swap(zsymbols& from)
+    {
+        //静态buff不允许swap  持有和使用分离会有生命周期管理问题  
+        return -1;
+    }
+
 private:
-    char space_[TableLen];
+    char space_[BuffSize];
 };
 
-template<s32 TableLen>
-class zsymbols_solid_static :public zsymbols_solid
-{
-public:
-    zsymbols_solid_static()
-    {
-        static_assert(TableLen >= zsymbols_solid::MIN_SPACE_SIZE, "");
-        attach(space_, TableLen);
-    }
-private:
-    char space_[TableLen];
-};
 
-using zsymbols = zsymbols_solid;
-template<s32 TableLen>
-using zsymbols_static = zsymbols_solid_static< TableLen>;
 
 #endif

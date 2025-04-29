@@ -18,7 +18,7 @@
 #include <cstddef>
 #include <memory>
 #include <algorithm>
-
+#include <cstring>
 
 //default use format compatible short type .  
 #if !defined(ZBASE_USE_AHEAD_TYPE) && !defined(ZBASE_USE_DEFAULT_TYPE)
@@ -64,6 +64,14 @@ using f64 = double;
 #endif
 
 
+// init new memory with 0xfd    
+//#define ZDEBUG_UNINIT_MEMORY
+
+// backed memory immediately fill 0xdf 
+//#define ZDEBUG_DEATH_MEMORY  
+
+// open and check fence 
+// no support 
 
 
 template<class pointer, class reference, class value_type>
@@ -123,7 +131,7 @@ private:
 template<class _Ty>
 using zvector_aligned_space_helper = typename std::conditional<std::is_trivial<_Ty>::value, _Ty, typename std::aligned_storage<sizeof(_Ty), alignof(_Ty)>::type>::type;
 
-template<class _Ty, u32 _Size, u32 _FixedSize, class _Alloc = std::allocator<zvector_aligned_space_helper<_Ty>>>
+template<class _Ty, u32 _Size, u32 _FixedSize = _Size, class _Alloc = std::allocator<zvector_aligned_space_helper<_Ty>>>
 class zvector
 {
 public:
@@ -232,6 +240,11 @@ public:
     const bool empty() const noexcept { return begin() == end(); }
     const bool full() const noexcept { return size() == max_size(); }
 
+    iterator find(const _Ty& v) noexcept { return std::find(begin(), end(), v); }
+    const_iterator find(const _Ty& v) const noexcept { return std::find(begin(), end(), v); }
+    reverse_iterator rfind(const _Ty& v) noexcept { return std::find(rbegin(), rend(), v); }
+    const_reverse_iterator rfind(const _Ty& v) const noexcept { return std::find(rbegin(), rend(), v); }
+
 
     iterator check_realloc(size_type expect, iterator iter_pos)
     {
@@ -276,7 +289,7 @@ public:
         {
             memset(ptr(count_), 0xfd, (_Size - count_) * sizeof(_Ty));
         }
-#endif // ZDEBUG_UNINIT_MEMORY
+#endif
         for (size_type i = count_; i < _Size; i++)
         {
             new (ptr(i)) _Ty(value);
@@ -300,7 +313,7 @@ public:
         {
             memset(ptr(0), 0xfd, max_size() * sizeof(_Ty));
         }
-#endif // ZDEBUG_UNINIT_MEMORY
+#endif 
         count_ = 0;
     }
 
@@ -333,8 +346,8 @@ public:
     void pop_back(const typename std::enable_if<std::is_trivial<T>::value>::type*  = 0)
     {
 #ifdef ZDEBUG_DEATH_MEMORY
-        memset(ptr(count_ - 1), 0xfd, sizeof(_Ty));
-#endif // ZDEBUG_DEATH_MEMORY
+        memset(ptr(count_ - 1), 0xdf, sizeof(_Ty));
+#endif  
         count_--;
     }
 
@@ -343,8 +356,8 @@ public:
     {
         ptr(count_ - 1)->~_Ty();
 #ifdef ZDEBUG_DEATH_MEMORY
-        memset(ptr(count_ - 1), 0xfd, sizeof(_Ty));
-#endif // ZDEBUG_DEATH_MEMORY
+        memset(ptr(count_ - 1), 0xdf, sizeof(_Ty));
+#endif  
         count_--;
     }
 
@@ -359,13 +372,13 @@ public:
         {
 #ifdef ZDEBUG_UNINIT_MEMORY
             memset(&*pos, 0xfd, count * sizeof(_Ty));
-#endif // ZDEBUG_UNINIT_MEMORY
+#endif 
             return pos;
         }
         memmove((space_type*)&*in_pos + count, (space_type*)&*in_pos, sizeof(space_type) * (old_end - in_pos));
 #ifdef ZDEBUG_UNINIT_MEMORY
         memset(&*pos, 0xfd, count * sizeof(_Ty));
-#endif // ZDEBUG_UNINIT_MEMORY
+#endif 
         return pos;
     }
     template<class T = _Ty>
@@ -379,7 +392,7 @@ public:
         {
 #ifdef ZDEBUG_UNINIT_MEMORY
             memset(&*pos, 0xfd, count * sizeof(_Ty));
-#endif // ZDEBUG_UNINIT_MEMORY
+#endif 
             return pos;
         }
         iterator new_end = end();
@@ -403,7 +416,7 @@ public:
         }
 #ifdef ZDEBUG_UNINIT_MEMORY
         memset(&*pos, 0xfd, count * sizeof(_Ty));
-#endif // ZDEBUG_UNINIT_MEMORY
+#endif 
         return pos;
     }
 
@@ -425,7 +438,7 @@ public:
         memmove((space_type*)&*first, (space_type*)&*last, island_count * sizeof(space_type));
         iterator new_end = (iterator)(first + island_count);
 #ifdef ZDEBUG_DEATH_MEMORY
-        memset(&*new_end, 0xfd, distance(new_end, end()) * sizeof(_Ty));
+        memset(&*new_end, 0xdf, distance(new_end, end()) * sizeof(_Ty));
 #endif // ZDEBUG_DEATH_MEMORY
         count_ -= distance(new_end, end());
         return end();
@@ -452,7 +465,7 @@ public:
             ++erase_first;
         }
 #ifdef ZDEBUG_DEATH_MEMORY
-        memset(&*cp_first, 0xfd, distance(cp_first, end()) * sizeof(_Ty));
+        memset(&*cp_first, 0xdf, distance(cp_first, end()) * sizeof(_Ty));
 #endif // ZDEBUG_DEATH_MEMORY
 
         count_ -= distance(cp_first, end());
@@ -472,6 +485,7 @@ public:
             return end();
         }
         iterator new_iter = inject(pos, count);
+        pos = new_iter;
         for (size_t i = 0; i < count; i++)
         {
             *pos++ = value;
@@ -487,6 +501,7 @@ public:
             return end();
         }
         iterator new_iter = inject(pos, count);
+        pos = new_iter;
         for (size_t i = 0; i < count; i++)
         {
             new (pos++) _Ty(value);
@@ -502,6 +517,7 @@ public:
             return end();
         }
         iterator new_iter = inject(pos, 1);
+        pos = new_iter;
         *pos++ = value;
         return new_iter;
     }
@@ -514,6 +530,7 @@ public:
             return end();
         }
         iterator new_iter = inject(pos, 1);
+        pos = new_iter;
         new (&* (pos++)) _Ty(value);
         return new_iter;
     }

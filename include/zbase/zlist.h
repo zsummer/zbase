@@ -57,7 +57,14 @@ using f64 = double;
 #define ZBASE_ALIAS
 #endif
 
+// init new memory with 0xfd    
+//#define ZDEBUG_UNINIT_MEMORY
 
+// backed memory immediately fill 0xdf 
+//#define ZDEBUG_DEATH_MEMORY  
+
+// open and check fence 
+//#define ZLIST_USED_FENCE
 
 template<class list_type>
 struct const_zlist_iterator;
@@ -137,6 +144,16 @@ bool operator != (const zlist_iterator<list_type>& n1, const zlist_iterator<list
 * thread safe: read safe
 *
 */
+
+template<s32 _ID = 0>
+class zlist_debug_error_helper
+{
+public:
+    // record error when open fence; don't worry about thead safety. 
+    static s32 debug_error_;
+};
+template<s32 _ID>
+s32 zlist_debug_error_helper<_ID>::debug_error_ = 0;
 
 
 //È«¾²Ì¬Ë«ÏòÁ´±í  
@@ -328,7 +345,7 @@ private:
     {
         node_type& node = data_[id];
 #ifdef ZDEBUG_DEATH_MEMORY
-        memset(&node.space, 0xfd, sizeof(space_type));
+        memset(&node.space, 0xdf, sizeof(space_type));
 #endif // ZDEBUG_DEATH_MEMORY
         node.next = free_id_;
         node.front = END_ID;
@@ -359,11 +376,13 @@ private:
     {
         if (id >= END_ID)
         {
+            zlist_debug_error_helper<>::debug_error_ ++;
             return false;
         }
 #ifdef ZLIST_USED_FENCE
         if (data_[id + 1].fence != FENCE_VAL)
         {
+            zlist_debug_error_helper<>::debug_error_++;
             return false;
         }
 #endif
@@ -371,11 +390,13 @@ private:
 #ifdef ZLIST_USED_FENCE
         if (node.fence != FENCE_VAL)
         {
+            zlist_debug_error_helper<>::debug_error_++;
             return false;
         }
 #endif
         if (used_head_id_ >= END_ID)
         {
+            zlist_debug_error_helper<>::debug_error_++;
             return false; //empty
         }
         if (!std::is_trivial<_Ty>::value)
@@ -581,6 +602,7 @@ public:
     {
         return comp_bound(first, last, value, greater);
     }
+
 private:
     u32 used_count_;
     u32 free_id_;
@@ -594,6 +616,7 @@ bool operator==(const zlist<_Ty, _Size>& a1, const zlist<_Ty, _Size>& a2)
 {
     return a1.data() == a2.data();
 }
+
 
 
 

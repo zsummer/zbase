@@ -60,6 +60,15 @@ using f64 = double;
 #define ZBASE_ALIAS
 #endif
 
+// init new memory with 0xfd    
+//#define ZDEBUG_UNINIT_MEMORY
+
+// backed memory immediately fill 0xdf 
+//#define ZDEBUG_DEATH_MEMORY  
+
+// open and check fence 
+// no 
+
 
 template<class pointer, class reference, class value_type>
 class zarray_iterator : public std::iterator<std::random_access_iterator_tag, value_type>
@@ -256,7 +265,7 @@ public:
     void pop_back(const typename std::enable_if<std::is_trivial<T>::value>::type*  = 0)
     {
 #ifdef ZDEBUG_DEATH_MEMORY
-        memset(ptr(count_ - 1), 0xfd, sizeof(_Ty));
+        memset(ptr(count_ - 1), 0xdf, sizeof(_Ty));
 #endif // ZDEBUG_DEATH_MEMORY
         count_--;
     }
@@ -266,7 +275,7 @@ public:
     {
         ptr(count_ - 1)->~_Ty();
 #ifdef ZDEBUG_DEATH_MEMORY
-        memset(ptr(count_ - 1), 0xfd, sizeof(_Ty));
+        memset(ptr(count_ - 1), 0xdf, sizeof(_Ty));
 #endif // ZDEBUG_DEATH_MEMORY
         count_--;
     }
@@ -346,7 +355,7 @@ public:
         memmove((space_type*)&*first, (space_type*)&*last, island_count * sizeof(space_type));
         iterator new_end = (iterator)(first + island_count);
 #ifdef ZDEBUG_DEATH_MEMORY
-        memset(&*new_end, 0xfd, distance(new_end, end()) * sizeof(_Ty));
+        memset(&*new_end, 0xdf, distance(new_end, end()) * sizeof(_Ty));
 #endif // ZDEBUG_DEATH_MEMORY
         count_ -= distance(new_end, end());
         return end();
@@ -373,7 +382,7 @@ public:
             ++erase_first;
         }
 #ifdef ZDEBUG_DEATH_MEMORY
-        memset(&*cp_first, 0xfd, distance(cp_first, end()) * sizeof(_Ty));
+        memset(&*cp_first, 0xdf, distance(cp_first, end()) * sizeof(_Ty));
 #endif // ZDEBUG_DEATH_MEMORY
 
         count_ -= distance(cp_first, end());
