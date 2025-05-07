@@ -16,7 +16,7 @@
 
 
 
-template<class Desc, zclock_impl::clock_type _C = zclock_impl::T_CLOCK_VOLATILE_RDTSC>
+template<class Desc, zclock_impl::clock_type _C = zclock_impl::kClockVolatileRDTSC>
 class zclock_diagnostic
 {
 public:

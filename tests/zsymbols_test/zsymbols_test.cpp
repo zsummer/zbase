@@ -135,7 +135,7 @@ s32 zsymbols_test()
 
 
 
-template<s32 SCOUNT, s32 SLEN>
+template<size_t SCOUNT, size_t SLEN>
 s32 zsymbols_bench_test(std::array<s32, SCOUNT>* p1, std::array<s32, SLEN>* p2)
 {
     static constexpr s32 symbols = SCOUNT;
@@ -216,8 +216,11 @@ int main(int argc, char *argv[])
     LogDebug() << " main begin test. ";
 
     ASSERT_TEST(zsymbols_test() == 0);
-    ASSERT_TEST(zsymbols_bench_test((std::array<s32, 10000>*)nullptr, (std::array<s32, 30>*)nullptr) == 0);
-    ASSERT_TEST(zsymbols_bench_test((std::array<s32, 100>*)nullptr, (std::array<s32, 30>*)nullptr) == 0);
+    std::array<s32, 10000>* first_null = nullptr;
+    std::array<s32, 10000>* first_null2 = nullptr;
+    std::array<s32, 30>* second_null = nullptr;
+    ASSERT_TEST(zsymbols_bench_test(first_null, second_null) == 0);
+    ASSERT_TEST(zsymbols_bench_test(first_null2, second_null) == 0);
 
     LogInfo() << "all test finish .";
     return 0;

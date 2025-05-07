@@ -247,7 +247,7 @@ public:
         }
         if (std::is_trivial<_Ty>::value && other.size() * 4 >= other.exploit_offset_)
         {
-            init(other);
+            plat_init(other);
         }
         else
         {
@@ -270,6 +270,7 @@ public:
         {
             init();
             assign(other.begin(), other.end());
+            other.clear();
         }
     }
 
@@ -306,6 +307,7 @@ public:
         {
             clear();
             assign(other.begin(), other.end());
+            other.clear();
         }
         return *this;
     }

@@ -6,6 +6,9 @@
 */
 
 
+#ifdef __APPLE__
+#define ZCLOCK_NO_RDTSC
+#endif
 
 #include <unordered_map>
 #include <unordered_set>
@@ -16,7 +19,6 @@
 #include "zarray.h"
 #include "test_common.h"
 #include "zclock_diagnostic.h"
-
 
 
 bool g_bark = false;

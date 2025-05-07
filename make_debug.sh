@@ -13,7 +13,7 @@ if [ $# -gt 0 ] && [ $1 = "max" ]; then
         cmake $* ../ 
     fi
 else 
-    cmake $* -DCMAKE_BUILD_TYPE=Debug ../ 
+    cmake $* -DCMAKE_BUILD_TYPE=debug ../ 
 fi
 
 make -j2 

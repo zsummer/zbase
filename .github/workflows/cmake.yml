@@ -12,55 +12,66 @@ env:
 
 jobs:
   build:
-    # The CMake configure and build commands are platform agnostic and should work equally
-    # well on Windows or Mac.  You can convert this to a matrix build if you need
-    # cross-platform coverage.
-    # See: https://docs.github.com/en/free-pro-team@latest/actions/learn-github-actions/managing-complex-workflows#using-a-build-matrix
-    runs-on: ubuntu-latest
     strategy:    
       matrix:
         cc: [gcc, clang]
-        
+        os: [ubuntu-latest, macos-latest]
+        #exclude:
+        #  - os: macos-latest
+        #    cc: clang
+
+    runs-on: ${{ matrix.os }}
+
     steps:
     - uses: actions/checkout@v2
       env:
         CC: ${{ matrix.cc }}
-    - name: Configure CMake
-      # Configure CMake in a 'build' subdirectory. `CMAKE_BUILD_TYPE` is only required if you are using a single-configuration generator such as make.
-      # See https://cmake.org/cmake/help/latest/variable/CMAKE_BUILD_TYPE.html?highlight=cmake_build_type
+    - name: config cmake
       run: cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}}
 
-    - name: Build
+    - name: build
       # Build your program with the given configuration
       run: cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}}
 
-    - name: Test
-      working-directory: ${{github.workspace}}/build
-      # Execute tests defined by the CMake configuration.  
-      # See https://cmake.org/cmake/help/latest/manual/ctest.1.html for more detail
+    - name: test base
+      working-directory: ${{github.workspace}}/bin
       run: |
-        cd ${{github.workspace}}/bin
         ./empty_test
         ./base_test
         ./base_stress_test
-        ./zbuddy_test
-        ./malloc_test
+        ./sys_platform_test
+        ./zbitset_test
+        ./zclock_diagnostic_test
+        ./zclock_test
         ./zforeach_base_test
         ./zforeach_adv_test
         ./zforeach_mempool_test
+        ./zhash_map_test
+        ./zlist_ext_test
         ./zmem_pool_test
-        ./zbitset_test
-        ./mapping_test
+        ./zpoint_test
         ./zsingle_test
+        ./zstream_test
+        ./ztrace_test
+        ./zsymbols_test
+
+    - name: test malloc
+      working-directory: ${{github.workspace}}/bin
+      run: |
+        ./malloc_test
+        ./malloc_slot_test
+        ./malloc_slot_stress
+        ./zbuddy_test
+
+    - name: test shm
+      working-directory: ${{github.workspace}}/bin
+      if: runner.os == 'Linux'
+      run: |
+        ./mapping_test
+        ./zshm_ptr_test
         ./zshm_loader_test
         ./zshm_boot_test start
         ./zshm_boot_test resume
         ./zshm_boot_test stop
         ./zshm_boot_test start heap  
-        ./zshm_ptr_test 
-        ./zsymbols_test
-        ./zstream_test
-        ./zclock_test
-        
-
       
