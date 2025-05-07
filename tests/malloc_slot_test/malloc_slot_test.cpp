@@ -151,8 +151,8 @@ int main(int argc, char *argv[])
             void* pp[14];
             for (u32 i = 0; i < zmalloc::SLOT_BINMAP_SIZE; i++)
             {
-                pp[0] = zmalloc::instance().alloc_slot(i, 200, 200 + zmalloc::CHUNK_PADDING_SIZE + sizeof(zmalloc::free_chunk_type) * 2 + sizeof(zmalloc::block_type) +i *5);
-                ASSERT_TEST_NOLOG(pp[0] != NULL, "");
+                pp[0] = zmalloc::instance().alloc_slot(i, 200, zmalloc_align_default_value(200) + zmalloc::CHUNK_PADDING_SIZE + sizeof(zmalloc::free_chunk_type) * 2 + sizeof(zmalloc::block_type) +i *5);
+                ASSERT_TEST_NOLOG(pp[0] != NULL, i);
                 memset(pp[0], 0, 200);
                 ASSERT_TEST_NOLOG(zmalloc::instance().free_slot(pp[0]) != 0, "");
             }

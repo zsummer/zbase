@@ -37,14 +37,14 @@ echo "[./src last diff]:"
 echo $last_dist_diff
 
 echo ""
-echo "[write versions]"
-echo "version:" > ./dist/include/zbase/VERSION
-echo "last_sha1(./src)=$last_dist_sha1" >> ./dist/include/zbase/VERSION 
-echo "last_date(./src)=$last_dist_date" >> ./dist/include/zbase/VERSION 
-echo "" >> ./dist/include/zbase/VERSION 
-echo "git log -1 --stat ./src:" >> ./dist/include/zbase/VERSION 
-echo $last_dist_diff >> ./dist/include/zbase/VERSION
-cat ./dist/include/zbase/VERSION
+echo "[write GIT_VERSIONs]"
+echo "GIT_VERSION:" > ./dist/include/zbase/GIT_VERSION
+echo "last_sha1(./src)=$last_dist_sha1" >> ./dist/include/zbase/GIT_VERSION 
+echo "last_date(./src)=$last_dist_date" >> ./dist/include/zbase/GIT_VERSION 
+echo "" >> ./dist/include/zbase/GIT_VERSION 
+echo "git log -1 --stat ./src:" >> ./dist/include/zbase/GIT_VERSION 
+echo $last_dist_diff >> ./dist/include/zbase/GIT_VERSION
+cat ./dist/include/zbase/GIT_VERSION
 
 echo ""
 echo "[write done]"

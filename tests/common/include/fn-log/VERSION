@@ -1,6 +1,0 @@
-version:
-last_sha1(./src)=7839bdbc1a11624792022501375925f186c83f28
-last_date(./src)=2023-07-15 19:03:13 +0800
-
-git log -1 --stat ./src:
-commit 7839bdbc1a11624792022501375925f186c83f28 Author: zsummer <yawei.zhang@foxmail.com> Date: Sat Jul 15 19:03:13 2023 +0800 delay state log fixed src/include/fn_channel.h | 2 +- 1 file changed, 1 insertion(+), 1 deletion(-)

@@ -49,6 +49,10 @@ project(zbase)
 include (${PROJECT_SOURCE_DIR}/cmake/macro.cmake)
 include (${PROJECT_SOURCE_DIR}/cmake/option.cmake)
 
+set(CMAKE_BUILD_TYPE Debug CACHE STRING "cache debug release "  )
+set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS ${CMAKE_CONFIGURATION_TYPES} )
+
+set(CMAKE_OSX_ARCHITECTURES "x86_64")
 
 add_definitions(-DOPEN_ZPROF)
 
@@ -75,6 +79,19 @@ endif(OPEN_CHECK)
 if (USE_AHEAD_TYPE)
     add_definitions(-DZBASE_USE_AHEAD_TYPE)
 endif(USE_AHEAD_TYPE)
+
+
+#通用设置部分 包括启用分组 设置 启动项目  
+if(WIN32)
+    ADD_DEFINITIONS(-DWIN32 -W3)
+    SET_PROPERTY(GLOBAL PROPERTY USE_FOLDERS ON) 
+    #SET_PROPERTY(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT ${PROJECT_NAME})
+else()
+    SET(CMAKE_CXX_FLAGS -std=c++14)
+    SET(CMAKE_CXX_FLAGS_DEBUG "$ENV{CXXFLAGS} -O0 -Wall -g -ggdb")
+    SET(CMAKE_CXX_FLAGS_RELEASE "$ENV{CXXFLAGS} -O2 -Wall")
+    LINK_LIBRARIES(pthread m c)
+endif()
 
 
 file(GLOB_RECURSE src_files ${CMAKE_SOURCE_DIR}/src/include/*.h)

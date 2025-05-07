@@ -15,7 +15,7 @@
 
 
 #if __GNUG__
-#include <tr2/type_traits>
+#include <type_traits>
 #endif
 
 

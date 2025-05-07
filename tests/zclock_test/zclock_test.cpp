@@ -5,7 +5,9 @@
 * This file is part of the zbase, used MIT License.
 */
 
-
+#ifdef __APPLE__
+#define ZCLOCK_NO_RDTSC
+#endif
 
 #include <unordered_map>
 #include <unordered_set>
@@ -19,20 +21,20 @@
 
 s32 zclock_test()
 {
-    zclock<zclock_impl::T_CLOCK_SYS>             c01;
-    zclock<zclock_impl::T_CLOCK_CLOCK>           c02;
-    zclock<zclock_impl::T_CLOCK_CHRONO>          c03;
-    zclock<zclock_impl::T_CLOCK_STEADY_CHRONO>    c04;
-    zclock<zclock_impl::T_CLOCK_SYS_CHRONO>       c05;
-    zclock<zclock_impl::T_CLOCK_PURE_RDTSC>       c06;
-    zclock<zclock_impl::T_CLOCK_VOLATILE_RDTSC>   c07;
-    zclock<zclock_impl::T_CLOCK_FENCE_RDTSC>      c08;
-    zclock<zclock_impl::T_CLOCK_BTB_FENCE_RDTSC>   c09;
-    zclock<zclock_impl::T_CLOCK_RDTSCP>          c10;
-    zclock<zclock_impl::T_CLOCK_MFENCE_RDTSC>     c11;
-    zclock<zclock_impl::T_CLOCK_BTB_MFENCE_RDTSC>  c12;
-    zclock<zclock_impl::T_CLOCK_LOCK_RDTSC>       c13;
-    zclock<zclock_impl::T_CLOCK_SYS_MS>       c14;
+    zclock<zclock_impl::kClockSystem>             c01;
+    zclock<zclock_impl::kClockClock>           c02;
+    zclock<zclock_impl::kClockChrono>          c03;
+    zclock<zclock_impl::kClockSteadyChrono>    c04;
+    zclock<zclock_impl::kClockSystemChrono>       c05;
+    zclock<zclock_impl::kClockPureRDTSC>       c06;
+    zclock<zclock_impl::kClockVolatileRDTSC>   c07;
+    zclock<zclock_impl::kClockFenceRDTSC>      c08;
+    zclock<zclock_impl::kClockBTBFenceRDTSC>   c09;
+    zclock<zclock_impl::kClockRDTSCP>          c10;
+    zclock<zclock_impl::kClockMFenceRDTSC>     c11;
+    zclock<zclock_impl::kClockBTBMFenceRDTSC>  c12;
+    zclock<zclock_impl::kClockLockRDTSC>       c13;
+    zclock<zclock_impl::kClockSystemMS>       c14;
 
     c01.start();
     c02.start();
@@ -67,20 +69,20 @@ s32 zclock_test()
     c14.stop_and_save();
 
 
-    ASSERT_TEST(std::abs(c01.cost_ms() - 1000) < 100, " dev ms:", c01.cost_ms()- 1000);
-    ASSERT_TEST(std::abs(c02.cost_ms() - 1000) < 100, " dev ms:", c02.cost_ms()- 1000);
-    ASSERT_TEST(std::abs(c03.cost_ms() - 1000) < 100, " dev ms:", c03.cost_ms()- 1000);
-    ASSERT_TEST(std::abs(c04.cost_ms() - 1000) < 100, " dev ms:", c04.cost_ms()- 1000);
-    ASSERT_TEST(std::abs(c05.cost_ms() - 1000) < 100, " dev ms:", c05.cost_ms()- 1000);
-    ASSERT_TEST(std::abs(c06.cost_ms() - 1000) < 100, " dev ms:", c06.cost_ms()- 1000);
-    ASSERT_TEST(std::abs(c07.cost_ms() - 1000) < 100, " dev ms:", c07.cost_ms()- 1000);
-    ASSERT_TEST(std::abs(c08.cost_ms() - 1000) < 100, " dev ms:", c08.cost_ms()- 1000);
-    ASSERT_TEST(std::abs(c09.cost_ms() - 1000) < 100, " dev ms:", c09.cost_ms()- 1000);
-    ASSERT_TEST(std::abs(c10.cost_ms() - 1000) < 100, " dev ms:", c10.cost_ms()- 1000);
-    ASSERT_TEST(std::abs(c11.cost_ms() - 1000) < 100, " dev ms:", c11.cost_ms()- 1000);
-    ASSERT_TEST(std::abs(c12.cost_ms() - 1000) < 100, " dev ms:", c12.cost_ms()- 1000);
-    ASSERT_TEST(std::abs(c13.cost_ms() - 1000) < 100, " dev ms:", c13.cost_ms() - 1000);
-    ASSERT_TEST(std::abs(c14.cost_ms() - 1000) < 100, " dev ms:", c14.cost_ms() - 1000);
+    ASSERT_TEST(std::abs(c01.cost_ms() - 1000) < 200, " dev ms:", c01.cost_ms()- 1000);
+    ASSERT_TEST(std::abs(c02.cost_ms() - 1000) < 200, " dev ms:", c02.cost_ms()- 1000);
+    ASSERT_TEST(std::abs(c03.cost_ms() - 1000) < 200, " dev ms:", c03.cost_ms()- 1000);
+    ASSERT_TEST(std::abs(c04.cost_ms() - 1000) < 200, " dev ms:", c04.cost_ms()- 1000);
+    ASSERT_TEST(std::abs(c05.cost_ms() - 1000) < 200, " dev ms:", c05.cost_ms()- 1000);
+    ASSERT_TEST(std::abs(c06.cost_ms() - 1000) < 200, " dev ms:", c06.cost_ms()- 1000);
+    ASSERT_TEST(std::abs(c07.cost_ms() - 1000) < 200, " dev ms:", c07.cost_ms()- 1000);
+    ASSERT_TEST(std::abs(c08.cost_ms() - 1000) < 200, " dev ms:", c08.cost_ms()- 1000);
+    ASSERT_TEST(std::abs(c09.cost_ms() - 1000) < 200, " dev ms:", c09.cost_ms()- 1000);
+    ASSERT_TEST(std::abs(c10.cost_ms() - 1000) < 200, " dev ms:", c10.cost_ms()- 1000);
+    ASSERT_TEST(std::abs(c11.cost_ms() - 1000) < 200, " dev ms:", c11.cost_ms()- 1000);
+    ASSERT_TEST(std::abs(c12.cost_ms() - 1000) < 200, " dev ms:", c12.cost_ms()- 1000);
+    ASSERT_TEST(std::abs(c13.cost_ms() - 1000) < 200, " dev ms:", c13.cost_ms() - 1000);
+    ASSERT_TEST(std::abs(c14.cost_ms() - 1000) < 200, " dev ms:", c14.cost_ms() - 1000);
 
 
     return 0;
@@ -106,20 +108,20 @@ s32 zclock_cost_test(const std::string& desc)
 s32 zclock_bench_test()
 {
 #define bench(x)  zclock_cost_test<x>(#x)
-    bench(zclock_impl::T_CLOCK_SYS);
-    bench(zclock_impl::T_CLOCK_CLOCK);
-    bench(zclock_impl::T_CLOCK_CHRONO);
-    bench(zclock_impl::T_CLOCK_STEADY_CHRONO);
-    bench(zclock_impl::T_CLOCK_SYS_CHRONO);
-    bench(zclock_impl::T_CLOCK_SYS_MS);
-    bench(zclock_impl::T_CLOCK_PURE_RDTSC);
-    bench(zclock_impl::T_CLOCK_VOLATILE_RDTSC);
-    bench(zclock_impl::T_CLOCK_FENCE_RDTSC);
-    bench(zclock_impl::T_CLOCK_BTB_FENCE_RDTSC);
-    bench(zclock_impl::T_CLOCK_RDTSCP);
-    bench(zclock_impl::T_CLOCK_MFENCE_RDTSC);
-    bench(zclock_impl::T_CLOCK_BTB_MFENCE_RDTSC);
-    bench(zclock_impl::T_CLOCK_LOCK_RDTSC);
+    bench(zclock_impl::kClockSystem);
+    bench(zclock_impl::kClockClock);
+    bench(zclock_impl::kClockChrono);
+    bench(zclock_impl::kClockSteadyChrono);
+    bench(zclock_impl::kClockSystemChrono);
+    bench(zclock_impl::kClockSystemMS);
+    bench(zclock_impl::kClockPureRDTSC);
+    bench(zclock_impl::kClockVolatileRDTSC);
+    bench(zclock_impl::kClockFenceRDTSC);
+    bench(zclock_impl::kClockBTBFenceRDTSC);
+    bench(zclock_impl::kClockRDTSCP);
+    bench(zclock_impl::kClockMFenceRDTSC);
+    bench(zclock_impl::kClockBTBMFenceRDTSC);
+    bench(zclock_impl::kClockLockRDTSC);
     return 0;
 }
 

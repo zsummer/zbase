@@ -84,8 +84,8 @@ using f64 = double;
 class zbitset
 {
 public:
-    static constexpr u32 BYTE_SIZE = sizeof(u64);
-    static constexpr u32 BIT_WIDE = BYTE_SIZE * 8;
+    static constexpr u32 BYTE_ALIGN = sizeof(u64);
+    static constexpr u32 BIT_WIDE = BYTE_ALIGN * 8;
     static constexpr u32 BIT_WIDE_MASK = BIT_WIDE - 1;
 
 
@@ -112,7 +112,7 @@ private:
 public:
     u64* array_data() const { return array_data_; }
     u32 array_size() const { return array_size_; }
-    u32 array_bytes() const { return array_size_ * BYTE_SIZE; }
+    u32 array_bytes() const { return array_size_ * BYTE_ALIGN; }
     u32 bit_count() const { return bit_count_; }
     u32 has_error() const { return has_error_; }
     u32 first_bit() const { return win_min_ < bit_count_ ? win_min_ * BIT_WIDE : 0; }
