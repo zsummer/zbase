@@ -267,6 +267,7 @@ public:
         {
             return -4;
         }
+        debug_error_ = 0;
         obj_size_ = obj_size;
         name_id_ = name_id;
         obj_vptr_ = obj_vptr;

@@ -146,24 +146,24 @@ namespace zclock_impl
 {
     enum clock_type
     {
-        T_CLOCK_NULL,
-        T_CLOCK_SYS,
-        T_CLOCK_CLOCK,
-        T_CLOCK_CHRONO,
-        T_CLOCK_STEADY_CHRONO,
-        T_CLOCK_SYS_CHRONO,
-        T_CLOCK_SYS_MS, //wall clock 
+        kClockNULL,
+        kClockSystem,
+        kClockClock,
+        kClockChrono,
+        kClockSteadyChrono,
+        kClockSystemChrono,
+        kClockSystemMS, //wall clock 
 
-        T_CLOCK_PURE_RDTSC,
-        T_CLOCK_VOLATILE_RDTSC,
-        T_CLOCK_FENCE_RDTSC,
-        T_CLOCK_MFENCE_RDTSC,
-        T_CLOCK_LOCK_RDTSC,
-        T_CLOCK_RDTSCP,
-        T_CLOCK_BTB_FENCE_RDTSC,
-        T_CLOCK_BTB_MFENCE_RDTSC,
+        kClockPureRDTSC,
+        kClockVolatileRDTSC,
+        kClockFenceRDTSC,
+        kClockMFenceRDTSC,
+        kClockLockRDTSC,
+        kClockRDTSCP,
+        kClockBTBFenceRDTSC,
+        kClockBTBMFenceRDTSC,
 
-        T_CLOCK_MAX,
+        kClockMAX,
     };
 
     
@@ -182,22 +182,24 @@ namespace zclock_impl
     }
 
     template<>
-    inline long long get_tick<T_CLOCK_FENCE_RDTSC>()
+    inline long long get_tick<kClockFenceRDTSC>()
     {
 #ifdef WIN32
         _mm_lfence();
         return (long long)__rdtsc();
-#else
+#elif defined(__GCC_ASM_FLAG_OUTPUTS__) && defined(__x86_64__) && !defined(ZCLOCK_NO_RDTSC)
         unsigned int lo = 0;
         unsigned int hi = 0;
         __asm__ __volatile__("lfence;rdtsc" : "=a" (lo), "=d" (hi) ::);
         unsigned long long val = ((unsigned long long)hi << 32) | lo;
         return (long long)val;
+#else
+        return std::chrono::high_resolution_clock().now().time_since_epoch().count();
 #endif
     }
 
     template<>
-    inline long long get_tick<T_CLOCK_BTB_FENCE_RDTSC>()
+    inline long long get_tick<kClockBTBFenceRDTSC>()
     {
 #ifdef WIN32
         long long ret = 0;
@@ -205,62 +207,70 @@ namespace zclock_impl
         ret = (long long)__rdtsc();
         _mm_lfence();
         return ret;
-#else
+#elif defined(__GCC_ASM_FLAG_OUTPUTS__) && defined(__x86_64__) && !defined(ZCLOCK_NO_RDTSC)
         unsigned int lo = 0;
         unsigned int hi = 0;
         __asm__ __volatile__("lfence;rdtsc;lfence" : "=a" (lo), "=d" (hi) ::);
         unsigned long long val = ((unsigned long long)hi << 32) | lo;
         return (long long)val;
+#else
+        return std::chrono::high_resolution_clock().now().time_since_epoch().count();
 #endif
     }
 
 
     template<>
-    inline long long get_tick<T_CLOCK_VOLATILE_RDTSC>()
+    inline long long get_tick<kClockVolatileRDTSC>()
     {
 #ifdef WIN32
         return (long long)__rdtsc();
-#else
+#elif defined(__GCC_ASM_FLAG_OUTPUTS__) && defined(__x86_64__)  && !defined(ZCLOCK_NO_RDTSC)
         unsigned int lo = 0;
         unsigned int hi = 0;
         __asm__ __volatile__("rdtsc" : "=a"(lo), "=d"(hi) ::);
         unsigned long long val = (((unsigned long long)hi) << 32 | ((unsigned long long)lo));
         return (long long)val;
+#else
+        return std::chrono::high_resolution_clock().now().time_since_epoch().count();
 #endif
-    }
+}
 
     template<>
-    inline long long get_tick<T_CLOCK_PURE_RDTSC>()
+    inline long long get_tick<kClockPureRDTSC>()
     {
 #ifdef WIN32
         return (long long)__rdtsc();
-#else
+#elif defined(__GCC_ASM_FLAG_OUTPUTS__) && defined(__x86_64__) && !defined(ZCLOCK_NO_RDTSC)
         unsigned int lo = 0;
         unsigned int hi = 0;
-        __asm__("rdtsc" : "=a"(lo), "=d"(hi));
+        __asm__ __volatile__("rdtsc" : "=a"(lo), "=d"(hi));  //pure need __volatile__ too  . 
         unsigned long long val = (((unsigned long long)hi) << 32 | ((unsigned long long)lo));
         return (long long)val;
+#else
+        return std::chrono::high_resolution_clock().now().time_since_epoch().count();
 #endif
     }
 
     template<>
-    inline long long get_tick<T_CLOCK_LOCK_RDTSC>()
+    inline long long get_tick<kClockLockRDTSC>()
     {
 #ifdef WIN32
         _mm_mfence();
         return (long long)__rdtsc();
-#else
+#elif defined(__GCC_ASM_FLAG_OUTPUTS__) && defined(__x86_64__) && !defined(ZCLOCK_NO_RDTSC)
         unsigned int lo = 0;
         unsigned int hi = 0;
         __asm__("lock addq $0, 0(%%rsp); rdtsc" : "=a"(lo), "=d"(hi)::"memory");
         unsigned long long val = (((unsigned long long)hi) << 32 | ((unsigned long long)lo));
         return (long long)val;
+#else
+        return std::chrono::high_resolution_clock().now().time_since_epoch().count();
 #endif
     }
 
 
     template<>
-    inline long long get_tick<T_CLOCK_MFENCE_RDTSC>()
+    inline long long get_tick<kClockMFenceRDTSC>()
     {
 #ifdef WIN32
         long long ret = 0;
@@ -268,48 +278,54 @@ namespace zclock_impl
         ret = (long long)__rdtsc();
         _mm_mfence();
         return ret;
-#else
+#elif defined(__GCC_ASM_FLAG_OUTPUTS__) && defined(__x86_64__) && !defined(ZCLOCK_NO_RDTSC)
         unsigned int lo = 0;
         unsigned int hi = 0;
         __asm__ __volatile__("mfence;rdtsc;mfence" : "=a" (lo), "=d" (hi) ::);
         unsigned long long val = ((unsigned long long)hi << 32) | lo;
         return (long long)val;
+#else
+        return std::chrono::high_resolution_clock().now().time_since_epoch().count();
 #endif
     }
 
     template<>
-    inline long long get_tick<T_CLOCK_BTB_MFENCE_RDTSC>()
+    inline long long get_tick<kClockBTBMFenceRDTSC>()
     {
 #ifdef WIN32
         _mm_mfence();
         return (long long)__rdtsc();
-#else
+#elif defined(__GCC_ASM_FLAG_OUTPUTS__) && defined(__x86_64__) && !defined(ZCLOCK_NO_RDTSC)
         unsigned int lo = 0;
         unsigned int hi = 0;
         __asm__ __volatile__("mfence;rdtsc" : "=a" (lo), "=d" (hi) :: "memory");
         unsigned long long val = ((unsigned long long)hi << 32) | lo;
         return (long long)val;
+#else
+        return std::chrono::high_resolution_clock().now().time_since_epoch().count();
 #endif
     }
 
     template<>
-    inline long long get_tick<T_CLOCK_RDTSCP>()
+    inline long long get_tick<kClockRDTSCP>()
     {
 #ifdef WIN32
         unsigned int ui = 0;
         return (long long)__rdtscp(&ui);
-#else
+#elif defined(__GCC_ASM_FLAG_OUTPUTS__) && defined(__x86_64__) && !defined(ZCLOCK_NO_RDTSC)
         unsigned int lo = 0;
         unsigned int hi = 0;
         __asm__ __volatile__("rdtscp" : "=a"(lo), "=d"(hi)::"memory");
         unsigned long long val = (((unsigned long long)hi) << 32 | ((unsigned long long)lo));
         return (long long)val;
+#else
+        return std::chrono::high_resolution_clock().now().time_since_epoch().count();
 #endif
     }
 
 
     template<>
-    inline long long get_tick<T_CLOCK_CLOCK>()
+    inline long long get_tick<kClockClock>()
     {
 #if (defined WIN32)
         LARGE_INTEGER win_freq;
@@ -324,7 +340,7 @@ namespace zclock_impl
     }
 
     template<>
-    inline long long get_tick<T_CLOCK_SYS>()
+    inline long long get_tick<kClockSystem>()
     {
 #if (defined WIN32)
         FILETIME ft;
@@ -343,29 +359,28 @@ namespace zclock_impl
     }
 
     template<>
-    inline long long get_tick<T_CLOCK_CHRONO>()
+    inline long long get_tick<kClockChrono>()
     {
         return std::chrono::high_resolution_clock().now().time_since_epoch().count();
     }
 
     template<>
-    inline long long get_tick<T_CLOCK_STEADY_CHRONO>()
+    inline long long get_tick<kClockSteadyChrono>()
     {
         return std::chrono::steady_clock().now().time_since_epoch().count();
     }
 
     template<>
-    inline long long get_tick<T_CLOCK_SYS_CHRONO>()
+    inline long long get_tick<kClockSystemChrono>()
     {
         return std::chrono::system_clock().now().time_since_epoch().count();
     }
 
     template<>
-    inline long long get_tick<T_CLOCK_SYS_MS>()
+    inline long long get_tick<kClockSystemMS>()
     {
         return std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
     }
-
 
 
     inline vmdata get_self_mem()
@@ -475,19 +490,16 @@ namespace zclock_impl
         ULONG  CurrentIdleState;
     };
 #endif
-    inline double get_cpu_freq()
+
+
+    // U: nanosecond   
+    inline double get_cpu_period()
     {
-        double mhz = 1;
-#ifdef __APPLE__
-        int mib[2];
-        unsigned int freq;
-        size_t len;
-        mib[0] = CTL_HW;
-        mib[1] = HW_CPU_FREQ;
-        len = sizeof(freq);
-        sysctl(mib, 2, &freq, &len, NULL, 0);
-        mhz = freq;
-        mhz /= 1000.0 * 1000.0;
+        double period = 0;
+        double ns_per_second = 1000 * 1000 * 1000;
+
+#ifdef ZCLOCK_NO_RDTSC //apple m1 | some amd chip 
+        period = ns_per_second * std::chrono::high_resolution_clock::period().num / std::chrono::high_resolution_clock::period().den;
 #elif (defined WIN32)
         SYSTEM_INFO si = { 0 };
         GetSystemInfo(&si);
@@ -497,10 +509,25 @@ namespace zclock_impl
         long ret = CallNtPowerInformation(ProcessorInformation, NULL, 0, &pppi[0], dwSize);
         if (ret != 0 || pppi[0].MaxMhz <= 0)
         {
-            return 1;
+            return 0;
         }
-        mhz = pppi[0].MaxMhz;
-#else
+        period = pppi[0].MaxMhz;
+        period *= 1000 * 1000;  //mhz --> hz 
+        period = ns_per_second / period;
+#elif defined(__GCC_ASM_FLAG_OUTPUTS__) && defined(__x86_64__)  && defined(__APPLE__)
+        int mib[2];
+        unsigned int freq;
+        size_t len;
+        mib[0] = CTL_HW;
+        mib[1] = HW_CPU_FREQ;
+        len = sizeof(freq);
+        sysctl(mib, 2, &freq, &len, NULL, 0);
+        if (freq == 0) //error
+        {
+            return 0;
+        }
+        period = ns_per_second / freq;
+#elif defined(__GCC_ASM_FLAG_OUTPUTS__) && defined(__x86_64__)  //linux 
         const char* file = "/proc/cpuinfo";
         FILE* fp = fopen(file, "r");
         if (NULL == fp)
@@ -524,137 +551,139 @@ namespace zclock_impl
                     break;
                 }
 
-                int ret = sscanf(p, "%lf", &mhz);
+                int ret = sscanf(p, "%lf", &period);
                 if (ret <= 0)
                 {
-                    mhz = 1;
+                    period = 0;
                     break;
                 }
                 break;
             }
         }
         fclose(fp);
-#endif // __APPLE__
-        return mhz;
+        period *= 1000 * 1000; //mhz --> hz 
+        if (period < 1)
+        {
+            return 0;
+        }
+        period = ns_per_second / period;
+#else
+        period = ns_per_second * std::chrono::high_resolution_clock::period().num / std::chrono::high_resolution_clock::period().den;
+#endif // 
+        return period;
     }
-
-
 
 
     template<clock_type _C>
-    inline double get_frequency()
+    inline double get_clock_period()
     {
-        return 1.0;
+        return 1.0;  //1 ns
     }
 
     template<>
-    inline double get_frequency<T_CLOCK_FENCE_RDTSC>()
+    inline double get_clock_period<kClockFenceRDTSC>()
     {
-        const static double frequency_per_ns = get_cpu_freq() * 1000.0 * 1000.0 / 1000.0 / 1000.0 / 1000.0;
-        return frequency_per_ns;
+        const static double period = get_cpu_period();
+        return period;
     }
     template<>
-    inline double get_frequency<T_CLOCK_BTB_FENCE_RDTSC>()
+    inline double get_clock_period<kClockBTBFenceRDTSC>()
     {
-        return get_frequency<T_CLOCK_FENCE_RDTSC>();
-    }
-
-    template<>
-    inline double get_frequency<T_CLOCK_VOLATILE_RDTSC>()
-    {
-        return get_frequency<T_CLOCK_FENCE_RDTSC>();
+        return get_clock_period<kClockFenceRDTSC>();
     }
 
     template<>
-    inline double get_frequency<T_CLOCK_PURE_RDTSC>()
+    inline double get_clock_period<kClockVolatileRDTSC>()
     {
-        return get_frequency<T_CLOCK_FENCE_RDTSC>();
+        return get_clock_period<kClockFenceRDTSC>();
     }
 
     template<>
-    inline double get_frequency<T_CLOCK_LOCK_RDTSC>()
+    inline double get_clock_period<kClockPureRDTSC>()
     {
-        return get_frequency<T_CLOCK_FENCE_RDTSC>();
+        return get_clock_period<kClockFenceRDTSC>();
     }
 
     template<>
-    inline double get_frequency<T_CLOCK_MFENCE_RDTSC>()
+    inline double get_clock_period<kClockLockRDTSC>()
     {
-        return get_frequency<T_CLOCK_FENCE_RDTSC>();
+        return get_clock_period<kClockFenceRDTSC>();
     }
 
     template<>
-    inline double get_frequency<T_CLOCK_BTB_MFENCE_RDTSC>()
+    inline double get_clock_period<kClockMFenceRDTSC>()
     {
-        return get_frequency<T_CLOCK_FENCE_RDTSC>();
+        return get_clock_period<kClockFenceRDTSC>();
     }
 
     template<>
-    inline double get_frequency<T_CLOCK_RDTSCP>()
+    inline double get_clock_period<kClockBTBMFenceRDTSC>()
     {
-        return get_frequency<T_CLOCK_FENCE_RDTSC>();
+        return get_clock_period<kClockFenceRDTSC>();
     }
 
     template<>
-    inline double get_frequency<T_CLOCK_CLOCK>()
+    inline double get_clock_period<kClockRDTSCP>()
+    {
+        return get_clock_period<kClockFenceRDTSC>();
+    }
+
+    template<>
+    inline double get_clock_period<kClockClock>()
     {
 #ifdef WIN32
-        double frequency_per_ns = 0;
-        LARGE_INTEGER win_freq;
-        win_freq.QuadPart = 0;
-        QueryPerformanceFrequency((LARGE_INTEGER*)&win_freq);
-        frequency_per_ns = win_freq.QuadPart / 1000.0 / 1000.0 / 1000.0;
-        return frequency_per_ns;
+        static double period = 0.0;
+        if (period == 0.0)
+        {
+            LARGE_INTEGER win_freq;
+            win_freq.QuadPart = 0;
+            QueryPerformanceFrequency((LARGE_INTEGER*)&win_freq);
+            if (win_freq.QuadPart == 0)
+            {
+                win_freq.QuadPart = 1;
+            }
+            period = 1000.0 * 1000.0 * 1000.0 / win_freq.QuadPart;
+        }
+        return period;
 #else
-        return 1.0;
+        return 1.0; //1 ns
 #endif
     }
 
     template<>
-    inline double get_frequency<T_CLOCK_SYS>()
+    inline double get_clock_period<kClockSystem>()
     {
-        return 1.0;
+        return 1.0; //1 ns
     }
 
     template<>
-    inline double get_frequency<T_CLOCK_CHRONO>()
+    inline double get_clock_period<kClockChrono>()
     {
-        const static double chrono_frequency = std::chrono::duration_cast<std::chrono::high_resolution_clock::duration>(std::chrono::seconds(1)).count() / 1000.0 / 1000.0 / 1000.0;
-        return chrono_frequency;
+        return 1000.0 * 1000.0 * 1000.0 * std::chrono::high_resolution_clock::period().num / std::chrono::high_resolution_clock::period().den;
     }
 
     template<>
-    inline double get_frequency<T_CLOCK_STEADY_CHRONO>()
+    inline double get_clock_period<kClockSteadyChrono>()
     {
-        const static double chrono_frequency = std::chrono::duration_cast<std::chrono::steady_clock::duration>(std::chrono::seconds(1)).count() / 1000.0 / 1000.0 / 1000.0;
-        return chrono_frequency;
+        return 1000.0 * 1000.0 * 1000.0 * std::chrono::steady_clock::period().num / std::chrono::steady_clock::period().den;
     }
 
     template<>
-    inline double get_frequency<T_CLOCK_SYS_CHRONO>()
+    inline double get_clock_period<kClockSystemChrono>()
     {
-        const static double chrono_frequency = std::chrono::duration_cast<std::chrono::system_clock::duration>(std::chrono::seconds(1)).count() / 1000.0 / 1000.0 / 1000.0;
-        return chrono_frequency;
+        return 1000.0 * 1000.0 * 1000.0 * std::chrono::system_clock::period().num / std::chrono::system_clock::period().den;
     }
 
     template<>
-    inline double get_frequency<T_CLOCK_SYS_MS>()
+    inline double get_clock_period<kClockSystemMS>()
     {
-        static double chrono_frequency = 1.0 / 1000.0 / 1000.0;
-        return chrono_frequency;
-    }
-
-    template<clock_type _C>
-    inline double get_inverse_frequency()
-    {
-        const static double inverse_frequency_per_ns = 1.0 / (get_frequency<_C>() <= 0.0 ? 1.0 : get_frequency<_C>());
-        return inverse_frequency_per_ns;
+        return 1000.0 * 1000.0 * 1000.0 / 1000;
     }
 
 
 
 
-    template<clock_type _C = T_CLOCK_VOLATILE_RDTSC>
+    template<clock_type _C = kClockVolatileRDTSC>
     class zclock_base
     {
     public:
@@ -704,15 +733,15 @@ namespace zclock_impl
         long long cost()const { return ticks_; }
         long long ticks()const { return ticks_; }
         long long cycles()const { return ticks_; }
-        long long cost_ns()const { return (long long)(ticks_ * get_inverse_frequency<_C>()); }
+        long long cost_ns()const { return (long long)(ticks_ * get_clock_period<_C>()); }
         long long cost_ms()const { return cost_ns() / 1000 / 1000; }
         double cost_s() const { return (double)cost_ns() / (1000.0 * 1000.0 * 1000.0); }
 
         //utils  
     public:
         static long long now() { return get_tick<_C>(); }
-        static long long sys_now_ns() { return get_tick<T_CLOCK_SYS>(); }
-        static long long sys_now_us() { return get_tick<T_CLOCK_SYS>() / 1000; }
+        static long long sys_now_ns() { return get_tick<kClockSystem>(); }
+        static long long sys_now_us() { return get_tick<kClockSystem>() / 1000; }
         static long long sys_now_ms() { return std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count(); }
         static double sys_now_s() { return std::chrono::duration<double>(std::chrono::system_clock().now().time_since_epoch()).count(); }
         static vmdata get_self_mem() { return get_self_mem(); }
@@ -720,7 +749,7 @@ namespace zclock_impl
     };
 }
 
-template<zclock_impl::clock_type _C = zclock_impl::T_CLOCK_VOLATILE_RDTSC>
+template<zclock_impl::clock_type _C = zclock_impl::kClockVolatileRDTSC>
 using zclock = zclock_impl::zclock_base<_C>;
 
 
