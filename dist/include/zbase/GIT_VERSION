@@ -1,0 +1,6 @@
+GIT_VERSION:
+last_sha1(./src)=0ef794817b4129d178aeb18ed653ae62771d31da
+last_date(./src)=2025-05-08 17:19:42 +0800
+
+git log -1 --stat ./src:
+commit 0ef794817b4129d178aeb18ed653ae62771d31da Author: zsummer <yawei.zhang@foxmail.com> Date: Thu May 8 00:22:39 2025 +0800 support mac system src/include/zbitset.h | 8 +- src/include/zclock.h | 263 ++++++++++++++++++++++------------------ src/include/zclock_diagnostic.h | 2 +- src/include/zlist_ext.h | 4 +- src/include/zmem_pool.h | 1 + src/include/zshm_ptr.h | 2 +- 6 files changed, 156 insertions(+), 124 deletions(-)
