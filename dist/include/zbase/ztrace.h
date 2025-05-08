@@ -294,7 +294,7 @@ inline std::string ztrace<_Ty, _Depth>::traceback(bool short_trace)
 #else
     void* stack[200];
     size_t size = backtrace(stack, 200);
-    char** stackSymbol = backtrace_symbols(stack, size);
+    
     ss << "backtrace: ";
     for (size_t i = 1; i < size; i++)
     {
@@ -303,12 +303,14 @@ inline std::string ztrace<_Ty, _Depth>::traceback(bool short_trace)
     if (!short_trace)
     {
         ss << "\r\n";
+        char** stackSymbol = backtrace_symbols(stack, size);
         for (size_t i = 1; i < size && stackSymbol != NULL; i++)
         {
             ss << "bt[" << i - 1 << "] " << stackSymbol[i] << "\r\n";
         }
+        free(stackSymbol);
     }
-    free(stackSymbol);
+    
 
     /*
     gdb info line * 0x40000000
