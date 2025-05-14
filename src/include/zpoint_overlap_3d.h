@@ -6,11 +6,12 @@
 
 
 #pragma once
-#ifndef  ZPOINT_COLLISION_H
-#define ZPOINT_COLLISION_H
+#ifndef  ZPOINT_OVERLAP_3D_H
+#define ZPOINT_OVERLAP_3D_H
 
 #include "zpoint.h"
-
+#include <utility>
+#include <tuple>
 
 class zpoint_hit
 {
