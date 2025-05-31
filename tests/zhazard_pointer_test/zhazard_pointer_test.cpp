@@ -23,8 +23,8 @@
 
 
 zhazard_pointer::hazard_node  head;
-std::atomic<int> has_error = 0;
-std::atomic<int> list_size = 0;
+std::atomic<int> has_error(0);
+std::atomic<int> list_size(0);
 
 
 zhazard_pointer::hazard_node* node_alloc()
