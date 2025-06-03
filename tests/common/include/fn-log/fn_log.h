@@ -5037,7 +5037,7 @@ namespace FNLog
             other.log_data_ = nullptr;
             other.hold_idx_ = -1;
         }
-        long long get_tick()
+        static long long get_tick()
         {
 #ifdef WIN32
             _mm_lfence();
