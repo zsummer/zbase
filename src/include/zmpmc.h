@@ -79,18 +79,21 @@ public:
         delete node;
     }
 
-    static mpmc_node* init(std::atomic<mpmc_node*>& head, std::atomic<mpmc_node*>& tail, mpmc_node* dummy)
+    static mpmc_node* init(std::atomic<mpmc_node*>& head, std::atomic<mpmc_node*>& tail, std::atomic<u64>& push_no, std::atomic<u64>& pop_no, mpmc_node* dummy)
     {
         head = dummy;
         head.load()->next = nullptr;
         tail.store(head);
+        push_no.store(0);
+        pop_no.store(0);
         return head;
     }
 
 
-    static mpmc_node* push(std::atomic<mpmc_node*>& head, std::atomic<mpmc_node*>& tail, mpmc_node* new_node)
+    static mpmc_node* push(std::atomic<mpmc_node*>& head, std::atomic<mpmc_node*>& tail, std::atomic<u64>& push_no, std::atomic<u64>& pop_no, std::atomic<u64>& hold, mpmc_node* new_node)
     {
         new_node->next = nullptr;
+        hold.store(pop_no);
         while (true)
         {
             mpmc_node* last = tail;
@@ -117,15 +120,17 @@ public:
                 //retry 
                 continue;
             }
-
+            push_no++;
+            hold.store(0);
             break;
 
         }
         return new_node;
     }
 
-    static mpmc_node* pop(std::atomic<mpmc_node*>& head, std::atomic<mpmc_node*>& tail)
+    static mpmc_node* pop(std::atomic<mpmc_node*>& head, std::atomic<mpmc_node*>& tail, std::atomic<u64>& push_no, std::atomic<u64>& pop_no, std::atomic<u64>& hold)
     {
+        hold.store(pop_no);
         while (true)
         {
             mpmc_node* first = head.load();
@@ -140,20 +145,25 @@ public:
                     tail.compare_exchange_weak(expr, next);
                     continue;
                 }
+                hold.store(0);
                 return nullptr;
             }
 
             mpmc_node* next = first->next;
             if (next == nullptr)
             {
+                hold.store(0);
                 return nullptr;
             }
             bool ok = head.compare_exchange_weak(first, next);
             if (ok)
             {
+                pop_no++;
+                hold.store(0);
                 return first;
             }
         }
+        hold.store(0);
         return nullptr;
     }
 
