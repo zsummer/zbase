@@ -57,7 +57,7 @@ using f64 = double;
 class zpoint
 {
 public:
-    float x, y, z;
+    float x_, y_, z_;
 public:
     static constexpr float kPI = (float)3.1415926535897932;
     static constexpr float kAngle180 = 180.0f;
@@ -66,21 +66,21 @@ public:
     static constexpr float kLowPrecision = 0.0002f;
     static constexpr float kFloatPrecision = 0.000001f;
 public:
-    zpoint(float fx, float fy, float fz):x(fx),y(fy),z(fz){}
+    zpoint(float fx, float fy, float fz):x_(fx),y_(fy),z_(fz){}
     zpoint(const zpoint & ) = default;
     zpoint() :zpoint(0.0f, 0.0f, 0.0f) {};
     zpoint & operator =(const zpoint & v3) = default;
 
-    void reset() { x = 0.0f; y = 0.0f; z = 0.0f; }
+    void reset() { x_ = 0.0f; y_ = 0.0f; z_ = 0.0f; }
 
-    bool is_zero(float prcs = kLowPrecision) const { return fabs(x) < prcs && fabs(y) < prcs && fabs(z) < prcs; }
-    bool is_valid() const { return !std::isnan(x) && !std::isnan(y) && !std::isnan(z) && !std::isinf(x) && !std::isinf(y) && !std::isinf(z); }
+    bool is_zero(float prcs = kLowPrecision) const { return fabs(x_) < prcs && fabs(y_) < prcs && fabs(z_) < prcs; }
+    bool is_valid() const { return !std::isnan(x_) && !std::isnan(y_) && !std::isnan(z_) && !std::isinf(x_) && !std::isinf(y_) && !std::isinf(z_); }
 
-    float dot(const zpoint& v) const { return x * v.x + y * v.y + z * v.z; };
-    float dot_2d(const zpoint& v) const { return x * v.x + y * v.y; };
+    float dot(const zpoint& v) const { return x_ * v.x_ + y_ * v.y_ + z_ * v.z_; };
+    float dot_2d(const zpoint& v) const { return x_ * v.x_ + y_ * v.y_; };
 
-    zpoint det(const zpoint& v) const { return { y * v.z - z * v.y , z * v.x - x * v.z , x * v.y - y * v.x }; };
-    zpoint det_2d(const zpoint& v) const { return { 0.0f , 0.0 , x * v.y - y * v.x }; };
+    zpoint det(const zpoint& v) const { return { y_ * v.z_ - z_ * v.y_ , z_ * v.x_ - x_ * v.z_ , x_ * v.y_ - y_ * v.x_ }; };
+    zpoint det_2d(const zpoint& v) const { return { 0.0f , 0.0 , x_ * v.y_ - y_ * v.x_ }; };
 
     zpoint cross(const zpoint& v) const { return det(v); }
     zpoint cross_2d(const zpoint& v) const { return det_2d(v); }
@@ -101,7 +101,7 @@ public:
     bool normalize();
     zpoint const_normalize() const { zpoint ret = *this; ret.normalize(); return ret; }
 
-    bool normalize_2d(){ z = 0.0f; return normalize(); }
+    bool normalize_2d(){ z_ = 0.0f; return normalize(); }
     zpoint const_normalize_2d() const { zpoint ret = *this; ret.normalize_2d(); return ret; }
 
     bool from_angle(float angle);
@@ -118,23 +118,23 @@ public:
         return zpoint(cos(kPI * v) * cos(kPI * u), sin(kPI * v) * cos(kPI * u), sin(kPI * v));
     }
 
-    zpoint operator + (const zpoint & v) const { return { x + v.x, y + v.y, z + v.z }; }
-    zpoint & operator += (const zpoint & v) { x += v.x, y += v.y, z += v.z; return *this; }
-    zpoint operator - (const zpoint & v) const { return { x - v.x, y - v.y, z - v.z }; }
-    zpoint & operator -= (const zpoint & v) { x -= v.x, y -= v.y, z -= v.z; return *this; }
-    zpoint operator * (const zpoint & v) const { return { x * v.x, y * v.y, z * v.z }; }
-    zpoint & operator *= (const zpoint & v) { x *= v.x, y *= v.y, z *= v.z; return *this; }
-    zpoint operator / (const zpoint & v) const { return { x / v.x, y / v.y, z / v.z }; }
-    zpoint & operator /= (const zpoint & v) { x /= v.x, y /= v.y, z /= v.z; return *this; }
+    zpoint operator + (const zpoint & v) const { return { x_ + v.x_, y_ + v.y_, z_ + v.z_ }; }
+    zpoint & operator += (const zpoint & v) { x_ += v.x_, y_ += v.y_, z_ += v.z_; return *this; }
+    zpoint operator - (const zpoint & v) const { return { x_ - v.x_, y_ - v.y_, z_ - v.z_ }; }
+    zpoint & operator -= (const zpoint & v) { x_ -= v.x_, y_ -= v.y_, z_ -= v.z_; return *this; }
+    zpoint operator * (const zpoint & v) const { return { x_ * v.x_, y_ * v.y_, z_ * v.z_ }; }
+    zpoint & operator *= (const zpoint & v) { x_ *= v.x_, y_ *= v.y_, z_ *= v.z_; return *this; }
+    zpoint operator / (const zpoint & v) const { return { x_ / v.x_, y_ / v.y_, z_ / v.z_ }; }
+    zpoint & operator /= (const zpoint & v) { x_ /= v.x_, y_ /= v.y_, z_ /= v.z_; return *this; }
 
-    zpoint operator + (float val) const { return { x + val, y + val, z + val }; }
-    zpoint & operator += (float val) { x += val, y += val, z += val; return *this; }
-    zpoint operator - (float val) const { return { x - val, y - val, z - val }; }
-    zpoint & operator -= (float val) { x -= val, y -= val, z -= val; return *this; }
-    zpoint operator * (float scalar) const { return { x * scalar, y * scalar, z * scalar }; }
-    zpoint & operator *= (float scalar) { x *= scalar, y *= scalar, z *= scalar; return *this; }
-    zpoint operator / (float scalar) const { return { x / scalar, y / scalar, z / scalar }; }
-    zpoint & operator /= (float scalar) { x /= scalar, y /= scalar, z /= scalar; return *this; }
+    zpoint operator + (float val) const { return { x_ + val, y_ + val, z_ + val }; }
+    zpoint & operator += (float val) { x_ += val, y_ += val, z_ += val; return *this; }
+    zpoint operator - (float val) const { return { x_ - val, y_ - val, z_ - val }; }
+    zpoint & operator -= (float val) { x_ -= val, y_ -= val, z_ -= val; return *this; }
+    zpoint operator * (float scalar) const { return { x_ * scalar, y_ * scalar, z_ * scalar }; }
+    zpoint & operator *= (float scalar) { x_ *= scalar, y_ *= scalar, z_ *= scalar; return *this; }
+    zpoint operator / (float scalar) const { return { x_ / scalar, y_ / scalar, z_ / scalar }; }
+    zpoint & operator /= (float scalar) { x_ /= scalar, y_ /= scalar, z_ /= scalar; return *this; }
 
 
     //utils
@@ -165,16 +165,16 @@ inline bool zpoint::normalize()
 inline bool zpoint::from_angle(float angle)
 {
     float radian = angle * zpoint::kPerAnglePI;
-    x = cos(radian);
-    y = sin(radian);
-    z = 0.0f;
+    x_ = cos(radian);
+    y_ = sin(radian);
+    z_ = 0.0f;
     return true;
 }
 
 inline float zpoint::to_agnle() const
 {
     float radian = dot({ 1.0f, 0.0f, 0.0f });
-    if (y < 0.0f)
+    if (y_ < 0.0f)
     {
         return (zpoint::kPI * 2 - radian) * zpoint::kPerPIAngle;
     }
@@ -183,9 +183,9 @@ inline float zpoint::to_agnle() const
 
 inline bool zpoint::from_uv(float u, float v)
 {
-    x = sin(zpoint::kPI * v) * cos(zpoint::kPI * u);
-    y = sin(zpoint::kPI * v) * sin(zpoint::kPI * u);
-    z = cos(zpoint::kPI * v);
+    x_ = sin(zpoint::kPI * v) * cos(zpoint::kPI * u);
+    y_ = sin(zpoint::kPI * v) * sin(zpoint::kPI * u);
+    z_ = cos(zpoint::kPI * v);
     return true;
 }
 
