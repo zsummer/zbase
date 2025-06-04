@@ -29,7 +29,7 @@ std::atomic_int in;
 
 std::atomic<zmpmc::mpmc_node*> head;
 std::atomic<zmpmc::mpmc_node*> tail;
-std::atomic<zmpmc::mpmc_node*> dummy = new zmpmc::mpmc_node();
+std::atomic<zmpmc::mpmc_node*> dummy(new zmpmc::mpmc_node());
 
 std::atomic<u64>  alloc_cnt(0);
 std::atomic<u64>  free_cnt(0);
