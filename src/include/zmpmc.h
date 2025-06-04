@@ -67,6 +67,7 @@ public:
     struct mpmc_node
     {
         std::atomic<mpmc_node*> next;
+        u64 epoch = 0;
     };
 
     static mpmc_node* default_alloc()
@@ -160,6 +161,7 @@ public:
             {
                 pop_no++;
                 hold.store(0);
+                first->epoch = pop_no;
                 return first;
             }
         }
