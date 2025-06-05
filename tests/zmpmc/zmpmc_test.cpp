@@ -87,7 +87,7 @@ void job()
     }
 
 
-    for(int i=0; i<1000; i++)
+    for(int i=0; i<2000; i++)
     {
         void* ptr = (void*)(u64)((rand()% 100000) + 100) ;
 
@@ -108,7 +108,7 @@ void job()
             }
         }
 
-        //gc  
+        //trigger gc  
         u64 cur_max_epoch = 0;
         for (int i = 0; i < cur_win; i++)
         {
@@ -141,6 +141,18 @@ void job()
 
     } 
     
+    if (local_head.next != nullptr)
+    {
+        int i = 0;
+        zmpmc::mpmc_node* second = local_head.next;
+        while (second)
+        {
+            i++;
+            second = second->next;
+        }
+
+        LogError() << "will leap memory: leap node cnt:" << i;
+    }
     if (local_hold_idx != -1)
     {
         hold_epoch[local_hold_idx% kMaxThread] = -1;
@@ -214,7 +226,28 @@ int main(int argc, char *argv[])
     }
     v.clear();
 
+
+
+
+
     LogInfo() << "finish: alloc_cnt:" << alloc_cnt << ", free_cnt:" << free_cnt;
+
+    zmpmc::mpmc_node* gc_head = mp_head;
+    while (gc_head->next)
+    {
+        zmpmc::mpmc_node* tmp = gc_head;
+        gc_head = gc_head->next;
+        free_cnt++;
+        delete tmp;
+    }
+    delete gc_head;
+    
+
+    LogInfo() << "clear mpmc: alloc_cnt:" << alloc_cnt << ", free_cnt:" << free_cnt;
+
+
+
+
 
     return has_error;
 }
