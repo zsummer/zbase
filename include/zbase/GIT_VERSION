@@ -1,6 +1,6 @@
 GIT_VERSION:
-last_sha1(./src)=f355498a58f390d8ded896a681c805b1fa36b7cc
-last_date(./src)=2025-05-08 20:34:28 +0800
+last_sha1(./src)=af63be51c2fc1c26999a5e6dddfaf02a40064149
+last_date(./src)=2025-09-09 15:14:42 +0800
 
 git log -1 --stat ./src:
-commit f355498a58f390d8ded896a681c805b1fa36b7cc Author: zsummer <yawei.zhang@foxmail.com> Date: Thu May 8 19:57:05 2025 +0800 optimize ztrace src/include/ztrace.h | 6 ++++-- 1 file changed, 4 insertions(+), 2 deletions(-)
+commit af63be51c2fc1c26999a5e6dddfaf02a40064149 Author: zsummer <yawei.zhang@foxmail.com> Date: Tue Sep 9 14:57:50 2025 +0800 debug_color_log src/include/zmalloc.h | 22 +++++++++++++++++++++- 1 file changed, 21 insertions(+), 1 deletion(-)

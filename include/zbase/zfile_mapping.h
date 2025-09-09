@@ -328,7 +328,7 @@ namespace zfile_mapping_impl
             struct stat sb;
             if (readonly)
             {
-                file_fd_ = open(file_path, O_RDONLY);
+                file_fd_ = open(file_path, O_RDONLY| O_BINARY);
             }
             else
             {
