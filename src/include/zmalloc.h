@@ -1253,6 +1253,9 @@ inline void zmalloc::debug_color_log(StreamLog logwrap, u32 begin_color, u32 end
     end_color = end_color > (zmalloc::CHUNK_COLOR_MASK_WITH_LEVEL + 1) / 2 ? (zmalloc::CHUNK_COLOR_MASK_WITH_LEVEL + 1) / 2 : end_color;
 #if ZMALLOC_OPEN_COUNTER
     logwrap() << "------    ";
+
+    u64 alloc_amount[BINMAP_SIZE * 2] = { 0 };
+    u64 free_amount[BINMAP_SIZE * 2] = { 0 };
     for (u32 user_color = begin_color; user_color < end_color; user_color++)
     {
         u32 base_level = user_color << 1;
@@ -1272,6 +1275,8 @@ inline void zmalloc::debug_color_log(StreamLog logwrap, u32 begin_color, u32 end
             {
                 continue;
             }
+            alloc_amount[bin_id] += alloc_counter_[color][index];
+            free_amount[bin_id] += free_counter_[color][index];
             color_alloc += alloc_counter_[color][index] * bin_size_[big_level][index];
             color_count += alloc_counter_[color][index];
             color_free += free_counter_[color][index] * bin_size_[big_level][index];
@@ -1302,6 +1307,21 @@ inline void zmalloc::debug_color_log(StreamLog logwrap, u32 begin_color, u32 end
     }
     if (true)
     {
+        logwrap() << "    ------    ";
+        for (u32 bin_id = 0; bin_id < BINMAP_SIZE * 2; bin_id++)
+        {
+            if ((alloc_amount[bin_id] | free_amount[bin_id]) == 0)
+            {
+                continue;
+            }
+            logwrap() << "    [bin:" << bin_id << "]\t[alloc c:" << alloc_amount[bin_id] << "]\t[free c:" << free_amount[bin_id]
+                << "]\t[usec:" << alloc_amount[bin_id] - free_amount[bin_id] << "].";
+        }
+        logwrap() << "    ------    ";
+    }
+    if (true)
+    {
+        logwrap() << "    ------    ";
         slot_info slot = { 0 };
         for (u32 i = 0; i < SLOT_BINMAP_SIZE; i++)
         {
@@ -1318,7 +1338,7 @@ inline void zmalloc::debug_color_log(StreamLog logwrap, u32 begin_color, u32 end
                 << "m]\t[usec:" << slot_[i].alloc_count - slot_[i].free_count
                 << "]\t[useb:" << (slot_[i].alloc_count - slot_[i].free_count) * slot_[i].user_size * 1.0 / (1024 * 1024) << "m].";
         }
-        logwrap() << "    [alloc:" << slot.alloc_bytes * 1.0 / (1024 * 1024) << "m]\t[free:" << slot.free_bytes * 1.0 / (1024 * 1024)
+        logwrap() << "    [slot alloc:" << slot.alloc_bytes * 1.0 / (1024 * 1024) << "m]\t[free:" << slot.free_bytes * 1.0 / (1024 * 1024)
             << "m]\t[usec:" << slot.alloc_count - slot.free_count
             << "]\t[useb:" << (slot.alloc_bytes - slot.free_bytes) * 1.0 / (1024 * 1024) << "m].";
     }
