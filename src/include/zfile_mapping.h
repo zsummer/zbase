@@ -123,7 +123,9 @@ using f64 = double;
 #define ZBASE_ALIAS
 #endif
 
-
+#ifndef O_BINARY
+#define O_BINARY 0
+#endif
 
 //comment: grep -i commit /proc/meminfo   #查看overcommit value和当前commit   
 //comment: sar -r                                            #查看kbcommit   %   
