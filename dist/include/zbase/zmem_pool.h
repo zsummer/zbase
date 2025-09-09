@@ -15,7 +15,7 @@
 #include <string.h>
 #include <type_traits>
 #include <cstddef>
-
+#include <utility>
 
 //default use format compatible short type .  
 #if !defined(ZBASE_USE_AHEAD_TYPE) && !defined(ZBASE_USE_DEFAULT_TYPE)
