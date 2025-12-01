@@ -348,9 +348,9 @@ s32 zmalloc_stress()
 {
     zmalloc* zstate = zmalloc::instance_ptr();
     static const u32 rand_size = 1000 * 10000;
-    static_assert(rand_size > zmalloc::DEFAULT_BLOCK_SIZE, "");
+    static_assert(rand_size > zmalloc::kDefaultBlockSize, "");
     u32* rand_array = new u32[rand_size];
-    static const u32 cover_size = zmalloc::BIG_MAX_REQUEST;
+    static const u32 cover_size = zmalloc::kBigMaxRequest;
     using Addr = void*;
     zarray <Addr, cover_size>* buffers = new zarray <Addr, cover_size>();
     zarray <Addr, cover_size>* buffers2 = new zarray <Addr, cover_size>();
@@ -358,13 +358,13 @@ s32 zmalloc_stress()
     //¹Ì¶¨Ð¡×Ö½ÚÉêÇë  
     static int fixed_size = 100;
 
-    for (u32 i = 0; i < zmalloc::DEFAULT_BLOCK_SIZE; i++)
+    for (u32 i = 0; i < zmalloc::kDefaultBlockSize; i++)
     {
         rand_array[i] = i;
     }
-    for (u32 i = zmalloc::DEFAULT_BLOCK_SIZE; i < rand_size; i++)
+    for (u32 i = zmalloc::kDefaultBlockSize; i < rand_size; i++)
     {
-        rand_array[i] = rand() % (zmalloc::BIG_MAX_REQUEST * 4 / 3);
+        rand_array[i] = rand() % (zmalloc::kBigMaxRequest * 4 / 3);
     }
 
 
@@ -391,7 +391,7 @@ s32 zmalloc_stress()
     PROF_START_COUNTER(cost);
     for (u64 i = 0; i < rand_size; i++)
     {
-        u32 test_size = (rand_array[i] % (zmalloc::BIG_MAX_REQUEST - zmalloc::SMALL_MAX_REQUEST)) + zmalloc::SMALL_MAX_REQUEST;
+        u32 test_size = (rand_array[i] % (zmalloc::kBigMaxRequest - zmalloc::kSmallMaxRequest)) + zmalloc::kSmallMaxRequest;
         void* p = global_zmalloc(test_size);
         global_zfree(p);
     }
@@ -400,7 +400,7 @@ s32 zmalloc_stress()
     PROF_START_COUNTER(cost);
     for (u64 i = rand_size / 2; i < rand_size; i++)
     {
-        u32 test_size = rand_array[i] % (zmalloc::BIG_MAX_REQUEST * 4 / 3);
+        u32 test_size = rand_array[i] % (zmalloc::kBigMaxRequest * 4 / 3);
         void* p = global_zmalloc(test_size);
         global_zfree(p);
     }
@@ -409,7 +409,7 @@ s32 zmalloc_stress()
     PROF_START_COUNTER(cost);
     for (u64 i = rand_size / 2; i < rand_size; i++)
     {
-        u32 test_size = rand_array[i] % (zmalloc::BIG_MAX_REQUEST * 4 / 3);
+        u32 test_size = rand_array[i] % (zmalloc::kBigMaxRequest * 4 / 3);
         void* p = global_zmalloc(test_size);
         buffers->push_back(p);
         global_zfree(p);
@@ -435,7 +435,7 @@ s32 zmalloc_stress()
         PROF_START_COUNTER(cost);
         for (u64 i = begin_size; i < end_size; i++)
         {
-            u32 test_size = rand_array[i] % (zmalloc::BIG_MAX_REQUEST);
+            u32 test_size = rand_array[i] % (zmalloc::kBigMaxRequest);
             void* p = global_zmalloc(test_size);
             *(u32*)p = (u32)i;
             buffers->push_back(p);
@@ -475,7 +475,7 @@ s32 zmalloc_stress()
         PROF_START_COUNTER(cost);
         for (u64 i = begin_size; i < end_size; i++)
         {
-            u32 test_size = rand_array[i] % (zmalloc::BIG_MAX_REQUEST);
+            u32 test_size = rand_array[i] % (zmalloc::kBigMaxRequest);
             test_size = test_size < 8 ? 8 : test_size;
             void* p = malloc(test_size);
             *(u32*)p = (u32)i;
@@ -540,7 +540,7 @@ s32 zmalloc_stress()
             auto new_log = []() { return std::move(LOG_STREAM_DEFAULT_LOGGER(0, FNLog::PRIORITY_DEBUG, 0, 0, FNLog::LOG_PREFIX_NULL)); };
             cost.Start();
             zmalloc::instance().debug_state_log(new_log);
-            zmalloc::instance().debug_color_log(new_log, 0, (zmalloc::CHUNK_COLOR_MASK_WITH_LEVEL + 1) / 2);
+            zmalloc::instance().debug_color_log(new_log, 0, (zmalloc::kChunkColorMaskWithLevel + 1) / 2);
             PROF_OUTPUT_SINGLE_CPU("zamlloc debug_state_log debug_color_log cost", cost.StopAndSave().cost());
         }
 
@@ -557,7 +557,7 @@ s32 zmalloc_stress()
         LogDebug() << "zmalloc clear all buffers state log:";
         auto new_log = []() { return std::move(LOG_STREAM_DEFAULT_LOGGER(0, FNLog::PRIORITY_DEBUG, 0, 0, FNLog::LOG_PREFIX_NULL)); };
         zmalloc::instance().debug_state_log(new_log);
-        zmalloc::instance().debug_color_log(new_log, 0, (zmalloc::CHUNK_COLOR_MASK_WITH_LEVEL + 1) / 2);
+        zmalloc::instance().debug_color_log(new_log, 0, (zmalloc::kChunkColorMaskWithLevel + 1) / 2);
     }
     PROF_OUTPUT_SELF_MEM("z malloc finish");
     if (true)
@@ -685,7 +685,7 @@ s32 zmalloc_stress()
         unsigned long long end_size = cover_size / 80 * (loop + 1);
         for (u64 i = begin_size; i < end_size; i++)
         {
-            u32 test_size = rand_array[i] % (zmalloc::BIG_MAX_REQUEST);
+            u32 test_size = rand_array[i] % (zmalloc::kBigMaxRequest);
             void* p = global_zmalloc(test_size);
             if (test_size < 64)
             {

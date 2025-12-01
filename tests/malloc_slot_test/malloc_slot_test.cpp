@@ -149,9 +149,9 @@ int main(int argc, char *argv[])
 
 
             void* pp[14];
-            for (u32 i = 0; i < zmalloc::SLOT_BINMAP_SIZE; i++)
+            for (u32 i = 0; i < zmalloc::kSlotBinMapSize; i++)
             {
-                pp[0] = zmalloc::instance().alloc_slot(i, 200, zmalloc_align_default_value(200) + zmalloc::CHUNK_PADDING_SIZE + sizeof(zmalloc::free_chunk_type) * 2 + sizeof(zmalloc::block_type) +i *5);
+                pp[0] = zmalloc::instance().alloc_slot(i, 200, zmalloc_align_default_value(200) + zmalloc::kChunkPaddingSize + sizeof(zmalloc::free_chunk_type) * 2 + sizeof(zmalloc::block_type) +i *5);
                 ASSERT_TEST_NOLOG(pp[0] != NULL, i);
                 memset(pp[0], 0, 200);
                 ASSERT_TEST_NOLOG(zmalloc::instance().free_slot(pp[0]) != 0, "");
@@ -163,7 +163,7 @@ int main(int argc, char *argv[])
         LogDebug() << "zmalloc state log:";
         auto new_log = []() { return std::move(LOG_STREAM_DEFAULT_LOGGER(0, FNLog::PRIORITY_DEBUG, 0, 0, FNLog::LOG_PREFIX_NULL)); };
         zmalloc::instance().debug_state_log(new_log);
-        zmalloc::instance().debug_color_log(new_log, 0, (zmalloc::CHUNK_COLOR_MASK_WITH_LEVEL + 1) / 2);
+        zmalloc::instance().debug_color_log(new_log, 0, (zmalloc::kChunkColorMaskWithLevel + 1) / 2);
 
 
     }
