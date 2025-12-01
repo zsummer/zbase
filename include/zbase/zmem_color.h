@@ -42,7 +42,7 @@ enum zmem_color_enum
     BASE_MEM_COLOR_MAX,
 };
 
-static_assert(BASE_MEM_COLOR_MAX < zmalloc::CHUNK_COLOR_MASK / 2, "color max");
+static_assert(BASE_MEM_COLOR_MAX < zmalloc::kChunkColorMask / 2, "color max");
 
 using shm_string = std::basic_string<char, std::char_traits<char>, zallocator<char, BASE_MEM_COLOR_STRING> >;
 

@@ -1,6 +1,6 @@
 GIT_VERSION:
-last_sha1(./src)=6bfdfec5eeca7a4a8d7bc3c48b11a16085235cbc
-last_date(./src)=2025-09-09 15:34:22 +0800
+last_sha1(./src)=90012d8db3d7930e4959ce1f509b5539b825717d
+last_date(./src)=2025-12-01 15:30:05 +0800
 
 git log -1 --stat ./src:
-commit 6bfdfec5eeca7a4a8d7bc3c48b11a16085235cbc Author: zsummer <yawei.zhang@foxmail.com> Date: Tue Sep 9 15:33:02 2025 +0800 O_BINARY not found on unix src/include/zfile_mapping.h | 4 +++- 1 file changed, 3 insertions(+), 1 deletion(-)
+commit 90012d8db3d7930e4959ce1f509b5539b825717d Author: zsummer <yawei.zhang@foxmail.com> Date: Mon Dec 1 15:29:45 2025 +0800 constexpr value change naming to kXxx src/include/zmalloc.h | 445 +++++++++++++++++++++++------------------------ src/include/zmem_color.h | 2 +- 2 files changed, 223 insertions(+), 224 deletions(-)
