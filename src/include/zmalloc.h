@@ -990,8 +990,8 @@ void* zmalloc::alloc_memory(u64 req_bytes)
         return NULL;
     }
 #if ZMALLOC_OPEN_COUNTER
-    u32 padding = ((u32)req_bytes + 255) & ~255U;
-    padding = padding > kMaxResolveOrderSize ? kMaxResolveOrderSize : padding; // 50M
+    u64 u64_padding = (req_bytes + 255) & ~255U;
+    u32 padding = u64_padding > kMaxResolveOrderSize ? kMaxResolveOrderSize : (u32)u64_padding; // 50M
     padding = zmalloc_align_third_bit_value(padding);
     u32 third_order = zmalloc_align_third_bit_order(padding);
     u32 align_id = zmalloc_third_sequence(third_order, padding);

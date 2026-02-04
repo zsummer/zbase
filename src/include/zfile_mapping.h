@@ -237,6 +237,7 @@ namespace zfile_mapping_impl
                 ::CloseHandle(mapping_hd_);
                 file_hd_ = NULL;
                 mapping_hd_ = NULL;
+                file_size_ = 0;
                 return 3;
             }
 #endif
@@ -355,6 +356,14 @@ namespace zfile_mapping_impl
             {
                 file_data_ = (char*)mmap(NULL, sb.st_size, PROT_READ | PROT_WRITE, MAP_SHARED, file_fd_, 0);
             }
+
+            if (file_data_ == MAP_FAILED)
+            {
+                close(file_fd_);
+                file_fd_ = -1;
+                return 11;
+            }
+
             file_size_ = sb.st_size;
 #endif 
             return 0;
@@ -369,7 +378,7 @@ namespace zfile_mapping_impl
 
         s32 unmap_res()
         {
-            if (file_fd_ == 0)
+            if (file_fd_ == -1)
             {
                 return 1;
             }
