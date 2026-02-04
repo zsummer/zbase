@@ -218,7 +218,9 @@ public:
         {
             return;
         }
-        if (std::is_trivial<_Ty>::value && other.size() * 4 >= other.exploit_offset_) 
+        //
+        const size_type kSparseRate = 4;
+        if (std::is_trivial<_Ty>::value && other.size() * kSparseRate >= other.exploit_offset_)
         {
             plat_init(other);
         }
