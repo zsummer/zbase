@@ -205,6 +205,14 @@ public:
         return  &c->data_[0];
     }
     
+    // Normal access without vptr check (for performance)
+    // Assumes vptr has been fixed during resume phase
+    template<class _Ty>
+    inline _Ty* cast(s32 chunk_id) { return reinterpret_cast<_Ty*>(safe_at(chunk_id)); }
+
+private:
+    // Private: Only used in resume() to fix vptr for polymorphic objects
+    // DO NOT use this in normal access path for performance reasons
     inline char* fixed(s32 chunk_id) 
     { 
         static_assert(ALIGN_SIZE >= 8, "min vptr size");
@@ -224,8 +232,9 @@ public:
         }
         return  p;
     }
-    template<class _Ty>
-    inline _Ty* cast(s32 chunk_id) { return reinterpret_cast<_Ty*>(fixed(chunk_id)); }
+
+public:
+
     
 
 
@@ -330,6 +339,9 @@ public:
     * 多态只支持单继承, 保证只有一个虚表, 以简化恢复虚表的复杂度.   
     * 这里限制exploit窗口和使用标记 减少恢复的量级  
     * 先修复obj_vptr_指针值  再执行该函数  
+    * 
+    * NOTE: This is the ONLY place where vptr fixing should happen.
+    *       Normal access via cast() does NOT fix vptr for performance.
     */
     s32 resume(u64 vptr)
     {
@@ -347,6 +359,7 @@ public:
             {
                 continue;
             }
+            // Fix vptr once during resume phase
             fixed(i);
             fixed_count++;
         }
@@ -356,6 +369,7 @@ public:
         }
         return 0;
     }
+
 
 
     inline void* exploit()
@@ -533,7 +547,7 @@ public:
     template<class... Args >
     inline _Ty* create(Args&&... args) { return zsuper::template create<_Ty, Args ...>(std::forward<Args>(args) ...); }
 
-    inline void destroy(const _Ty* obj) { zsuper::destory(obj); }
+    inline void destroy(const _Ty* obj) { zsuper::destroy(obj); }
 };
 
 
