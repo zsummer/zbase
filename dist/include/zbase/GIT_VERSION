@@ -1,6 +1,6 @@
 GIT_VERSION:
-last_sha1(./src)=21a82e6c2a952b90d38a3aa8f155b3cf6a161388
-last_date(./src)=2026-02-04 15:34:41 +0800
+last_sha1(./src)=d2cad1555628c469198607b9d9f25ec8fb9d5f82
+last_date(./src)=2026-02-04 16:36:37 +0800
 
 git log -1 --stat ./src:
-commit 21a82e6c2a952b90d38a3aa8f155b3cf6a161388 Author: zsummer <yawei.zhang@foxmail.com> Date: Wed Feb 4 15:34:29 2026 +0800 ai review src/include/zfile_mapping.h | 11 ++++++++++- src/include/zlist.h | 4 +++- src/include/zmalloc.h | 4 ++-- src/include/zmem_pool.h | 20 +++++++++++++++++--- src/include/zsymbols.h | 12 ++++++------ 5 files changed, 38 insertions(+), 13 deletions(-)
+commit d2cad1555628c469198607b9d9f25ec8fb9d5f82 Author: zsummer <yawei.zhang@foxmail.com> Date: Wed Feb 4 16:36:24 2026 +0800 update: #include <cstring> src/include/zarray.h | 2 +- src/include/zhash_map.h | 8 +++++++- src/include/zlist.h | 2 +- src/include/zmem_pool.h | 2 +- 4 files changed, 10 insertions(+), 4 deletions(-)

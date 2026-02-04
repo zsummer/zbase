@@ -210,7 +210,7 @@ public:
     template<class _Ty>
     inline _Ty* cast(s32 chunk_id) { return reinterpret_cast<_Ty*>(safe_at(chunk_id)); }
 
-private:
+public:
     // Private: Only used in resume() to fix vptr for polymorphic objects
     // DO NOT use this in normal access path for performance reasons
     inline char* fixed(s32 chunk_id) 

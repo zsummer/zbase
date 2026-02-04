@@ -14,7 +14,7 @@
 #include <stdint.h>
 #include <iterator>
 #include <cstddef>
-
+#include <cstring>
 
 
 

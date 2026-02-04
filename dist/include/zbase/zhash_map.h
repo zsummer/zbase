@@ -14,7 +14,7 @@
 #include <stdint.h>
 #include <type_traits>
 #include <cstddef>
-
+#include <cstring>
 
 
 //default use format compatible short type .  
@@ -426,6 +426,12 @@ public:
         }
         return end();
     }
+
+    const_iterator find(const key_type& key) const
+    {
+        return const_cast<zhash_map_impl*>(this)->find(key);
+    }
+
 
     bool contains(const key_type& key)
     {
