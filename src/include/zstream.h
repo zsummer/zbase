@@ -256,7 +256,8 @@ namespace zstream_impl
         if (number < 0)
         {
             *dst = '-';
-            return 1 + write_ull < (WIDE > 0) ? (WIDE - 1) : (0) > (dst + 1, dst_len - 1, (u64)abs(number));
+            constexpr int kNewWide = (WIDE > 0) ? (WIDE - 1) : (0);
+            return 1 + write_ull<kNewWide> (dst + 1, dst_len - 1, (u64)abs(number));
         }
         return write_ull<WIDE>(dst, dst_len, (u64)abs(number));
     }
@@ -655,9 +656,21 @@ private:
     {
         return zstream::attach(buf, len, offset);
     }
+    const char * space() const { return space_; }
 private:
     char space_[BuffSize];
 };
+
+
+#define zstream_throw(...)  \
+do\
+{\
+    zstream_static<1024> ss;\
+    ss << __VA_ARGS__;\
+    throw std::runtime_error(ss.space());\
+} while (0)
+
+
 
 
 

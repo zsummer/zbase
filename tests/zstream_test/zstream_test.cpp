@@ -63,6 +63,16 @@ s32 zstream_test()
         s.fmt("100");
         ASSERT_TEST(std::string("10010") == s.data());
     }
+
+    if (true)
+    {
+        zstream s(buf, 6);
+        s << -100;
+        ASSERT_TEST(std::string("-100") == s.data());
+    }
+
+
+
     if (true)
     {
         zstream s(buf, 1000);
