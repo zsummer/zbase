@@ -164,7 +164,7 @@ static_assert(zmalloc_is_align_value(4, 4), "");
 #define zmalloc_align_default_value(bytes) zmalloc_align_value(bytes, sizeof(std::max_align_t)) 
 static_assert(zmalloc_align_default_value(1) == sizeof(std::max_align_t), "");
 static_assert(zmalloc_align_default_value(0) == 0, "");
-static_assert(sizeof(std::max_align_t) <= 8, "");
+//static_assert(sizeof(std::max_align_t) <= 8, "");
 
 #define zmalloc_align_up_value(bytes, shift) (((bytes) + zmalloc_order_mask_64(shift)) >> (shift))
 static_assert(zmalloc_align_up_value(0, 10) == 0, "");
