@@ -87,6 +87,13 @@ bool operator <(const raii_object_impl<None>& v1, const raii_object_impl<None>& 
     return v1.val_ < v2.val_;
 }
 
+template<int None = 0>
+bool operator >(const raii_object_impl<None>& v1, const raii_object_impl<None>& v2)
+{
+    return v1.val_ > v2.val_;
+}
+
+
 template<int None>
 u32 raii_object_impl<None>::construct_count_ = 0;
 template<int None>
