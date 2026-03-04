@@ -535,7 +535,19 @@ public:
         return new_iter;
     }
 
+    iterator sorted_insert(const _Ty& value)
+    {
+        return insert(std::lower_bound(begin(), end(), value), value);
+    }
+
+    template<class _Comp>
+    iterator sorted_insert(const _Ty& value, _Comp comp)
+    {
+        return insert(std::lower_bound(begin(), end(), value, comp), value);
+    }
+
     template<class Iter>
+
     iterator assign(Iter first, Iter last)
     {
         clear();
@@ -656,7 +668,6 @@ bool operator==(const zvector< _Ty, _Size, _FixedSize, _Alloc>& a1, const zvecto
 {
     return a1.data() == a2.data();
 }
-
 
 
 #endif

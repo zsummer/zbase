@@ -448,6 +448,17 @@ public:
         return new_iter;
     }
 
+    iterator sorted_insert(const _Ty& value)
+    {
+        return insert(std::lower_bound(begin(), end(), value), value);
+    }
+
+    template<class _Comp>
+    iterator sorted_insert(const _Ty& value, _Comp comp)
+    {
+        return insert(std::lower_bound(begin(), end(), value, comp), value);
+    }
+
     template<class Iter>
     iterator assign(Iter first, Iter last)
     {
@@ -529,7 +540,6 @@ bool operator==(const zarray<_Ty, _Size>& a1, const zarray<_Ty, _Size>& a2)
 {
     return a1.data() == a2.data();
 }
-
 
 
 #endif
