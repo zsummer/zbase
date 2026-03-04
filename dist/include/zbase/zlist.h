@@ -15,6 +15,7 @@
 #include <iterator>
 #include <cstddef>
 #include <cstring>
+#include <functional>
 
 
 
@@ -493,11 +494,24 @@ public:
         return iterator(&data_[0], inject(pos.id_, value));
     }
 
+    iterator sorted_insert(const _Ty& value)
+    {
+        return insert(lower_bound(begin(), end(), value), value);
+    }
+
+    template<class _Comp>
+    iterator sorted_insert(const _Ty& value, _Comp comp)
+    {
+        return insert(lower_bound(begin(), end(), value, comp), value);
+    }
+
     template< class... Args >
+
     iterator emplace(iterator pos, Args&&... args)
     {
         return iterator(&data_[0], inject_emplace(pos.id_, args...));
     }
+
 
     iterator insert(iterator pos, size_type count, const _Ty& value)
     {
@@ -620,7 +634,5 @@ bool operator==(const zlist<_Ty, _Size>& a1, const zlist<_Ty, _Size>& a2)
 }
 
 
-
-
-
 #endif
+

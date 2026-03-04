@@ -1,6 +1,6 @@
 GIT_VERSION:
-last_sha1(./src)=d8ee8a3192b8f94befc3d5ef419bdc911f9decbb
-last_date(./src)=2026-02-26 20:13:26 +0800
+last_sha1(./src)=5e2ffbb49cabc6a888e215ce457340992c004989
+last_date(./src)=2026-03-04 10:55:01 +0800
 
 git log -1 --stat ./src:
-commit d8ee8a3192b8f94befc3d5ef419bdc911f9decbb Author: zsummer <yawei.zhang@foxmail.com> Date: Thu Feb 26 20:13:12 2026 +0800 compile error fixed src/include/zmalloc.h | 2 +- src/include/zstream.h | 21 +++++++++++++++++---- 2 files changed, 18 insertions(+), 5 deletions(-)
+commit 5e2ffbb49cabc6a888e215ce457340992c004989 Author: zsummer <yawei.zhang@foxmail.com> Date: Tue Mar 3 21:20:12 2026 +0800 sorted_insert src/include/zarray.h | 14 ++++++++++++-- src/include/zlist.h | 18 +++++++++++++++--- src/include/zlist_ext.h | 19 +++++++++++++++++-- src/include/zvector.h | 15 +++++++++++++-- 4 files changed, 57 insertions(+), 9 deletions(-)
