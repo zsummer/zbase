@@ -30,10 +30,10 @@
  *       小对象 free 时先放入 cache, alloc 时先从 cache 取, 减少锁操作
  * ============================================================ */
 
-
+//mark
+// TLS的初始化和退出清理机制 
 //todo 
 // 1. find arena 过于低效  后续改造chunk头部进行直接索引  
-// 2. TLS的初始化和退出清理机制需要完善  
 // 3. 日志打印需要优化  
 
 
@@ -77,9 +77,6 @@ struct zmalloc_arena
     }
 };
 
-
-// ==================== thread-local cache ====================
-
 struct zmalloc_cache_bin
 {
     zmalloc::free_chunk_type*   head;       
@@ -92,47 +89,41 @@ class zmalloc_mt;
 class zmalloc_thread_cache
 {
 public:
-    zmalloc_arena*      bound_arena;   
-    u64                 cached_bytes;
-    u64                 alloc_count;
-    u64                 free_count;
-    u64                 alloc_bytes;
-    u64                 free_bytes;
-    u32                 inited;
+    zmalloc_mt*         owner_;
+    zmalloc_arena*      bound_arena_;   
+    u64                 cached_bytes_;
+    u64                 alloc_count_;
+    u64                 free_count_;
+    u64                 alloc_bytes_;
+    u64                 free_bytes_;
+    u32                 inited_;
     u32                 pad_;
-    zmalloc_cache_bin   bins[ZMALLOC_MT_CACHE_BIN_COUNT];
+    zmalloc_cache_bin   bins_[ZMALLOC_MT_CACHE_BIN_COUNT];
 
     zmalloc_thread_cache()
-        : bound_arena(nullptr)
-        , cached_bytes(0)
-        , alloc_count(0)
-        , free_count(0)
-        , alloc_bytes(0)
-        , free_bytes(0)
-        , inited(0)
-        , pad_(0)
     {
-        memset(bins, 0, sizeof(bins));
+        memset(this, 0, sizeof(zmalloc_thread_cache));
     }
-
-    inline ~zmalloc_thread_cache();
-
-    // 禁止拷贝和移动
     zmalloc_thread_cache(const zmalloc_thread_cache&) = delete;
     zmalloc_thread_cache& operator=(const zmalloc_thread_cache&) = delete;
     zmalloc_thread_cache(zmalloc_thread_cache&&) = delete;
     zmalloc_thread_cache& operator=(zmalloc_thread_cache&&) = delete;
 
-    inline void init()
+
+    inline ~zmalloc_thread_cache();
+
+
+    inline void init(zmalloc_mt* owner)
     {
-        bound_arena = nullptr;
-        cached_bytes = 0;
-        alloc_count = 0;
-        free_count = 0;
-        alloc_bytes = 0;
-        free_bytes = 0;
-        memset(bins, 0, sizeof(bins));
-        inited = 1;
+        owner_ = owner;
+        bound_arena_ = nullptr;
+        cached_bytes_ = 0;
+        alloc_count_ = 0;
+        free_count_ = 0;
+        alloc_bytes_ = 0;
+        free_bytes_ = 0;
+        memset(bins_, 0, sizeof(bins_));
+        inited_ = 1;
     }
 
     inline bool push(zmalloc::free_chunk_type* chunk, u32 bin_id)
@@ -141,22 +132,22 @@ public:
         {
             return false;
         }
-        if (bins[bin_id].count >= ZMALLOC_MT_CACHE_BIN_MAX)
+        if (bins_[bin_id].count >= ZMALLOC_MT_CACHE_BIN_MAX)
         {
             return false;
         }
-        if (cached_bytes >= ZMALLOC_MT_CACHE_MAX_BYTES)
+        if (cached_bytes_ >= ZMALLOC_MT_CACHE_MAX_BYTES)
         {
             return false;
         }
 
         // no use pre node; needn't merge free chunk. 
-        chunk->next_node = bins[bin_id].head;
-        bins[bin_id].head = chunk;
-        bins[bin_id].count++;
-        alloc_count++;
-        alloc_bytes += chunk->this_size;
-        cached_bytes += chunk->this_size;
+        chunk->next_node = bins_[bin_id].head;
+        bins_[bin_id].head = chunk;
+        bins_[bin_id].count++;
+        alloc_count_++;
+        alloc_bytes_ += chunk->this_size;
+        cached_bytes_ += chunk->this_size;
         return true;
     }
 
@@ -168,17 +159,17 @@ public:
             return nullptr;
         }
             
-        if (bins[bin_id].count == 0)
+        if (bins_[bin_id].count == 0)
         {
             return nullptr;
         }
 
-        zmalloc::free_chunk_type* chunk = bins[bin_id].head;
-        bins[bin_id].head = chunk->next_node;
-        bins[bin_id].count--;
-        cached_bytes -= chunk->this_size;
-        free_count++;
-		free_bytes += chunk->this_size;
+        zmalloc::free_chunk_type* chunk = bins_[bin_id].head;
+        bins_[bin_id].head = chunk->next_node;
+        bins_[bin_id].count--;
+        cached_bytes_ -= chunk->this_size;
+        free_count_++;
+		free_bytes_ += chunk->this_size;
         chunk->next_node = nullptr;
         return chunk;
     }
@@ -349,16 +340,16 @@ inline zmalloc_arena* zmalloc_mt::create_arena()
 inline zmalloc_arena* zmalloc_mt::find_arena()
 {
     zmalloc_thread_cache& cache = get_thread_cache();
-    if (!cache.inited)
+    if (!cache.inited_)
     {
-        cache.init();
+        cache.init(this);
     }
 
-    if (cache.bound_arena != nullptr)
+    if (cache.bound_arena_ != nullptr)
     {
-        if (cache.bound_arena->mtx.try_lock())
+        if (cache.bound_arena_->mtx.try_lock())
         {
-            return cache.bound_arena;
+            return cache.bound_arena_;
         }
     }
 
@@ -371,12 +362,12 @@ inline zmalloc_arena* zmalloc_mt::find_arena()
         // not best 
         if (arenas_[i].mtx.try_lock())
         {
-            if (cache.bound_arena && cache.bound_arena != &arenas_[i])
+            if (cache.bound_arena_ && cache.bound_arena_ != &arenas_[i])
             {
-                cache.bound_arena->thread_count.fetch_sub(1, std::memory_order_relaxed);
+                cache.bound_arena_->thread_count.fetch_sub(1, std::memory_order_relaxed);
             }
-            cache.bound_arena = &arenas_[i];
-            cache.bound_arena->thread_count.fetch_add(1, std::memory_order_relaxed);
+            cache.bound_arena_ = &arenas_[i];
+            cache.bound_arena_->thread_count.fetch_add(1, std::memory_order_relaxed);
             return &arenas_[i];
         }
 
@@ -394,13 +385,13 @@ inline zmalloc_arena* zmalloc_mt::find_arena()
         if (new_arena != nullptr)
         {
             new_arena->mtx.lock();
-            if (cache.bound_arena)
+            if (cache.bound_arena_)
             {
-                cache.bound_arena->thread_count.fetch_sub(1, std::memory_order_relaxed);
+                cache.bound_arena_->thread_count.fetch_sub(1, std::memory_order_relaxed);
             }
 
-            cache.bound_arena = new_arena;
-            cache.bound_arena->thread_count.fetch_add(1, std::memory_order_relaxed);
+            cache.bound_arena_ = new_arena;
+            cache.bound_arena_->thread_count.fetch_add(1, std::memory_order_relaxed);
             return new_arena;
         }
     }
@@ -412,13 +403,13 @@ inline zmalloc_arena* zmalloc_mt::find_arena()
     }
 
     best_arena->mtx.lock();
-    if (cache.bound_arena && cache.bound_arena != best_arena)
+    if (cache.bound_arena_ && cache.bound_arena_ != best_arena)
     {
-        cache.bound_arena->thread_count.fetch_sub(1, std::memory_order_relaxed);
+        cache.bound_arena_->thread_count.fetch_sub(1, std::memory_order_relaxed);
     }
 
-    cache.bound_arena = best_arena;
-    cache.bound_arena->thread_count.fetch_add(1, std::memory_order_relaxed);
+    cache.bound_arena_ = best_arena;
+    cache.bound_arena_->thread_count.fetch_add(1, std::memory_order_relaxed);
     return best_arena;
 }
 
@@ -457,9 +448,9 @@ inline void* zmalloc_mt::alloc_memory(u64 bytes)
     }
 
     zmalloc_thread_cache& cache = get_thread_cache();
-    if (!cache.inited)
+    if (!cache.inited_)
     {
-        cache.init();
+        cache.init(this);
     }
 
 
@@ -502,9 +493,9 @@ inline u64 zmalloc_mt::free_memory(void* addr)
         if (level == 0) // small chunk
         {
             zmalloc_thread_cache& cache = get_thread_cache();
-            if (!cache.inited)
+            if (!cache.inited_)
             {
-                cache.init();
+                cache.init(this);
             }
 
             u32 bin_id = chunk->bin_id;
@@ -519,7 +510,7 @@ inline u64 zmalloc_mt::free_memory(void* addr)
 #endif
             if (cache.push(chunk, bin_id))
             {
-                if (cache.cached_bytes >= ZMALLOC_MT_CACHE_MAX_BYTES)
+                if (cache.cached_bytes_ >= ZMALLOC_MT_CACHE_MAX_BYTES)
                 {
                     flush_cache(cache);
                 }
@@ -552,7 +543,7 @@ inline void zmalloc_mt::flush_cache(zmalloc_thread_cache& cache)
 
 inline void zmalloc_mt::flush_cache_bin(zmalloc_thread_cache& cache, u32 bin_id)
 {
-    while (cache.bins[bin_id].count > 0)
+    while (cache.bins_[bin_id].count > 0)
     {
         zmalloc::free_chunk_type* chunk = cache.pop(bin_id);
         if (chunk == nullptr)
@@ -647,48 +638,49 @@ inline void zmalloc_mt::clear_cache()
 inline void zmalloc_mt::flush_and_reset_thread_cache()
 {
     zmalloc_thread_cache& cache = get_thread_cache();
-    if (!cache.inited)
+    if (!cache.inited_)
     {
         return;
     }
 
     flush_cache(cache);
 
-    if (cache.bound_arena != nullptr)
+    if (cache.bound_arena_ != nullptr)
     {
-        cache.bound_arena->thread_count.fetch_sub(1, std::memory_order_relaxed);
-        cache.bound_arena = nullptr;
+        cache.bound_arena_->thread_count.fetch_sub(1, std::memory_order_relaxed);
+        cache.bound_arena_ = nullptr;
     }
-    cache.inited = 0;
+    cache.inited_ = 0;
 }
 
-// zmalloc_thread_cache RAII析构实现
-// 线程退出时自动触发, 将cache中残留chunk归还给arena, 并递减thread_count
+
 inline zmalloc_thread_cache::~zmalloc_thread_cache()
 {
-    if (!inited)
+    if (!inited_)
     {
         return;
     }
+    
 
-    // 检查全局zmalloc_mt实例是否仍然存活
-    // thread_local析构顺序不确定, 实例可能已被销毁
-    zmalloc_mt* mt = zmalloc_mt::instance_ptr();
+
+    zmalloc_mt* mt = owner_;
     if (mt == nullptr || !mt->inited_)
     {
+        // zmalloc_mt already destroyed or not initialized,
+        // cannot safely flush cached chunks, just abandon them
+        bound_arena_ = nullptr;
+        inited_ = 0;
         return;
     }
 
-    // flush所有cache bin中的chunk归还给arena
     mt->flush_cache(*this);
 
-    // 解绑arena并递减thread_count
-    if (bound_arena != nullptr)
+    if (bound_arena_ != nullptr)
     {
-        bound_arena->thread_count.fetch_sub(1, std::memory_order_relaxed);
-        bound_arena = nullptr;
+        bound_arena_->thread_count.fetch_sub(1, std::memory_order_relaxed);
+        bound_arena_ = nullptr;
     }
-    inited = 0;
+    inited_ = 0;
 }
 
 
