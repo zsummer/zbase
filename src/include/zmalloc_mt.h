@@ -30,10 +30,8 @@
  *       小对象 free 时先放入 cache, alloc 时先从 cache 取, 减少锁操作
  * ============================================================ */
 
-//mark
-// TLS的初始化和退出清理机制 
+
 //todo 
-// 1. find arena 过于低效  后续改造chunk头部进行直接索引  
 // 3. 日志打印需要优化  
 
 
@@ -416,24 +414,11 @@ inline zmalloc_arena* zmalloc_mt::find_arena()
 
 inline zmalloc_arena* zmalloc_mt::find_arena_for_chunk(zmalloc::chunk_type* chunk)
 {
-    // todo optimize . current first version 
-
+    u32 id = chunk->arena_id;
     u32 count = arena_count_.load(std::memory_order_acquire);
-    u64 chunk_addr = (u64)chunk;
-
-    for (u32 i = 0; i < count; i++)
+    if (id < count)
     {
-        std::lock_guard<std::mutex> lock(arenas_[i].mtx);
-        zmalloc::block_type* block = arenas_[i].allocator.used_block_list_;
-        while (block != nullptr)
-        {
-            u64 block_addr = (u64)block;
-            if (chunk_addr >= block_addr && chunk_addr < block_addr + block->block_size)
-            {
-                return &arenas_[i];
-            }
-            block = block->next;
-        }
+        return &arenas_[id];
     }
     return nullptr;
 }
@@ -473,6 +458,11 @@ inline void* zmalloc_mt::alloc_memory(u64 bytes)
 
     zmalloc_arena* arena = find_arena();
     void* ptr = arena->allocator.alloc_memory<COLOR>(bytes);
+    if (ptr != nullptr)
+    {
+        zmalloc::chunk_type* chunk = zmalloc_chunk_cast(zmalloc_u64_cast(ptr) - zmalloc::kChunkPaddingSize);
+        chunk->arena_id = (u8)arena->arena_id;
+    }
     arena->mtx.unlock();
     return ptr;
 }
@@ -575,6 +565,11 @@ inline void* zmalloc_mt::alloc_slot(u16 slot_id, u64 bytes, u64 limit_block_size
     }
     zmalloc_arena* arena = find_arena();  // 返回时 arena->mtx 已锁
     void* ptr = arena->allocator.alloc_slot(slot_id, bytes, limit_block_size);
+    if (ptr != nullptr)
+    {
+        zmalloc::chunk_type* chunk = zmalloc_chunk_cast(zmalloc_u64_cast(ptr) - zmalloc::kChunkPaddingSize);
+        chunk->arena_id = (u8)arena->arena_id;
+    }
     arena->mtx.unlock();
     return ptr;
 }
