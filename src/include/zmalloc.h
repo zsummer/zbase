@@ -1148,7 +1148,7 @@ s32 zmalloc::check_health()
     {
         return -1;
     }
-    check_bitmap(instance(), false);
+    check_bitmap(*this, false);
     return runtime_errors_;
 }
 
@@ -1158,8 +1158,8 @@ void zmalloc::check_panic()
     {
         return;
     }
-    check_block(instance());
-    check_bitmap(instance(), true);
+    check_block(*this);
+    check_bitmap(*this, true);
     if (runtime_errors_ > 0)
     {
         panic(false, "has runtime_errors");

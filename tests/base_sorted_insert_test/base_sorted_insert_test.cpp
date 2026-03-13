@@ -462,8 +462,6 @@ int main(int argc, char *argv[])
     ASSERT_TEST(zsort_bench_n<1000>(100) == 0);
     ASSERT_TEST(zsort_bench_n<10000>(100) == 0);
 
-
-
     PROF_DO_MERGE();
     PROF_OUTPUT_REPORT();
     LogInfo() << "all test finish .";

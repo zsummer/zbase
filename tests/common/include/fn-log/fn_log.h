@@ -4454,7 +4454,7 @@ namespace FNLog
         log.content_[log.content_len_++] = '\n';
         log.content_[log.content_len_] = '\0';
 
-        log.data_mark_ = 2;
+        log.data_mark_ = MARK_READY;
         AtomicIncChannelLog(channel, CHANNEL_LOG_PRIORITY + log.priority_, log.content_len_);
 
         do
@@ -4465,7 +4465,7 @@ namespace FNLog
             {
                 break;
             }
-            if (ring_buffer.buffer_[old_idx].data_mark_.load(std::memory_order_acquire) != 2)
+            if (ring_buffer.buffer_[old_idx].data_mark_.load(std::memory_order_acquire) != MARK_READY)
             {
                 break;
             }
