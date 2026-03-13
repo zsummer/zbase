@@ -256,7 +256,8 @@ public:
         u32 prev_size;
         u32 this_size;
         u16 flags;
-        u16 bin_id;
+        u8 bin_id;
+        u8 arena_id;
     };
 
     struct free_chunk_type :public chunk_type
