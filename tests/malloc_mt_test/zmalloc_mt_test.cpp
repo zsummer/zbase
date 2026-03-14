@@ -5,6 +5,7 @@
 #include "zmalloc_mt.h"
 #include "zprof.h"
 #include "zarray.h"
+#include "zclock.h"
 #include "test_common.h"
 #include <thread>
 #include <vector>
@@ -184,34 +185,44 @@ s32 zmalloc_mt_single_thread_stress()
     zarray<Addr, kBufMax>* buffers = new zarray<Addr, kBufMax>();
 
     PROF_DEFINE_COUNTER(cost);
+    zclock<> zc;
 
     // 即时 alloc/free (小对象)
     PROF_START_COUNTER(cost);
+    zc.start();
     for (u64 i = 0; i < rand_size; i++)
     {
         global_zfree_mt(global_zmalloc_mt(1));
     }
+    zc.stop_and_save();
     PROF_OUTPUT_MULTI_COUNT_CPU("mt_st: zfree_mt(zmalloc_mt(1))", rand_size, cost.StopAndSave().cost());
+    LogInfo() << "  avg_ns/op=" << (rand_size > 0 ? (double)zc.cost_ns() / rand_size : 0.0);
 
     // 即时 alloc/free (0~1024 随机)
     PROF_START_COUNTER(cost);
+    zc.start();
     for (u64 i = 0; i < rand_size; i++)
     {
         u32 test_size = rand_array[i] % (1024);
         void* p = global_zmalloc_mt(test_size);
         global_zfree_mt(p);
     }
+    zc.stop_and_save();
     PROF_OUTPUT_MULTI_COUNT_CPU("mt_st: zfree_mt(zmalloc_mt(0~1024))", rand_size, cost.StopAndSave().cost());
+    LogInfo() << "  avg_ns/op=" << (rand_size > 0 ? (double)zc.cost_ns() / rand_size : 0.0);
 
     // 即时 alloc/free (1024~512k)
     PROF_START_COUNTER(cost);
+    zc.start();
     for (u64 i = 0; i < rand_size; i++)
     {
         u32 test_size = (rand_array[i] % (zmalloc::kBigMaxRequest - zmalloc::kSmallMaxRequest)) + zmalloc::kSmallMaxRequest;
         void* p = global_zmalloc_mt(test_size);
         global_zfree_mt(p);
     }
+    zc.stop_and_save();
     PROF_OUTPUT_MULTI_COUNT_CPU("mt_st: zfree_mt(zmalloc_mt(1024~512k))", rand_size, cost.StopAndSave().cost());
+    LogInfo() << "  avg_ns/op=" << (rand_size > 0 ? (double)zc.cost_ns() / rand_size : 0.0);
 
     // 批量 alloc + 批量 free (连续分段覆盖)
     LogInfo() << "";
@@ -294,6 +305,61 @@ s32 zmalloc_mt_single_thread_stress()
     zstate->check_panic();
     zstate->clear_cache();
     zstate->flush_and_reset_thread_cache();
+
+    // ================================================================
+    //  zmalloc (单线程版) 对比测试 — 复用相同的 rand_array
+    // ================================================================
+    LogInfo() << "";
+    LogInfo() << "========== zmalloc (single-thread) comparison ==========";
+    LogInfo() << "-------------------------------------------------------------------";
+    {
+        std::unique_ptr<zmalloc> zst(new zmalloc());
+        memset(zst.get(), 0, sizeof(zmalloc));
+        zst->init();
+        zst->set_global(zst.get());
+
+        zclock<> zc;
+
+        // 即时 alloc/free (小对象)
+        PROF_START_COUNTER(cost);
+        zc.start();
+        for (u64 i = 0; i < rand_size; i++)
+        {
+            global_zfree(global_zmalloc(1));
+        }
+        zc.stop_and_save();
+        PROF_OUTPUT_MULTI_COUNT_CPU("st: zfree(zmalloc(1))", rand_size, cost.StopAndSave().cost());
+        LogInfo() << "  avg_ns/op=" << (rand_size > 0 ? (double)zc.cost_ns() / rand_size : 0.0);
+
+        // 即时 alloc/free (0~1024 随机)
+        PROF_START_COUNTER(cost);
+        zc.start();
+        for (u64 i = 0; i < rand_size; i++)
+        {
+            u32 test_size = rand_array[i] % (1024);
+            void* p = global_zmalloc(test_size);
+            global_zfree(p);
+        }
+        zc.stop_and_save();
+        PROF_OUTPUT_MULTI_COUNT_CPU("st: zfree(zmalloc(0~1024))", rand_size, cost.StopAndSave().cost());
+        LogInfo() << "  avg_ns/op=" << (rand_size > 0 ? (double)zc.cost_ns() / rand_size : 0.0);
+
+        // 即时 alloc/free (1024~512k)
+        PROF_START_COUNTER(cost);
+        zc.start();
+        for (u64 i = 0; i < rand_size; i++)
+        {
+            u32 test_size = (rand_array[i] % (zmalloc::kBigMaxRequest - zmalloc::kSmallMaxRequest)) + zmalloc::kSmallMaxRequest;
+            void* p = global_zmalloc(test_size);
+            global_zfree(p);
+        }
+        zc.stop_and_save();
+        PROF_OUTPUT_MULTI_COUNT_CPU("st: zfree(zmalloc(1024~512k))", rand_size, cost.StopAndSave().cost());
+        LogInfo() << "  avg_ns/op=" << (rand_size > 0 ? (double)zc.cost_ns() / rand_size : 0.0);
+
+        zst->check_panic();
+    }
+    LogInfo() << "========== zmalloc comparison done ==========";
 
     delete[] rand_array;
     delete buffers;
@@ -418,7 +484,9 @@ s32 zmalloc_mt_concurrent_stress()
         std::atomic<s32> error_flag(0);
 
         PROF_DEFINE_COUNTER(cost);
+        zclock<> zcost;
         PROF_START_COUNTER(cost);
+        zcost.start();
 
         std::vector<std::thread> threads;
         for (u32 t = 0; t < num_threads; t++)
@@ -433,7 +501,10 @@ s32 zmalloc_mt_concurrent_stress()
             t.join();
         }
 
+        zcost.stop_and_save();
         u64 total_ops = total_alloc_ops.load() + total_free_ops.load();
+        long long total_ns = zcost.cost_ns();
+        double avg_ns_per_op = total_ops > 0 ? (double)total_ns / (double)total_ops : 0.0;
 
         char buf[128];
         sprintf(buf, "mt_concurrent(%u threads)", num_threads);
@@ -443,6 +514,9 @@ s32 zmalloc_mt_concurrent_stress()
 
         LogInfo() << "  alloc_ops=" << total_alloc_ops.load()
                   << " free_ops=" << total_free_ops.load()
+                  << " total_ops=" << total_ops
+                  << " cost_ns=" << total_ns
+                  << " avg_ns/op=" << avg_ns_per_op
                   << " arena_count=" << local_zstate->arena_count_.load();
 
         s32 health = local_zstate->check_health();
@@ -630,7 +704,9 @@ s32 zmalloc_mt_cross_thread_stress()
     std::atomic<bool> producers_done(false);
 
     PROF_DEFINE_COUNTER(cost);
+    zclock<> zcost;
     PROF_START_COUNTER(cost);
+    zcost.start();
 
     // 启动消费者
     std::vector<std::thread> consumers;
@@ -659,7 +735,10 @@ s32 zmalloc_mt_cross_thread_stress()
     for (auto& t : consumers)
         t.join();
 
+    zcost.stop_and_save();
     u64 total_ops = total_alloc_ops.load() + total_free_ops.load();
+    long long total_ns = zcost.cost_ns();
+    double avg_ns_per_op = total_ops > 0 ? (double)total_ns / (double)total_ops : 0.0;
 
     char buf[128];
     sprintf(buf, "mt_cross_thread(%u producers + %u consumers)", kProducerCount, kConsumerCount);
@@ -669,6 +748,9 @@ s32 zmalloc_mt_cross_thread_stress()
 
     LogInfo() << "  alloc_ops=" << total_alloc_ops.load()
               << " free_ops=" << total_free_ops.load()
+              << " total_ops=" << total_ops
+              << " cost_ns=" << total_ns
+              << " avg_ns/op=" << avg_ns_per_op
               << " arena_count=" << zstate->arena_count_.load();
 
     s32 health = zstate->check_health();
@@ -839,7 +921,9 @@ s32 zmalloc_mt_mixed_stress()
         std::atomic<s32> error_flag(0);
 
         PROF_DEFINE_COUNTER(cost);
+        zclock<> zcost;
         PROF_START_COUNTER(cost);
+        zcost.start();
 
         std::vector<std::thread> threads;
         for (u32 t = 0; t < num_threads; t++)
@@ -852,6 +936,10 @@ s32 zmalloc_mt_mixed_stress()
         for (auto& t : threads)
             t.join();
 
+        zcost.stop_and_save();
+        long long total_ns = zcost.cost_ns();
+        double avg_ns_per_op = total_ops.load() > 0 ? (double)total_ns / (double)total_ops.load() : 0.0;
+
         char buf[128];
         sprintf(buf, "mt_mixed(%u threads)", num_threads);
         PROF_OUTPUT_MULTI_COUNT_CPU(buf, total_ops.load(), cost.StopAndSave().cost());
@@ -859,6 +947,8 @@ s32 zmalloc_mt_mixed_stress()
         ASSERT_TEST_NOLOG(error_flag.load() == 0, "no data corruption in mixed stress");
 
         LogInfo() << "  total_ops=" << total_ops.load()
+                  << " cost_ns=" << total_ns
+                  << " avg_ns/op=" << avg_ns_per_op
                   << " arena_count=" << zstate->arena_count_.load();
 
         // 输出状态
@@ -1015,8 +1105,10 @@ s32 zmalloc_mt_vs_sys_benchmark()
             zstate->set_global(zstate.get());
 
             std::atomic<u64> total_ops(0);
+            zclock<> zcost;
 
             PROF_START_COUNTER(cost);
+            zcost.start();
             std::vector<std::thread> threads;
             for (u32 t = 0; t < num_threads; t++)
             {
@@ -1026,9 +1118,14 @@ s32 zmalloc_mt_vs_sys_benchmark()
             for (auto& t : threads)
                 t.join();
 
+            zcost.stop_and_save();
+            long long total_ns = zcost.cost_ns();
+            double avg_ns_per_op = total_ops.load() > 0 ? (double)total_ns / (double)total_ops.load() : 0.0;
+
             char buf[128];
             sprintf(buf, "zmalloc_mt(%u threads)", num_threads);
             PROF_OUTPUT_MULTI_COUNT_CPU(buf, total_ops.load(), cost.StopAndSave().cost());
+            LogInfo() << "  total_ops=" << total_ops.load() << " cost_ns=" << total_ns << " avg_ns/op=" << avg_ns_per_op;
 
             zstate->clear_cache();
             zstate->flush_and_reset_thread_cache();
@@ -1038,8 +1135,10 @@ s32 zmalloc_mt_vs_sys_benchmark()
 
         {
             std::atomic<u64> total_ops(0);
+            zclock<> zcost;
 
             PROF_START_COUNTER(cost);
+            zcost.start();
             std::vector<std::thread> threads;
             for (u32 t = 0; t < num_threads; t++)
             {
@@ -1049,9 +1148,14 @@ s32 zmalloc_mt_vs_sys_benchmark()
             for (auto& t : threads)
                 t.join();
 
+            zcost.stop_and_save();
+            long long total_ns = zcost.cost_ns();
+            double avg_ns_per_op = total_ops.load() > 0 ? (double)total_ns / (double)total_ops.load() : 0.0;
+
             char buf[128];
             sprintf(buf, "sys_malloc(%u threads)", num_threads);
             PROF_OUTPUT_MULTI_COUNT_CPU(buf, total_ops.load(), cost.StopAndSave().cost());
+            LogInfo() << "  total_ops=" << total_ops.load() << " cost_ns=" << total_ns << " avg_ns/op=" << avg_ns_per_op;
         }
     }
 
