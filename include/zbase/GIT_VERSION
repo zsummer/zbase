@@ -1,6 +1,6 @@
 GIT_VERSION:
-last_sha1(./src)=5e2ffbb49cabc6a888e215ce457340992c004989
-last_date(./src)=2026-03-04 10:55:01 +0800
+last_sha1(./src)=f07374f0c7569f8ce44d3748e9142b21ac6d0469
+last_date(./src)=2026-03-21 23:33:07 +0800
 
 git log -1 --stat ./src:
-commit 5e2ffbb49cabc6a888e215ce457340992c004989 Author: zsummer <yawei.zhang@foxmail.com> Date: Tue Mar 3 21:20:12 2026 +0800 sorted_insert src/include/zarray.h | 14 ++++++++++++-- src/include/zlist.h | 18 +++++++++++++++--- src/include/zlist_ext.h | 19 +++++++++++++++++-- src/include/zvector.h | 15 +++++++++++++-- 4 files changed, 57 insertions(+), 9 deletions(-)
+commit f07374f0c7569f8ce44d3748e9142b21ac6d0469 Author: zsummer <yawei.zhang@foxmail.com> Date: Sat Mar 14 11:36:51 2026 +0800 optimize src/include/zmalloc.h | 10 +++++----- 1 file changed, 5 insertions(+), 5 deletions(-)

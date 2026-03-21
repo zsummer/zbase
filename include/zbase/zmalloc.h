@@ -256,7 +256,8 @@ public:
         u32 prev_size;
         u32 this_size;
         u16 flags;
-        u16 bin_id;
+        u8 bin_id;
+        u8 arena_id;
     };
 
     struct free_chunk_type :public chunk_type
@@ -711,7 +712,7 @@ void zmalloc::push_chunk(free_chunk_type* chunk, u32 bin_id)
     chunk->next_node->prev_node = chunk;
     bin_[level][bin_id].next_node = chunk;
     chunk->prev_node = &bin_[level][bin_id];
-    chunk->bin_id = bin_id;
+    chunk->bin_id = static_cast<u8>(bin_id);
     zmalloc_unset_chunk(chunk, kChunkInUse);
     zmalloc_check_free_chunk_list(*this, chunk);
 }
@@ -889,7 +890,7 @@ void* zmalloc::alloc_memory(u64 req_bytes)
     SMALL_RETURN:
         zmalloc_set_chunk(chunk, kChunkInUse | (COLOR * 2));
         chunk->fence = kChunkFence;
-        chunk->bin_id = small_id;
+        chunk->bin_id = static_cast<u8>(small_id);
            
 #if ZMALLOC_OPEN_COUNTER
         alloc_counter_[(COLOR * 2)][chunk->bin_id] ++;
@@ -971,7 +972,7 @@ void* zmalloc::alloc_memory(u64 req_bytes)
     BIG_RETURN:
         zmalloc_set_chunk(chunk, kChunkInUse | (COLOR * 2));
         chunk->fence = kChunkFence;
-        chunk->bin_id = compress_id;
+        chunk->bin_id = static_cast<u8>(compress_id);
 #if ZMALLOC_OPEN_COUNTER
         alloc_counter_[(COLOR * 2) | kChunkBigBlock][chunk->bin_id] ++;
 #endif
@@ -996,7 +997,7 @@ void* zmalloc::alloc_memory(u64 req_bytes)
     u32 third_order = zmalloc_align_third_bit_order(padding);
     u32 align_id = zmalloc_third_sequence(third_order, padding);
     u32 compress_id = zmalloc_third_sequence_compress(align_id);
-    chunk->bin_id = compress_id;
+    chunk->bin_id = static_cast<u8>(compress_id);
     alloc_counter_[(COLOR * 2) | kChunkBigBlock][chunk->bin_id] ++;
     if (compress_id == kBigMaxBinID)
     {
@@ -1148,7 +1149,7 @@ s32 zmalloc::check_health()
     {
         return -1;
     }
-    check_bitmap(instance(), false);
+    check_bitmap(*this, false);
     return runtime_errors_;
 }
 
@@ -1158,8 +1159,8 @@ void zmalloc::check_panic()
     {
         return;
     }
-    check_block(instance());
-    check_bitmap(instance(), true);
+    check_block(*this);
+    check_bitmap(*this, true);
     if (runtime_errors_ > 0)
     {
         panic(false, "has runtime_errors");
@@ -1730,7 +1731,7 @@ inline void* zmalloc::alloc_slot(u16 slot_id, u64 bytes, u64 block_size)
 
     zmalloc_set_chunk(chunk, kChunkInUse);
     chunk->fence = kChunkFence;
-    chunk->bin_id = slot_id;
+    chunk->bin_id = static_cast<u8>(slot_id);
 
 #ifdef ZDEBUG_UNINIT_MEMORY
     memset((void*)(zmalloc_u64_cast(chunk) + kChunkPaddingSize), 0xfd, chunk->this_size - kChunkPaddingSize);
