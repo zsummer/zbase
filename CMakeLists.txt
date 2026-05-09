@@ -120,6 +120,9 @@ foreach(sub_dir_name ${sub_dirs})
     if (${sub_dir_name} STREQUAL "common") 
         continue()
     endif()
+    if (${sub_dir_name} STREQUAL "preload_regression")
+        continue()
+    endif()
     file(GLOB_RECURSE test_sources
     ${CMAKE_SOURCE_DIR}/tests/common/*.h 
     ${CMAKE_SOURCE_DIR}/tests/common/*.cpp 
@@ -140,4 +143,32 @@ foreach(sub_dir_name ${sub_dirs})
     add_dependencies(${sub_dir_name} ${PROJECT_NAME})
 endforeach()
 
+find_package(Threads REQUIRED)
+
+add_library(zmalloc_preload SHARED ${CMAKE_SOURCE_DIR}/tests/common/zmalloc_preload.cpp)
+set_target_properties(zmalloc_preload PROPERTIES
+    POSITION_INDEPENDENT_CODE ON
+    PREFIX "lib"
+    OUTPUT_NAME "zmalloc_preload"
+    LIBRARY_OUTPUT_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}
+    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY})
+target_include_directories(zmalloc_preload PRIVATE
+    ${CMAKE_SOURCE_DIR}/src/include)
+target_link_libraries(zmalloc_preload PRIVATE Threads::Threads $<$<PLATFORM_ID:Linux>:dl>)
+add_dependencies(zmalloc_preload ${PROJECT_NAME})
+
+add_library(preload_dummy SHARED ${CMAKE_SOURCE_DIR}/tests/preload_regression/dummy/preload_dummy.cpp)
+set_target_properties(preload_dummy PROPERTIES
+    POSITION_INDEPENDENT_CODE ON
+    PREFIX "lib"
+    OUTPUT_NAME "preload_dummy"
+    LIBRARY_OUTPUT_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}
+    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY})
+
+add_executable(preload_dlopen_host ${CMAKE_SOURCE_DIR}/tests/preload_regression/host/preload_dlopen_host.cpp)
+target_include_directories(preload_dlopen_host PRIVATE
+    ${CMAKE_SOURCE_DIR}/src/include)
+target_link_libraries(preload_dlopen_host PRIVATE Threads::Threads $<$<PLATFORM_ID:Linux>:dl> zmalloc_preload)
+set_target_properties(preload_dlopen_host PROPERTIES ENABLE_EXPORTS ON)
+add_dependencies(preload_dlopen_host ${PROJECT_NAME} preload_dummy zmalloc_preload)
 

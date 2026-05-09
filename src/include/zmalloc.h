@@ -29,6 +29,14 @@
 #define WIN32_LEAN_AND_MEAN
 #include <WinSock2.h>
 #include <Windows.h>
+#elif defined(__linux__) || defined(__APPLE__) || defined(__unix__)
+#include <sys/mman.h>
+#include <unistd.h>
+#ifndef MAP_ANONYMOUS
+#ifdef MAP_ANON
+#define MAP_ANONYMOUS MAP_ANON
+#endif
+#endif
 #endif
 
 
@@ -460,36 +468,65 @@ static_assert(offsetof(zmalloc::free_chunk_type, prev_node) == sizeof(zmalloc::c
 
 
 
-//tcmalloc some version not hook aligned alloc.  
-#define DEFAULT_SYS_ALIGN_ALLOC_FAULT  
-
 void* zmalloc::default_block_alloc(u64 req_size)
 {
-    req_size = (req_size + 15) / 16 * 16; // align size to 16 byte;   
-#ifdef DEFAULT_SYS_ALIGN_ALLOC_FAULT
-    void* org_addr = malloc(req_size + 32);
-    u64 addr_num = (u64)org_addr;
-    addr_num += 32;
-    addr_num = addr_num/16*16;
-    char* addr = (char*)(addr_num - 16);
-#else
-#ifdef WIN32
-    char* addr = (char*)_aligned_malloc(req_size + 16, 16);
-    void* org_addr = addr;
-#else
-    char* addr = (char*)aligned_alloc(16, req_size + 16);
-    void* org_addr = addr;
-#endif // WIN32
-#endif // DEFAULT_SYS_ALIGN_ALLOC_FAULT
-
-    if (addr == NULL)
+    req_size = (req_size + 15) / 16 * 16;
+    constexpr u64 kMaxValidSize = 256ULL * 1024 * 1024 * 1024 * 1024;
+#if defined(MAP_ANONYMOUS) && !defined(WIN32)
+    static u64 s_page_size = (u64)sysconf(_SC_PAGESIZE);
+    u64 map_size = (req_size + 16 + s_page_size - 1) / s_page_size * s_page_size;
+    if (map_size > kMaxValidSize)
     {
         return NULL;
     }
-    zmalloc_check_align(addr);
-    zmalloc_check_align((void*)req_size);
+    void* map_addr = mmap(NULL, map_size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+    if (map_addr == MAP_FAILED)
+    {
+        return NULL;
+    }
+    char* addr = (char*)map_addr;
+    void* org_addr = map_addr;
+    u64 stored_size = map_size;
+#elif defined(WIN32)
+    static u64 s_page_size = []() -> u64 {
+        SYSTEM_INFO si;
+        GetSystemInfo(&si);
+        return (u64)si.dwAllocationGranularity;
+    }();
+    u64 map_size = (req_size + 16 + s_page_size - 1) / s_page_size * s_page_size;
+    if (map_size > kMaxValidSize)
+    {
+        return NULL;
+    }
+    void* map_addr = VirtualAlloc(NULL, (SIZE_T)map_size, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
+    if (map_addr == NULL)
+    {
+        return NULL;
+    }
+    char* addr = (char*)map_addr;
+    void* org_addr = map_addr;
+    u64 stored_size = map_size;
+#else
+    if (req_size + 32 > kMaxValidSize)
+    {
+        return NULL;
+    }
+    void* org_addr = malloc(req_size + 32);
+    if (org_addr == NULL)
+    {
+        return NULL;
+    }
+    u64 addr_num = (u64)org_addr;
+    addr_num += 32;
+    addr_num = addr_num / 16 * 16;
+    char* addr = (char*)(addr_num - 16);
+    u64 stored_size = req_size;
+#endif
 
-    *(u64*)(void*)(addr) = req_size;
+    zmalloc_check_align(addr);
+    zmalloc_check_align((void*)stored_size);
+
+    *(u64*)(void*)(addr) = stored_size;
     *(u64*)(void*)(addr + 8) = (u64)org_addr;
     return addr + 16;
 }
@@ -500,10 +537,10 @@ u64 zmalloc::default_block_free(void* addr)
     {
         return 0;
     }
-    void* org_addr = (void*)   * (u64*)   ((char*)addr - 8);
-    u64 req_size =  * (u64*)   ((char*)addr - 16);
-	constexpr u64 kMaxValidSize = 256ULL * 1024 * 1024 * 1024 * 1024; //2^48
-    if (req_size > kMaxValidSize) //2^52 invalid 
+    void* org_addr = (void*)*(u64*)((char*)addr - 8);
+    u64 stored_size = *(u64*)((char*)addr - 16);
+    constexpr u64 kMaxValidSize = 256ULL * 1024 * 1024 * 1024 * 1024;
+    if (stored_size > kMaxValidSize)
     {
         if (instance_ptr() != NULL)
         {
@@ -512,16 +549,51 @@ u64 zmalloc::default_block_free(void* addr)
         return 0;
     }
 
-#ifdef DEFAULT_SYS_ALIGN_ALLOC_FAULT
-    free(org_addr);
+#if defined(MAP_ANONYMOUS) && !defined(WIN32)
+    static u64 s_page_size = (u64)sysconf(_SC_PAGESIZE);
+    if ((char*)org_addr + 16 != (char*)addr
+        || ((u64)org_addr & (s_page_size - 1)) != 0
+        || stored_size < s_page_size
+        || (stored_size & (s_page_size - 1)) != 0)
+    {
+        if (instance_ptr() != NULL)
+        {
+            instance().runtime_errors_++;
+        }
+        return 0;
+    }
+    munmap(org_addr, stored_size);
+#elif defined(WIN32)
+    static u64 s_page_size = []() -> u64 {
+        SYSTEM_INFO si;
+        GetSystemInfo(&si);
+        return (u64)si.dwAllocationGranularity;
+    }();
+    if ((char*)org_addr + 16 != (char*)addr
+        || ((u64)org_addr & (s_page_size - 1)) != 0
+        || stored_size < s_page_size
+        || (stored_size & (s_page_size - 1)) != 0)
+    {
+        if (instance_ptr() != NULL)
+        {
+            instance().runtime_errors_++;
+        }
+        return 0;
+    }
+    VirtualFree(org_addr, 0, MEM_RELEASE);
 #else
-#ifdef WIN32
-    _aligned_free(org_addr);
-#else
+    u64 header_off = (u64)((char*)addr - (char*)org_addr);
+    if (header_off < 16 || header_off > 32 || (header_off & 7) != 0)
+    {
+        if (instance_ptr() != NULL)
+        {
+            instance().runtime_errors_++;
+        }
+        return 0;
+    }
     free(org_addr);
-#endif // WIN32
 #endif
-    return req_size;
+    return stored_size;
 }
 
 
