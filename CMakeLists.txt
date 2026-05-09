@@ -145,7 +145,7 @@ endforeach()
 
 find_package(Threads REQUIRED)
 
-add_library(zmalloc_preload SHARED ${CMAKE_SOURCE_DIR}/src/zmalloc_preload.cpp)
+add_library(zmalloc_preload SHARED ${CMAKE_SOURCE_DIR}/tests/common/zmalloc_preload.cpp)
 set_target_properties(zmalloc_preload PROPERTIES
     POSITION_INDEPENDENT_CODE ON
     PREFIX "lib"
