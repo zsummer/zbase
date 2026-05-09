@@ -17,6 +17,18 @@
 #include <thread>
 
 
+// 强制 initial-exec TLS 模型: 让 thread_local 直接走 %fs:offset,
+// 不再调 __tls_get_addr, 从而不可能间接触发 malloc.
+// 仅适用于启动期 load 的 so (LD_PRELOAD 注入或主程序直接链接),
+// 这正是 libzmalloc_preload.so 的使用场景.
+// MSVC / Windows 下退化为空 (无 __tls_get_addr 也无 LD_PRELOAD 链路).
+#if (defined(__GNUC__) || defined(__clang__)) && !defined(_WIN32)
+#define ZMALLOC_TLS_MODEL_IE __attribute__((tls_model("initial-exec")))
+#else
+#define ZMALLOC_TLS_MODEL_IE
+#endif
+
+
 /* ============================================================
  *  基于zmalloc进行多线程支持, 思路借鉴参考ptmalloc的多线程方案
  *
@@ -249,7 +261,7 @@ public:
 
 inline zmalloc_thread_cache& zmalloc_mt::get_thread_cache()
 {
-    static thread_local zmalloc_thread_cache tls_cache;
+    static thread_local zmalloc_thread_cache tls_cache ZMALLOC_TLS_MODEL_IE;
     return tls_cache;
 }
 
