@@ -163,3 +163,84 @@ ZMALLOC_PRELOAD_API void* pvalloc(size_t size)
 {
     return malloc(size);
 }
+
+// Debug CRT wrappers for Windows /MDd builds
+// These functions ignore the debug parameters and forward to the standard implementations
+#if defined(_WIN32)
+ZMALLOC_PRELOAD_API void* _malloc_dbg(size_t size, int blockType, const char* filename, int line)
+{
+    (void)blockType;
+    (void)filename;
+    (void)line;
+    return malloc(size);
+}
+
+ZMALLOC_PRELOAD_API void _free_dbg(void* ptr, int blockType)
+{
+    (void)blockType;
+    free(ptr);
+}
+
+ZMALLOC_PRELOAD_API void* _calloc_dbg(size_t nmemb, size_t size, int blockType, const char* filename, int line)
+{
+    (void)blockType;
+    (void)filename;
+    (void)line;
+    return calloc(nmemb, size);
+}
+
+ZMALLOC_PRELOAD_API void* _realloc_dbg(void* ptr, size_t size, int blockType, const char* filename, int line)
+{
+    (void)blockType;
+    (void)filename;
+    (void)line;
+    return realloc(ptr, size);
+}
+#endif
+
+// On Windows host.exe and zmalloc_preload.dll each get their own copy of
+// zmalloc_mt's inline-static members (instance_ptr / arena_count_ / ...) in
+// their own .data section, so reading instance_ptr() from host always sees
+// NULL. This exported diagnostic lets the host fetch the dll-side stats via
+// GetProcAddress and use them for regression assertions. Linux LD_PRELOAD
+// does not exhibit this split, so the helper is _WIN32-only.
+#if defined(_WIN32)
+struct zmalloc_preload_stats
+{
+    void* instance;
+    unsigned int arena_count;
+    unsigned int error_count;
+    unsigned long long runtime_errors;
+};
+
+ZMALLOC_PRELOAD_API void zmalloc_preload_get_stats(zmalloc_preload_stats* out)
+{
+    if (out == NULL)
+    {
+        return;
+    }
+    out->instance = NULL;
+    out->arena_count = 0;
+    out->error_count = 0;
+    out->runtime_errors = 0;
+
+    if (!g_inited.load(std::memory_order_acquire))
+    {
+        return;
+    }
+    zmalloc_mt* inst = zmalloc_mt::instance_ptr();
+    out->instance = (void*)inst;
+    if (inst == NULL)
+    {
+        return;
+    }
+    out->arena_count = inst->arena_count_.load(std::memory_order_relaxed);
+    out->error_count = inst->error_count_;
+    unsigned long long rt = 0;
+    for (unsigned int i = 0; i < ZMALLOC_MT_MAX_ARENAS; i++)
+    {
+        rt += inst->arenas_[i].allocator.runtime_errors_;
+    }
+    out->runtime_errors = rt;
+}
+#endif
