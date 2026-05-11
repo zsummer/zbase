@@ -28,7 +28,7 @@ public:
     int Init(PageMapType::NodeAllocator* node_allocator, PageMapType::LeafAllocator* leaf_allocator);
     Span* New(Length num);
     int Delete(Span* span);
-    // 给span 指定他所分配小对象对应的size class
+    // 缁檚pan 鎸囧畾浠栨墍鍒嗛厤灏忓璞″搴旂殑size class
     int RegisterSizeClass(Span* span, SizeClass sc);
 
     Span* GetDescriptor(PageID id)
@@ -45,7 +45,7 @@ public:
     {
         page_cache_.Put(id, cl);
     }
-    // 记录span信息
+    // 璁板綍span淇℃伅
     int RecordSpan(Span* span);
 
     PageHeapStats& stats() { return stats_; }

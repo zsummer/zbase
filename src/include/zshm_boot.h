@@ -82,7 +82,7 @@ struct zshm_space
 
 
 
-//Òýµ¼   
+//å¼•å¯¼   
 class zshm_boot
 {
 public:

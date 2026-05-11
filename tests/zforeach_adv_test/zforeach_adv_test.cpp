@@ -170,7 +170,7 @@ s32 base_test()
 }
 
 
-//»ù´¡Ö¡½µÆµ  
+//åŸºç¡€å¸§é™é¢‘  
 s32 base_test2()
 {
     constexpr static s32 kForeachInsts = 5;
@@ -247,7 +247,7 @@ s32 base_test2()
     return 0;
 }
 
-//»ù´¡Ö¡²»±ä ÄÚ²¿tick½µÆµ  
+//åŸºç¡€å¸§ä¸å˜ å†…éƒ¨tické™é¢‘  
 s32 base_test3()
 {
     constexpr static s32 kForeachInsts = 5;
