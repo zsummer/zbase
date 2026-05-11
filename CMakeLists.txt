@@ -133,6 +133,13 @@ foreach(sub_dir_name ${sub_dirs})
     ${CMAKE_SOURCE_DIR}/tests/${sub_dir_name}/*.h 
     ${CMAKE_SOURCE_DIR}/tests/${sub_dir_name}/*.cpp)
 
+    # zmalloc_preload.cpp is the body of libzmalloc_preload.so (a malloc
+    # interposer used via LD_PRELOAD / preload_dlopen_host). It must NOT be
+    # statically linked into normal test executables: doing so would override
+    # the global malloc/free symbols inside that test process and corrupt all
+    # libc/STL allocations. The only consumers are the dedicated
+    # add_library(zmalloc_preload SHARED ...) target below.
+    list(REMOVE_ITEM test_sources ${CMAKE_SOURCE_DIR}/tests/common/zmalloc_preload.cpp)
 
     auto_group_files(test_sources)
     add_executable(${sub_dir_name}  ${test_sources})
