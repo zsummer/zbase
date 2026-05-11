@@ -134,6 +134,8 @@ foreach(sub_dir_name ${sub_dirs})
     ${CMAKE_SOURCE_DIR}/tests/${sub_dir_name}/*.cpp)
 
 
+    list(REMOVE_ITEM test_sources ${CMAKE_SOURCE_DIR}/tests/common/zmalloc_preload.cpp)
+
     auto_group_files(test_sources)
     add_executable(${sub_dir_name}  ${test_sources})
     if (UNIX)
