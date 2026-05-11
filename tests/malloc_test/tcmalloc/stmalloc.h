@@ -17,11 +17,11 @@ using SpanAllocator = MetaAllocator<Span>;
 using PageMapNodeAllocator = PageMapType::NodeAllocator;
 using PageMapLeafAllocator = PageMapType::LeafAllocator;
 
-// ÄÚ´æ·ÖÅäÆ÷Í³¼ÆĞÅÏ¢
+// å†…å­˜åˆ†é…å™¨ç»Ÿè®¡ä¿¡æ¯
 struct STMallInfo
 {
     unsigned long long total_alloc_size;
-    unsigned long long meta_alloc_size; // metaÏµÍ³·ÖÅäµÄÄÚ´æÊıÄ¿
+    unsigned long long meta_alloc_size; // metaç³»ç»Ÿåˆ†é…çš„å†…å­˜æ•°ç›®
     STMallInfo()
     {
         total_alloc_size = 0;
@@ -29,7 +29,7 @@ struct STMallInfo
     }
 };
 
-// µ¥Ïß³ÌÄÚ´æ·ÖÅäÆ÷
+// å•çº¿ç¨‹å†…å­˜åˆ†é…å™¨
 class STMalloc
 {
 public:
@@ -51,19 +51,19 @@ public:
     PageHeap& page_heap() { return page_heap_; }
     STMallInfo& mall_info() { return mall_info_; }
     SpanAllocator& span_allocator() { return span_allocator_; }
-    // page map·ÖÅä½ÚµãËùÓÃµÄ·ÖÅäÆ÷
+    // page mapåˆ†é…èŠ‚ç‚¹æ‰€ç”¨çš„åˆ†é…å™¨
     PageMapNodeAllocator& page_map_node_allocator() { return page_map_node_allocator_; }
     PageMapLeafAllocator& page_map_leaf_allocator() { return page_map_leaf_allocator_; }
 
 private:
-    bool is_inited_; // ÊÇ·ñÍê³ÉÁË³õÊ¼»¯
+    bool is_inited_; // æ˜¯å¦å®Œæˆäº†åˆå§‹åŒ–
     SizeMap size_map_;
     CentralFreeList central_lists_[kNumClasses];
     ThreadCache thread_cache_;
     PageHeap page_heap_;
     STMallInfo mall_info_;
 
-    // metadata ·ÖÅäÆ÷£¬Ö»·ÖÅä²»ÊÍ·Å
+    // metadata åˆ†é…å™¨ï¼Œåªåˆ†é…ä¸é‡Šæ”¾
     SpanAllocator span_allocator_;
     PageMapNodeAllocator  page_map_node_allocator_;
     PageMapLeafAllocator page_map_leaf_allocator_;
