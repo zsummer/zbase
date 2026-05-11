@@ -1,6 +1,6 @@
 GIT_VERSION:
-last_sha1(./src)=f07374f0c7569f8ce44d3748e9142b21ac6d0469
-last_date(./src)=2026-03-21 23:33:07 +0800
+last_sha1(./src)=7d9fc031b6a1aa8a4c6d19eb1f586e49b51f0139
+last_date(./src)=2026-05-11 17:12:03 +0800
 
 git log -1 --stat ./src:
-commit f07374f0c7569f8ce44d3748e9142b21ac6d0469 Author: zsummer <yawei.zhang@foxmail.com> Date: Sat Mar 14 11:36:51 2026 +0800 optimize src/include/zmalloc.h | 10 +++++----- 1 file changed, 5 insertions(+), 5 deletions(-)
+commit 7d9fc031b6a1aa8a4c6d19eb1f586e49b51f0139 Author: /bin/eash <zsummer> Date: Mon May 11 11:13:42 2026 +0800 change to utf8 src/include/zallocator.h | 218 +-- src/include/zbitset.h | 6 +- src/include/zbuddy.h | 28 +- src/include/zfile_mapping.h | 16 +- src/include/zforeach.h | 10 +- src/include/zhash_map.h | 10 +- src/include/zlist.h | 2 +- src/include/zlist_ext.h | 8 +- src/include/zmalloc.h | 3824 +++++++++++++++++++++---------------------- src/include/zmalloc_mt.h | 1474 ++++++++--------- src/include/zmem_pool.h | 10 +- src/include/zpoint.h | 2 +- src/include/zshm_boot.h | 2 +- src/include/zshm_ptr.h | 10 +- src/include/zstream.h | 6 +- src/include/zsymbols.h | 28 +- src/include/ztrace.h | 26 +- 17 files changed, 2840 insertions(+), 2840 deletions(-)
