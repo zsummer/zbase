@@ -355,7 +355,7 @@ s32 zmalloc_stress()
     zarray <Addr, cover_size>* buffers = new zarray <Addr, cover_size>();
     zarray <Addr, cover_size>* buffers2 = new zarray <Addr, cover_size>();
 
-    //¹Ì¶¨Ğ¡×Ö½ÚÉêÇë  
+    //å›ºå®šå°å­—èŠ‚ç”³è¯·  
     static int fixed_size = 100;
 
     for (u32 i = 0; i < zmalloc::kDefaultBlockSize; i++)
@@ -462,7 +462,7 @@ s32 zmalloc_stress()
     {
         if (loop % 10 != 0)
         {
-            continue;//×ö¶Ô±ÈÓÃ ÌŞ³ı²¿·ÖÊı¾İÌá¸ß²âÊÔËÙ¶È
+            continue;//åšå¯¹æ¯”ç”¨ å‰”é™¤éƒ¨åˆ†æ•°æ®æé«˜æµ‹è¯•é€Ÿåº¦
         }
         unsigned long long begin_size = cover_size / 80 * loop;
         unsigned long long end_size = cover_size / 80 * (loop + 1);
@@ -648,7 +648,7 @@ s32 zmalloc_stress()
     {
         if (loop % 8 != 0)
         {
-            continue;//×ö¶Ô±ÈÓÃ ÌŞ³ı²¿·ÖÊı¾İÌá¸ß²âÊÔËÙ¶È
+            continue;//åšå¯¹æ¯”ç”¨ å‰”é™¤éƒ¨åˆ†æ•°æ®æé«˜æµ‹è¯•é€Ÿåº¦
         }
         unsigned long long begin_size = cover_size / 80 * loop;
         unsigned long long end_size = cover_size / 80 * (loop + 1);

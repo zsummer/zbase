@@ -1,0 +1,35 @@
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+indent_style = space
+indent_size = 4
+
+[*.{c,cc,cpp,cxx,h,hpp,hxx,inl}]
+charset = utf-8
+end_of_line = lf
+indent_style = space
+indent_size = 4
+
+[CMakeLists.txt]
+charset = utf-8
+end_of_line = lf
+indent_style = space
+indent_size = 4
+
+[*.{cmake,sh,py,md}]
+charset = utf-8
+end_of_line = lf
+
+[Makefile]
+indent_style = tab
+
+[*.{sln,vcxproj,vcxproj.filters,props,vcproj}]
+charset = utf-8-bom
+end_of_line = crlf
+
+[*.bat]
+end_of_line = crlf

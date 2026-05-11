@@ -18,13 +18,13 @@
 
 
 // ====================================================================
-//  1. »ù´¡¹¦ÄÜ²âÊÔ: µ¥Ïß³ÌÏÂµÄ alloc/free ÕıÈ·ĞÔ
+//  1. åŸºç¡€åŠŸèƒ½æµ‹è¯•: å•çº¿ç¨‹ä¸‹çš„ alloc/free æ­£ç¡®æ€§
 // ====================================================================
 s32 zmalloc_mt_base_test()
 {
     LogInfo() << "========== zmalloc_mt_base_test begin ==========";
 
-    // ²âÊÔ1: »ù±¾ alloc/free (size=0)
+    // æµ‹è¯•1: åŸºæœ¬ alloc/free (size=0)
     {
         std::unique_ptr<zmalloc_mt> zstate(new zmalloc_mt());
         memset(zstate.get(), 0, sizeof(zmalloc_mt));
@@ -41,7 +41,7 @@ s32 zmalloc_mt_base_test()
     }
 
 
-    // ²âÊÔ2: Ğ¡¶ÔÏó·ÖÅäÓëÊÍ·Å
+    // æµ‹è¯•2: å°å¯¹è±¡åˆ†é…ä¸é‡Šæ”¾
     {
         std::unique_ptr<zmalloc_mt> zstate(new zmalloc_mt());
         memset(zstate.get(), 0, sizeof(zmalloc_mt));
@@ -50,7 +50,7 @@ s32 zmalloc_mt_base_test()
 
         void* p = global_zmalloc_mt(64);
         ASSERT_TEST_NOLOG(p != nullptr, "alloc(64) should return non-null");
-        memset(p, 0xAB, 64); // Ğ´Èë²âÊÔ
+        memset(p, 0xAB, 64); // å†™å…¥æµ‹è¯•
         global_zfree_mt(p);
 
         zstate->check_panic();
@@ -59,7 +59,7 @@ s32 zmalloc_mt_base_test()
     }
 
 
-    // ²âÊÔ3: ÖĞµÈ¶ÔÏó (1024~512K ·¶Î§)
+    // æµ‹è¯•3: ä¸­ç­‰å¯¹è±¡ (1024~512K èŒƒå›´)
     {
         std::unique_ptr<zmalloc_mt> zstate(new zmalloc_mt());
         memset(zstate.get(), 0, sizeof(zmalloc_mt));
@@ -82,7 +82,7 @@ s32 zmalloc_mt_base_test()
     }
 
 
-    // ²âÊÔ4: ´ó¶ÔÏó (>512K direct alloc)
+    // æµ‹è¯•4: å¤§å¯¹è±¡ (>512K direct alloc)
     {
         std::unique_ptr<zmalloc_mt> zstate(new zmalloc_mt());
         memset(zstate.get(), 0, sizeof(zmalloc_mt));
@@ -100,7 +100,7 @@ s32 zmalloc_mt_base_test()
     }
 
 
-    // ²âÊÔ5: Á¬Ğø·ÖÅäºÍÊÍ·Å¶àÖÖ´óĞ¡
+    // æµ‹è¯•5: è¿ç»­åˆ†é…å’Œé‡Šæ”¾å¤šç§å¤§å°
     {
         std::unique_ptr<zmalloc_mt> zstate(new zmalloc_mt());
         memset(zstate.get(), 0, sizeof(zmalloc_mt));
@@ -111,10 +111,10 @@ s32 zmalloc_mt_base_test()
         void* ptrs[kTestCount];
         for (u32 i = 0; i < kTestCount; i++)
         {
-            u32 size = (i * 37 + 7) % (zmalloc::kBigMaxRequest + 2000); // ¸÷ÖÖ´óĞ¡
+            u32 size = (i * 37 + 7) % (zmalloc::kBigMaxRequest + 2000); // å„ç§å¤§å°
             ptrs[i] = global_zmalloc_mt(size);
             ASSERT_TEST_NOLOG(ptrs[i] != nullptr, "alloc should return non-null");
-            // Ğ´ÈëÊ×Î²×Ö½ÚÑéÖ¤
+            // å†™å…¥é¦–å°¾å­—èŠ‚éªŒè¯
             if (size > 0)
             {
                 ((char*)ptrs[i])[0] = (char)(i & 0xFF);
@@ -134,7 +134,7 @@ s32 zmalloc_mt_base_test()
     }
 
 
-    // ²âÊÔ6: thread-local cache ÃüÖĞ²âÊÔ (Í¬Ò» size ·´¸´ alloc/free)
+    // æµ‹è¯•6: thread-local cache å‘½ä¸­æµ‹è¯• (åŒä¸€ size åå¤ alloc/free)
     {
         std::unique_ptr<zmalloc_mt> zstate(new zmalloc_mt());
         memset(zstate.get(), 0, sizeof(zmalloc_mt));
@@ -162,7 +162,7 @@ s32 zmalloc_mt_base_test()
 
 
 // ====================================================================
-//  2. µ¥Ïß³ÌÑ¹²â: Óë zmalloc_stress ÀàËÆµÄĞÔÄÜÑ¹²â
+//  2. å•çº¿ç¨‹å‹æµ‹: ä¸ zmalloc_stress ç±»ä¼¼çš„æ€§èƒ½å‹æµ‹
 // ====================================================================
 s32 zmalloc_mt_single_thread_stress()
 {
@@ -187,7 +187,7 @@ s32 zmalloc_mt_single_thread_stress()
     PROF_DEFINE_COUNTER(cost);
     zclock<> zc;
 
-    // ¼´Ê± alloc/free (Ğ¡¶ÔÏó)
+    // å³æ—¶ alloc/free (å°å¯¹è±¡)
     PROF_START_COUNTER(cost);
     zc.start();
     for (u64 i = 0; i < rand_size; i++)
@@ -198,7 +198,7 @@ s32 zmalloc_mt_single_thread_stress()
     PROF_OUTPUT_MULTI_COUNT_CPU("mt_st: zfree_mt(zmalloc_mt(1))", rand_size, cost.StopAndSave().cost());
     LogInfo() << "  avg_ns/op=" << (rand_size > 0 ? (double)zc.cost_ns() / rand_size : 0.0);
 
-    // ¼´Ê± alloc/free (0~1024 Ëæ»ú)
+    // å³æ—¶ alloc/free (0~1024 éšæœº)
     PROF_START_COUNTER(cost);
     zc.start();
     for (u64 i = 0; i < rand_size; i++)
@@ -211,7 +211,7 @@ s32 zmalloc_mt_single_thread_stress()
     PROF_OUTPUT_MULTI_COUNT_CPU("mt_st: zfree_mt(zmalloc_mt(0~1024))", rand_size, cost.StopAndSave().cost());
     LogInfo() << "  avg_ns/op=" << (rand_size > 0 ? (double)zc.cost_ns() / rand_size : 0.0);
 
-    // ¼´Ê± alloc/free (1024~512k)
+    // å³æ—¶ alloc/free (1024~512k)
     PROF_START_COUNTER(cost);
     zc.start();
     for (u64 i = 0; i < rand_size; i++)
@@ -224,7 +224,7 @@ s32 zmalloc_mt_single_thread_stress()
     PROF_OUTPUT_MULTI_COUNT_CPU("mt_st: zfree_mt(zmalloc_mt(1024~512k))", rand_size, cost.StopAndSave().cost());
     LogInfo() << "  avg_ns/op=" << (rand_size > 0 ? (double)zc.cost_ns() / rand_size : 0.0);
 
-    // ÅúÁ¿ alloc + ÅúÁ¿ free (Á¬Ğø·Ö¶Î¸²¸Ç)
+    // æ‰¹é‡ alloc + æ‰¹é‡ free (è¿ç»­åˆ†æ®µè¦†ç›–)
     LogInfo() << "";
     LogInfo() << "mt_st: begin batch alloc/free segmented coverage";
     LogInfo() << "-------------------------------------------------------------------";
@@ -258,7 +258,7 @@ s32 zmalloc_mt_single_thread_stress()
         buffers->clear();
     }
 
-    // Ëæ»ú alloc/free »ìºÏ (0~2k)
+    // éšæœº alloc/free æ··åˆ (0~2k)
     LogInfo() << "";
     LogInfo() << "mt_st: begin rand alloc/free mix (0~2k)";
     LogInfo() << "-------------------------------------------------------------------";
@@ -307,7 +307,7 @@ s32 zmalloc_mt_single_thread_stress()
     zstate->flush_and_reset_thread_cache();
 
     // ================================================================
-    //  zmalloc (µ¥Ïß³Ì°æ) ¶Ô±È²âÊÔ ¡ª ¸´ÓÃÏàÍ¬µÄ rand_array
+    //  zmalloc (å•çº¿ç¨‹ç‰ˆ) å¯¹æ¯”æµ‹è¯• â€” å¤ç”¨ç›¸åŒçš„ rand_array
     // ================================================================
     LogInfo() << "";
     LogInfo() << "========== zmalloc (single-thread) comparison ==========";
@@ -320,7 +320,7 @@ s32 zmalloc_mt_single_thread_stress()
 
         zclock<> zc;
 
-        // ¼´Ê± alloc/free (Ğ¡¶ÔÏó)
+        // å³æ—¶ alloc/free (å°å¯¹è±¡)
         PROF_START_COUNTER(cost);
         zc.start();
         for (u64 i = 0; i < rand_size; i++)
@@ -331,7 +331,7 @@ s32 zmalloc_mt_single_thread_stress()
         PROF_OUTPUT_MULTI_COUNT_CPU("st: zfree(zmalloc(1))", rand_size, cost.StopAndSave().cost());
         LogInfo() << "  avg_ns/op=" << (rand_size > 0 ? (double)zc.cost_ns() / rand_size : 0.0);
 
-        // ¼´Ê± alloc/free (0~1024 Ëæ»ú)
+        // å³æ—¶ alloc/free (0~1024 éšæœº)
         PROF_START_COUNTER(cost);
         zc.start();
         for (u64 i = 0; i < rand_size; i++)
@@ -344,7 +344,7 @@ s32 zmalloc_mt_single_thread_stress()
         PROF_OUTPUT_MULTI_COUNT_CPU("st: zfree(zmalloc(0~1024))", rand_size, cost.StopAndSave().cost());
         LogInfo() << "  avg_ns/op=" << (rand_size > 0 ? (double)zc.cost_ns() / rand_size : 0.0);
 
-        // ¼´Ê± alloc/free (1024~512k)
+        // å³æ—¶ alloc/free (1024~512k)
         PROF_START_COUNTER(cost);
         zc.start();
         for (u64 i = 0; i < rand_size; i++)
@@ -371,10 +371,10 @@ s32 zmalloc_mt_single_thread_stress()
 
 
 // ====================================================================
-//  3. ¶àÏß³Ì²¢·¢Ñ¹²â
+//  3. å¤šçº¿ç¨‹å¹¶å‘å‹æµ‹
 // ====================================================================
 
-// Ïß³Ì¹¤×÷º¯Êı: Ã¿¸öÏß³Ì¶ÀÁ¢×ö alloc/free
+// çº¿ç¨‹å·¥ä½œå‡½æ•°: æ¯ä¸ªçº¿ç¨‹ç‹¬ç«‹åš alloc/free
 static void mt_stress_worker(zmalloc_mt* zstate, u32 thread_id, u32 iterations,
                               std::atomic<u64>& total_alloc_ops, std::atomic<u64>& total_free_ops,
                               std::atomic<s32>& error_flag)
@@ -399,10 +399,10 @@ static void mt_stress_worker(zmalloc_mt* zstate, u32 thread_id, u32 iterations,
 
         if (action < 6 || local_count == 0)
         {
-            // alloc (60% ¸ÅÂÊ »ò bufferÎª¿Õ)
+            // alloc (60% æ¦‚ç‡ æˆ– bufferä¸ºç©º)
             if (local_count >= kLocalBufMax)
             {
-                // bufferÂúÁË, ÏÈÊÍ·ÅÒ»°ë
+                // bufferæ»¡äº†, å…ˆé‡Šæ”¾ä¸€åŠ
                 for (u32 j = 0; j < kLocalBufMax / 2; j++)
                 {
                     local_count--;
@@ -419,7 +419,7 @@ static void mt_stress_worker(zmalloc_mt* zstate, u32 thread_id, u32 iterations,
                 break;
             }
 
-            // Ğ´ÈëÑéÖ¤Êı¾İ
+            // å†™å…¥éªŒè¯æ•°æ®
             if (alloc_size >= 4)
                 *(u32*)p = thread_id;
 
@@ -428,12 +428,12 @@ static void mt_stress_worker(zmalloc_mt* zstate, u32 thread_id, u32 iterations,
         }
         else
         {
-            // free (40% ¸ÅÂÊ)
+            // free (40% æ¦‚ç‡)
             if (local_count > 0)
             {
                 u32 idx = simple_rand() % local_count;
                 zstate->free_memory(local_buf[idx]);
-                // ÓÃ×îºóÒ»¸öÌî³ä¿ÕÎ»
+                // ç”¨æœ€åä¸€ä¸ªå¡«å……ç©ºä½
                 local_buf[idx] = local_buf[local_count - 1];
                 local_count--;
                 free_ops++;
@@ -441,7 +441,7 @@ static void mt_stress_worker(zmalloc_mt* zstate, u32 thread_id, u32 iterations,
         }
     }
 
-    // ÇåÀíÊ£Óà
+    // æ¸…ç†å‰©ä½™
     for (u32 j = 0; j < local_count; j++)
     {
         zstate->free_memory(local_buf[j]);
@@ -462,7 +462,7 @@ s32 zmalloc_mt_concurrent_stress()
     zstate->init();
     zstate->set_global(zstate.get());
 
-    // ²âÊÔ²»Í¬Ïß³ÌÊı: 2, 4, 8
+    // æµ‹è¯•ä¸åŒçº¿ç¨‹æ•°: 2, 4, 8
     u32 thread_counts[] = { 2, 4, 8 };
     static const u32 kIterationsPerThread = 50 * 10000;
 
@@ -473,7 +473,7 @@ s32 zmalloc_mt_concurrent_stress()
         LogInfo() << "--- concurrent stress: " << num_threads << " threads, "
                   << kIterationsPerThread << " iters/thread ---";
 
-        // Ã¿´ÎÖØĞÂ´´½¨ zmalloc_mt ÊµÀı
+        // æ¯æ¬¡é‡æ–°åˆ›å»º zmalloc_mt å®ä¾‹
         std::unique_ptr<zmalloc_mt> local_zstate(new zmalloc_mt());
         memset(local_zstate.get(), 0, sizeof(zmalloc_mt));
         local_zstate->init();
@@ -533,16 +533,16 @@ s32 zmalloc_mt_concurrent_stress()
 
 
 // ====================================================================
-//  4. »ìºÏÑ¹²â: ¶àÏß³Ì + ²»Í¬´óĞ¡¶ÔÏó + ¿çÏß³Ì free
+//  4. æ··åˆå‹æµ‹: å¤šçº¿ç¨‹ + ä¸åŒå¤§å°å¯¹è±¡ + è·¨çº¿ç¨‹ free
 // ====================================================================
 
-// ¹²Ïí¶ÓÁĞ: Ò»¸öÏß³Ì alloc, ÁíÒ»¸öÏß³Ì free (¿çÏß³Ì free ³¡¾°)
+// å…±äº«é˜Ÿåˆ—: ä¸€ä¸ªçº¿ç¨‹ alloc, å¦ä¸€ä¸ªçº¿ç¨‹ free (è·¨çº¿ç¨‹ free åœºæ™¯)
 struct shared_queue
 {
     static const u32 kQueueSize = 4096;
     std::atomic<void*>  slots[kQueueSize];
-    std::atomic<u32>    head;   // Éú²úÕßĞ´ÈëÎ»ÖÃ
-    std::atomic<u32>    tail;   // Ïû·ÑÕß¶ÁÈ¡Î»ÖÃ
+    std::atomic<u32>    head;   // ç”Ÿäº§è€…å†™å…¥ä½ç½®
+    std::atomic<u32>    tail;   // æ¶ˆè´¹è€…è¯»å–ä½ç½®
 
     void init()
     {
@@ -557,7 +557,7 @@ struct shared_queue
         u32 h = head.load(std::memory_order_relaxed);
         u32 next_h = (h + 1) % kQueueSize;
         if (next_h == tail.load(std::memory_order_acquire))
-            return false; // ÂúÁË
+            return false; // æ»¡äº†
         slots[h].store(p, std::memory_order_relaxed);
         head.store(next_h, std::memory_order_release);
         return true;
@@ -567,7 +567,7 @@ struct shared_queue
     {
         u32 t = tail.load(std::memory_order_relaxed);
         if (t == head.load(std::memory_order_acquire))
-            return nullptr; // ¿ÕµÄ
+            return nullptr; // ç©ºçš„
         void* p = slots[t].load(std::memory_order_relaxed);
         tail.store((t + 1) % kQueueSize, std::memory_order_release);
         return p;
@@ -575,7 +575,7 @@ struct shared_queue
 };
 
 
-// Éú²úÕßÏß³Ì: alloc ²¢ÍÆÈë¹²Ïí¶ÓÁĞ
+// ç”Ÿäº§è€…çº¿ç¨‹: alloc å¹¶æ¨å…¥å…±äº«é˜Ÿåˆ—
 static void producer_worker(zmalloc_mt* zstate, shared_queue* queue, u32 thread_id,
                              u32 iterations, std::atomic<u64>& alloc_ops, std::atomic<s32>& error_flag)
 {
@@ -595,13 +595,13 @@ static void producer_worker(zmalloc_mt* zstate, shared_queue* queue, u32 thread_
         u32 size_class = simple_rand() % 100;
         u32 alloc_size;
         if (size_class < 60)
-            alloc_size = simple_rand() % 512;         // 60%: Ğ¡¶ÔÏó (0~512)
+            alloc_size = simple_rand() % 512;         // 60%: å°å¯¹è±¡ (0~512)
         else if (size_class < 85)
-            alloc_size = 512 + simple_rand() % 4096;  // 25%: ÖĞ¶ÔÏó (512~4608)
+            alloc_size = 512 + simple_rand() % 4096;  // 25%: ä¸­å¯¹è±¡ (512~4608)
         else if (size_class < 95)
-            alloc_size = 4096 + simple_rand() % (zmalloc::kBigMaxRequest - 4096); // 10%: ´ó¶ÔÏó
+            alloc_size = 4096 + simple_rand() % (zmalloc::kBigMaxRequest - 4096); // 10%: å¤§å¯¹è±¡
         else
-            alloc_size = zmalloc::kBigMaxRequest + simple_rand() % 10000; // 5%: ³¬´ó¶ÔÏó (direct)
+            alloc_size = zmalloc::kBigMaxRequest + simple_rand() % 10000; // 5%: è¶…å¤§å¯¹è±¡ (direct)
 
         void* p = zstate->alloc_memory(alloc_size);
         if (p == nullptr)
@@ -610,16 +610,16 @@ static void producer_worker(zmalloc_mt* zstate, shared_queue* queue, u32 thread_
             break;
         }
 
-        // Ğ´ÈëÑéÖ¤Êı¾İ
+        // å†™å…¥éªŒè¯æ•°æ®
         if (alloc_size >= sizeof(u32))
             *(u32*)p = thread_id;
 
         ops++;
 
-        // ³¢ÊÔÍÆÈë¹²Ïí¶ÓÁĞ (¿çÏß³Ì free)
+        // å°è¯•æ¨å…¥å…±äº«é˜Ÿåˆ— (è·¨çº¿ç¨‹ free)
         if (!queue->try_push(p))
         {
-            // ¶ÓÁĞÂúÁË, ±¾µØ»º´æ»òÖ±½Ó free
+            // é˜Ÿåˆ—æ»¡äº†, æœ¬åœ°ç¼“å­˜æˆ–ç›´æ¥ free
             if (local_buf_count < kLocalMax)
             {
                 local_buf[local_buf_count++] = p;
@@ -631,7 +631,7 @@ static void producer_worker(zmalloc_mt* zstate, shared_queue* queue, u32 thread_
         }
     }
 
-    // ÇåÀí±¾µØ»º´æ (ÍÆÈë¶ÓÁĞ»òÖ±½Ó free)
+    // æ¸…ç†æœ¬åœ°ç¼“å­˜ (æ¨å…¥é˜Ÿåˆ—æˆ–ç›´æ¥ free)
     for (u32 j = 0; j < local_buf_count; j++)
     {
         if (!queue->try_push(local_buf[j]))
@@ -642,7 +642,7 @@ static void producer_worker(zmalloc_mt* zstate, shared_queue* queue, u32 thread_
 }
 
 
-// Ïû·ÑÕßÏß³Ì: ´Ó¹²Ïí¶ÓÁĞÈ¡³ö²¢ free
+// æ¶ˆè´¹è€…çº¿ç¨‹: ä»å…±äº«é˜Ÿåˆ—å–å‡ºå¹¶ free
 static void consumer_worker(zmalloc_mt* zstate, shared_queue* queue,
                              u32 iterations, std::atomic<u64>& free_ops,
                              std::atomic<bool>& producers_done)
@@ -661,7 +661,7 @@ static void consumer_worker(zmalloc_mt* zstate, shared_queue* queue,
         {
             if (producers_done.load(std::memory_order_acquire))
             {
-                // ÔÙ³¢ÊÔÇå¿Õ¶ÓÁĞ
+                // å†å°è¯•æ¸…ç©ºé˜Ÿåˆ—
                 while (true)
                 {
                     p = queue->try_pop();
@@ -683,7 +683,7 @@ static void consumer_worker(zmalloc_mt* zstate, shared_queue* queue,
 s32 zmalloc_mt_cross_thread_stress()
 {
     LogInfo() << "========== zmalloc_mt_cross_thread_stress begin ==========";
-    LogInfo() << "  (producer alloc, consumer free ¡ª ¿çÏß³Ì free ³¡¾°)";
+    LogInfo() << "  (producer alloc, consumer free â€” è·¨çº¿ç¨‹ free åœºæ™¯)";
 
     std::unique_ptr<zmalloc_mt> zstate(new zmalloc_mt());
     memset(zstate.get(), 0, sizeof(zmalloc_mt));
@@ -708,7 +708,7 @@ s32 zmalloc_mt_cross_thread_stress()
     PROF_START_COUNTER(cost);
     zcost.start();
 
-    // Æô¶¯Ïû·ÑÕß
+    // å¯åŠ¨æ¶ˆè´¹è€…
     std::vector<std::thread> consumers;
     for (u32 c = 0; c < kConsumerCount; c++)
     {
@@ -717,11 +717,11 @@ s32 zmalloc_mt_cross_thread_stress()
                                 std::ref(producers_done));
     }
 
-    // Æô¶¯Éú²úÕß (Ã¿¸öÉú²úÕßÂÖÑ¯ÍÆÈë²»Í¬¶ÓÁĞ)
+    // å¯åŠ¨ç”Ÿäº§è€… (æ¯ä¸ªç”Ÿäº§è€…è½®è¯¢æ¨å…¥ä¸åŒé˜Ÿåˆ—)
     std::vector<std::thread> producers;
     for (u32 p = 0; p < kProducerCount; p++)
     {
-        // Ã¿¸öÉú²úÕßÍÆÈë p % kConsumerCount ¶ÔÓ¦µÄ¶ÓÁĞ
+        // æ¯ä¸ªç”Ÿäº§è€…æ¨å…¥ p % kConsumerCount å¯¹åº”çš„é˜Ÿåˆ—
         producers.emplace_back(producer_worker, zstate.get(), &queues[p % kConsumerCount],
                                 p, kProducerIters, std::ref(total_alloc_ops),
                                 std::ref(error_flag));
@@ -767,7 +767,7 @@ s32 zmalloc_mt_cross_thread_stress()
 
 
 // ====================================================================
-//  5. »ìºÏ´óĞ¡ + ¶àÏß³ÌÍ¬Ê±¶ÁĞ´ÑéÖ¤
+//  5. æ··åˆå¤§å° + å¤šçº¿ç¨‹åŒæ—¶è¯»å†™éªŒè¯
 // ====================================================================
 
 static void mixed_size_worker(zmalloc_mt* zstate, u32 thread_id, u32 iterations,
@@ -799,13 +799,13 @@ static void mixed_size_worker(zmalloc_mt* zstate, u32 thread_id, u32 iterations,
             // alloc
             if (local_count >= kLocalBufMax)
             {
-                // ÊÍ·ÅÒ»°ë
+                // é‡Šæ”¾ä¸€åŠ
                 u32 half = kLocalBufMax / 2;
                 for (u32 j = 0; j < half; j++)
                 {
                     local_count--;
                     auto& entry = local_buf[local_count];
-                    // ÑéÖ¤ magic
+                    // éªŒè¯ magic
                     if (entry.size >= 8)
                     {
                         u32 magic_check = *(u32*)entry.ptr;
@@ -821,17 +821,17 @@ static void mixed_size_worker(zmalloc_mt* zstate, u32 thread_id, u32 iterations,
                 }
             }
 
-            // Ñ¡Ôñ·ÖÅä´óĞ¡
+            // é€‰æ‹©åˆ†é…å¤§å°
             u32 size_class = simple_rand() % 100;
             u32 alloc_size;
             if (size_class < 50)
-                alloc_size = simple_rand() % 256;              // 50%: ¼«Ğ¡¶ÔÏó
+                alloc_size = simple_rand() % 256;              // 50%: æå°å¯¹è±¡
             else if (size_class < 75)
-                alloc_size = 256 + simple_rand() % 768;        // 25%: Ğ¡¶ÔÏó
+                alloc_size = 256 + simple_rand() % 768;        // 25%: å°å¯¹è±¡
             else if (size_class < 90)
-                alloc_size = 1024 + simple_rand() % (32 * 1024); // 15%: ÖĞ¶ÔÏó
+                alloc_size = 1024 + simple_rand() % (32 * 1024); // 15%: ä¸­å¯¹è±¡
             else
-                alloc_size = 32 * 1024 + simple_rand() % (zmalloc::kBigMaxRequest - 32 * 1024); // 10%: ´ó¶ÔÏó
+                alloc_size = 32 * 1024 + simple_rand() % (zmalloc::kBigMaxRequest - 32 * 1024); // 10%: å¤§å¯¹è±¡
 
             void* p = zstate->alloc_memory(alloc_size);
             if (p == nullptr)
@@ -844,7 +844,7 @@ static void mixed_size_worker(zmalloc_mt* zstate, u32 thread_id, u32 iterations,
             if (alloc_size >= 8)
             {
                 *(u32*)p = magic;
-                // Î²²¿Ò²Ğ´Èë
+                // å°¾éƒ¨ä¹Ÿå†™å…¥
                 if (alloc_size >= 8)
                     *((u32*)((char*)p + alloc_size - 4)) = magic;
             }
@@ -867,7 +867,7 @@ static void mixed_size_worker(zmalloc_mt* zstate, u32 thread_id, u32 iterations,
                 u32 idx = simple_rand() % local_count;
                 auto& entry = local_buf[idx];
 
-                // ÑéÖ¤Êı¾İÍêÕûĞÔ
+                // éªŒè¯æ•°æ®å®Œæ•´æ€§
                 if (entry.size >= 8)
                 {
                     u32 magic_check = *(u32*)entry.ptr;
@@ -886,7 +886,7 @@ static void mixed_size_worker(zmalloc_mt* zstate, u32 thread_id, u32 iterations,
         }
     }
 
-    // ÇåÀí
+    // æ¸…ç†
     for (u32 j = 0; j < local_count; j++)
     {
         zstate->free_memory(local_buf[j].ptr);
@@ -900,7 +900,7 @@ static void mixed_size_worker(zmalloc_mt* zstate, u32 thread_id, u32 iterations,
 s32 zmalloc_mt_mixed_stress()
 {
     LogInfo() << "========== zmalloc_mt_mixed_stress begin ==========";
-    LogInfo() << "  (¶àÏß³Ì + »ìºÏ´óĞ¡ + Êı¾İÍêÕûĞÔÑéÖ¤)";
+    LogInfo() << "  (å¤šçº¿ç¨‹ + æ··åˆå¤§å° + æ•°æ®å®Œæ•´æ€§éªŒè¯)";
 
     u32 thread_counts[] = { 2, 4, 8 };
     static const u32 kIterationsPerThread = 30 * 10000;
@@ -951,7 +951,7 @@ s32 zmalloc_mt_mixed_stress()
                   << " avg_ns/op=" << avg_ns_per_op
                   << " arena_count=" << zstate->arena_count_.load();
 
-        // Êä³ö×´Ì¬
+        // è¾“å‡ºçŠ¶æ€
         auto new_log = []() { return std::move(LOG_STREAM_DEFAULT_LOGGER(0, FNLog::PRIORITY_DEBUG, 0, 0, FNLog::LOG_PREFIX_NULL)); };
         zstate->debug_state_log(new_log);
 
@@ -969,7 +969,7 @@ s32 zmalloc_mt_mixed_stress()
 
 
 // ====================================================================
-//  6. ¶Ô±ÈÑ¹²â: zmalloc_mt vs sys malloc ¶àÏß³ÌĞÔÄÜ
+//  6. å¯¹æ¯”å‹æµ‹: zmalloc_mt vs sys malloc å¤šçº¿ç¨‹æ€§èƒ½
 // ====================================================================
 
 static void sys_malloc_worker(u32 thread_id, u32 iterations,
@@ -1165,7 +1165,7 @@ s32 zmalloc_mt_vs_sys_benchmark()
 
 
 // ====================================================================
-//  ×ÜÈë¿Ú
+//  æ€»å…¥å£
 // ====================================================================
 s32 zmalloc_mt_test()
 {
