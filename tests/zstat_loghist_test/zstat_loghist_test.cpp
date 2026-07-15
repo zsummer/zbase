@@ -41,21 +41,21 @@ static void dump_histogram(const char* title, const Hist& h)
 {
     LogInfo() << "==== histogram: " << title
               << "  buckets=" << h.bucket_count()
-              << "  shift_bits=" << h.shift_bits()
-              << "  count=" << h.count()
-              << "  valid=" << h.valid_count()
-              << "  under=" << h.underflow()
-              << "  over=" << h.overflow()
-              << "  min=" << h.min()
-              << "  max=" << h.max()
-              << "  avg=" << h.avg();
+              << "  unit_shift=" << h.unit_shift()
+              << "  req_count=" << h.req_count()
+              << "  valid_count=" << h.valid_count()
+              << "  req_underflow_count=" << h.req_underflow_count()
+              << "  req_overflow_count=" << h.req_overflow_count()
+              << "  valid_low=" << h.valid_low()
+              << "  valid_high=" << h.valid_high()
+              << "  valid_avg=" << h.valid_avg();
 
-    s64 max_hit = 0;
+    s64 max_bucket_count = 0;
     for (int i = 0; i < h.bucket_count(); ++i)
     {
-        if (h.bucket_hits(i) > max_hit) max_hit = h.bucket_hits(i);
+        if (h.bucket_valid_count(i) > max_bucket_count) max_bucket_count = h.bucket_valid_count(i);
     }
-    if (max_hit == 0)
+    if (max_bucket_count == 0)
     {
         LogInfo() << "  (all buckets empty)";
         return;
@@ -64,20 +64,20 @@ static void dump_histogram(const char* title, const Hist& h)
     const int BAR_MAX = 40;
     for (int i = 0; i < h.bucket_count(); ++i)
     {
-        s64 hits = h.bucket_hits(i);
-        if (hits == 0) continue;
-        int bar = (int)((hits * BAR_MAX + max_hit - 1) / max_hit);
+        s64 bucket_valid_count = h.bucket_valid_count(i);
+        if (bucket_valid_count == 0) continue;
+        int bar = (int)((bucket_valid_count * BAR_MAX + max_bucket_count - 1) / max_bucket_count);
         char bar_buf[64] = {0};
         for (int k = 0; k < bar && k < 60; ++k) bar_buf[k] = '#';
         auto r = h.bucket_range(i);
         LOGFMTI("  bkt[%3d] [%12lld, %12lld) %s %lld",
                 i,
                 r.first, r.second,
-                bar_buf, (long long)hits);
+                bar_buf, (long long)bucket_valid_count);
     }
 }
 
-static s32 zloghist_boundary_test()
+static s32 zstat_loghist_boundary_test()
 {
     using H = zstat_loghist<3, 57>;
     static_assert(H::kBucketCount == 440, "bucket count for <3,57> must be 440");
@@ -104,7 +104,7 @@ static s32 zloghist_boundary_test()
     }
 
     h.reset(6);
-    LogInfo() << "shift_bits=6  sequence of first 12 bucket lows:";
+    LogInfo() << "unit_shift=6  sequence of first 12 bucket lows:";
     for (int i = 0; i < 12; ++i)
     {
         auto r = h.bucket_range(i);
@@ -116,52 +116,73 @@ static s32 zloghist_boundary_test()
         ASSERT_TEST(h.bucket_range(i).first == expect[i]);
     }
 
-    h.reset(-5);      ASSERT_TEST(h.shift_bits() == 0);
-    h.reset(100);     ASSERT_TEST(h.shift_bits() == 63 - 57);
+    h.reset(-5);      ASSERT_TEST(h.unit_shift() == 0);
+    h.reset(100);     ASSERT_TEST(h.unit_shift() == 63 - 57);
     h.reset(0);
     return 0;
 }
 
-static s32 zloghist_edge_test()
+static s32 zstat_loghist_edge_test()
 {
     zstat_loghist<> h;
     h.reset(0);
 
-    ASSERT_TEST(h.count() == 0);
+    ASSERT_TEST(h.req_count() == 0);
     ASSERT_TEST(h.valid_count() == 0);
+    ASSERT_TEST(h.valid_sum() == 0.0);
+    ASSERT_TEST(h.valid_avg() == 0.0);
+    ASSERT_TEST(h.valid_low() == 0);
+    ASSERT_TEST(h.valid_high() == 0);
+    ASSERT_TEST(h.valid_low_bucket_idx() == -1);
+    ASSERT_TEST(h.valid_high_bucket_idx() == -1);
+    ASSERT_TEST(h.valid_bucket_low() == 0);
+    ASSERT_TEST(h.valid_bucket_high() == 0);
     ASSERT_TEST(h.quantile(0.5).height == 0.0);
-    ASSERT_TEST(h.min() == 0);
-    ASSERT_TEST(h.max() == 0);
-    ASSERT_TEST(h.avg() == 0.0);
 
     h.add(-1);
     h.add(-100);
-    ASSERT_TEST(h.count() == 2);
-    ASSERT_TEST(h.underflow() == 2);
+    ASSERT_TEST(h.req_count() == 2);
+    ASSERT_TEST(h.req_underflow_count() == 2);
+    ASSERT_TEST(h.req_underflow_sum() == -101.0);
     ASSERT_TEST(h.valid_count() == 0);
-    ASSERT_TEST(h.min() == -100);
-    ASSERT_TEST(h.max() == -1);
+    ASSERT_TEST(h.valid_sum() == 0.0);
+    ASSERT_TEST(h.valid_low() == 0);
+    ASSERT_TEST(h.valid_high() == 0);
+    ASSERT_TEST(h.valid_low_bucket_idx() == -1);
+    ASSERT_TEST(h.valid_high_bucket_idx() == -1);
     ASSERT_TEST(h.quantile(0.5).height == 0.0);
 
     h.add(LLONG_MAX);
-    ASSERT_TEST(h.overflow() == 1);
-    ASSERT_TEST(h.max() == LLONG_MAX);
+    ASSERT_TEST(h.req_overflow_count() == 1);
+    ASSERT_TEST(h.req_overflow_sum() == (f64)LLONG_MAX);
+    ASSERT_TEST(h.valid_high() == 0);
 
     h.add(5);
     ASSERT_TEST(h.valid_count() == 1);
-    ASSERT_TEST(h.min() == -100);
-    ASSERT_TEST(h.max() == LLONG_MAX);
+    ASSERT_TEST(h.valid_sum() == 5.0);
+    ASSERT_TEST(h.valid_avg() == 5.0);
+    ASSERT_TEST(h.valid_low() == 5);
+    ASSERT_TEST(h.valid_high() == 5);
+    ASSERT_TEST(h.valid_low_bucket_idx() == 5);
+    ASSERT_TEST(h.valid_high_bucket_idx() == 5);
+    ASSERT_TEST(h.valid_bucket_low() == 5);
+    ASSERT_TEST(h.valid_bucket_high() == 6);
     ASSERT_TEST(h.quantile(0.5).height > 4.99 && h.quantile(0.5).height < 6.01);
 
     h.reset(3);
-    ASSERT_TEST(h.count() == 0);
-    ASSERT_TEST(h.underflow() == 0);
-    ASSERT_TEST(h.overflow() == 0);
-    ASSERT_TEST(h.shift_bits() == 3);
+    ASSERT_TEST(h.req_count() == 0);
+    ASSERT_TEST(h.req_underflow_count() == 0);
+    ASSERT_TEST(h.req_overflow_count() == 0);
+    ASSERT_TEST(h.req_underflow_sum() == 0.0);
+    ASSERT_TEST(h.req_overflow_sum() == 0.0);
+    ASSERT_TEST(h.valid_sum() == 0.0);
+    ASSERT_TEST(h.valid_low_bucket_idx() == -1);
+    ASSERT_TEST(h.valid_high_bucket_idx() == -1);
+    ASSERT_TEST(h.unit_shift() == 3);
     return 0;
 }
 
-static s32 zloghist_window_safety_test()
+static s32 zstat_loghist_window_safety_test()
 {
     zstat_loghist<> h;
     h.reset(0);
@@ -172,7 +193,7 @@ static s32 zloghist_window_safety_test()
         s64 mid  = r.first + (r.second - r.first) / 2;
         h.add(mid);
         ASSERT_TEST(h.valid_count() == 1);
-        ASSERT_TEST(h.bucket_hits(i) == 1, "expected only bucket ", i, " hit; got sth else. mid=", mid);
+        ASSERT_TEST(h.bucket_valid_count(i) == 1, "expected only bucket ", i, " has valid count. mid=", mid);
     }
     LogInfo() << "window safety: every one of "
               << zstat_loghist<>::kBucketCount
@@ -180,9 +201,9 @@ static s32 zloghist_window_safety_test()
     return 0;
 }
 
-static s32 zloghist_userdist_test()
+static s32 zstat_loghist_userdist_test()
 {
-    struct pair_t { s64 value; int cnt; };
+    struct pair_t { s64 value; int count; };
     pair_t cases[] = {
         {     100, 200 },
         {  10000,  50 },
@@ -200,16 +221,16 @@ static s32 zloghist_userdist_test()
     raw.reserve(TOTAL);
     for (auto& c : cases)
     {
-        for (int i = 0; i < c.cnt; ++i)
+        for (int i = 0; i < c.count; ++i)
         {
             h.add(c.value);
             raw.push_back(c.value);
         }
     }
-    ASSERT_TEST(h.count() == TOTAL);
+    ASSERT_TEST(h.req_count() == TOTAL);
     ASSERT_TEST(h.valid_count() == TOTAL);
-    ASSERT_TEST(h.min() == 100);
-    ASSERT_TEST(h.max() == 1000000);
+    ASSERT_TEST(h.valid_low() == 100);
+    ASSERT_TEST(h.valid_high() == 1000000);
 
     f64 truth_p50 = exact_percentile(raw, 0.50);
     f64 truth_p90 = exact_percentile(raw, 0.90);
@@ -238,9 +259,9 @@ static s32 zloghist_userdist_test()
     return 0;
 }
 
-static s32 zloghist_userdist_shifted_test()
+static s32 zstat_loghist_userdist_shifted_test()
 {
-    struct pair_t { s64 value; int cnt; };
+    struct pair_t { s64 value; int count; };
     pair_t cases[] = {
         {     100, 200 },
         {  10000,  50 },
@@ -254,24 +275,28 @@ static s32 zloghist_userdist_shifted_test()
     h.reset(6);
 
     for (auto& c : cases)
-        for (int i = 0; i < c.cnt; ++i) h.add(c.value);
+        for (int i = 0; i < c.count; ++i) h.add(c.value);
 
-    ASSERT_TEST(h.count() == 300);
-    ASSERT_TEST(h.min() == 100);
-    ASSERT_TEST(h.max() == 1000000);
+    ASSERT_TEST(h.req_count() == 300);
+    ASSERT_TEST(h.valid_low() == 100);
+    ASSERT_TEST(h.valid_high() == 1000000);
+    ASSERT_TEST(h.valid_low_bucket_idx() == 1);
+    ASSERT_TEST(h.valid_high_bucket_idx() == 51);
+    ASSERT_TEST(h.valid_bucket_low() == 64);
+    ASSERT_TEST(h.valid_bucket_high() == 1048576);
 
-    ASSERT_TEST(h.bucket_hits(1) == 200);
+    ASSERT_TEST(h.bucket_valid_count(1) == 200);
     {
         auto r = h.bucket_range(1);
         ASSERT_TEST(r.first  == 64);
         ASSERT_TEST(r.second == 128);
     }
 
-    dump_histogram("user distribution (shift_bits=6)", h);
+    dump_histogram("user distribution (unit_shift=6)", h);
     return 0;
 }
 
-static s32 zloghist_uniform_stress_test()
+static s32 zstat_loghist_uniform_stress_test()
 {
     zstat_loghist<> h;
     h.reset(0);
@@ -294,7 +319,7 @@ static s32 zloghist_uniform_stress_test()
     return 0;
 }
 
-static s32 zloghist_template_test()
+static s32 zstat_loghist_template_test()
 {
     using H4 = zstat_loghist<4, 32>;
     static_assert(H4::kBucketCount == 464, "");
@@ -313,11 +338,11 @@ static s32 zloghist_template_test()
     return 0;
 }
 
-static s32 zloghist_centroid_compare_on(const char* tag, const std::vector<s64>& raw_in);
+static s32 zstat_loghist_centroid_compare_on(const char* tag, std::vector<s64> raw);
 
-static s32 zloghist_centroid_compare_test()
+static s32 zstat_loghist_centroid_compare_test()
 {
-    struct pair_t { s64 value; int cnt; };
+    struct pair_t { s64 value; int count; };
     pair_t cases[] = {
         {     100, 200 },
         {  10000,  50 },
@@ -329,8 +354,8 @@ static s32 zloghist_centroid_compare_test()
     };
     std::vector<s64> raw;
     for (auto& c : cases)
-        for (int i = 0; i < c.cnt; ++i) raw.push_back(c.value);
-    return zloghist_centroid_compare_on("discrete-spike(7 spikes,N=300)", raw);
+        for (int i = 0; i < c.count; ++i) raw.push_back(c.value);
+    return zstat_loghist_centroid_compare_on("discrete-spike(7 spikes,N=300)", raw);
 }
 
 // -----------------------------------------------------------------------------
@@ -338,7 +363,7 @@ static s32 zloghist_centroid_compare_test()
 // -----------------------------------------------------------------------------
 // Runs the 5-mode comparison over a dense percentile grid (p1..p99, step=1),
 // prints:
-//   (1) per-distribution full table  (99 rows)
+//   (1) per-distribution table       (20 rows)
 //   (2) per-distribution summary     (avg / max err% per mode + coverage)
 //   (3) per-distribution CSV block   (raw matrix, ready to plot)
 // and accumulates results into g_dist_summaries for the cross-distribution
@@ -356,10 +381,9 @@ struct dist_summary_t
 
 static std::vector<dist_summary_t> g_dist_summaries;
 
-static s32 zloghist_centroid_compare_on(const char* tag, const std::vector<s64>& raw_in)
+// raw is taken by value: exact_percentile() sorts it in place below.
+static s32 zstat_loghist_centroid_compare_on(const char* tag, std::vector<s64> raw)
 {
-    std::vector<s64> raw = raw_in;
-
     zstat_loghist<2, 32, kCentroidOff>              h0;
     zstat_loghist<2, 32, kCentroidLocalLinear>      h1;
     zstat_loghist<2, 32, kCentroidNeighborLinear>   h2;
@@ -423,7 +447,7 @@ static s32 zloghist_centroid_compare_on(const char* tag, const std::vector<s64>&
     LOGRAW("%s", "  ---- summary (avg / max err%) ----");
     for (int k = 0; k < 5; ++k)
     {
-        LOGRAW("    mode %s  avg=%6.2f%%  max=%6.2f%%",
+        LOGRAW("    mode %s  avg_err=%6.2f%%  max_err=%6.2f%%",
                names[k], sum_err[k] / (f64)NP, max_err[k]);
     }
 
@@ -431,7 +455,7 @@ static s32 zloghist_centroid_compare_on(const char* tag, const std::vector<s64>&
     int nonempty = 0, max_gap = 0, cur_gap = 0, prev_i = -2;
     for (int i = 0; i < h0.bucket_count(); ++i)
     {
-        if (h0.bucket_hits(i) > 0)
+        if (h0.bucket_valid_count(i) > 0)
         {
             if (prev_i >= 0)
             {
@@ -463,7 +487,7 @@ static s32 zloghist_centroid_compare_on(const char* tag, const std::vector<s64>&
     return 0;
 }
 
-static s32 zloghist_centroid_lognormal_test()
+static s32 zstat_loghist_centroid_lognormal_test()
 {
     // log-normal: ln(X) ~ N(mu, sigma).  choose mu/sigma so range spans ~5 orders of magnitude.
     const int N = 5000;
@@ -477,10 +501,10 @@ static s32 zloghist_centroid_lognormal_test()
         if (x < 1.0) x = 1.0;
         raw.push_back((s64)x);
     }
-    return zloghist_centroid_compare_on("log-normal(mu=6,sigma=1.5,N=5000)", raw);
+    return zstat_loghist_centroid_compare_on("log-normal(mu=6,sigma=1.5,N=5000)", raw);
 }
 
-static s32 zloghist_centroid_pareto_test()
+static s32 zstat_loghist_centroid_pareto_test()
 {
     // Pareto(alpha): X = xm / U^(1/alpha), U ~ U(0,1).  heavy right tail but continuous.
     const int N = 5000;
@@ -498,10 +522,10 @@ static s32 zloghist_centroid_pareto_test()
         if (x > 1e12) x = 1e12;
         raw.push_back((s64)x);
     }
-    return zloghist_centroid_compare_on("pareto(xm=100,alpha=1.2,N=5000)", raw);
+    return zstat_loghist_centroid_compare_on("pareto(xm=100,alpha=1.2,N=5000)", raw);
 }
 
-static s32 zloghist_centroid_exponential_test()
+static s32 zstat_loghist_centroid_exponential_test()
 {
     // Exponential(lambda): light tail, dense small values.
     const int N = 5000;
@@ -515,10 +539,10 @@ static s32 zloghist_centroid_exponential_test()
         if (x < 1.0) x = 1.0;
         raw.push_back((s64)x);
     }
-    return zloghist_centroid_compare_on("exponential(mean=5000,N=5000)", raw);
+    return zstat_loghist_centroid_compare_on("exponential(mean=5000,N=5000)", raw);
 }
 
-static s32 zloghist_centroid_uniform_test()
+static s32 zstat_loghist_centroid_uniform_test()
 {
     // Uniform integer distribution over a wide range: continuous coverage,
     // dense adjacent non-empty buckets, ideal case for neighbor interpolation.
@@ -528,10 +552,10 @@ static s32 zloghist_centroid_uniform_test()
     std::vector<s64> raw;
     raw.reserve(N);
     for (int i = 0; i < N; ++i) raw.push_back((s64)dist(rng));
-    return zloghist_centroid_compare_on("uniform(0..1e5,N=100000)", raw);
+    return zstat_loghist_centroid_compare_on("uniform(0..1e5,N=100000)", raw);
 }
 
-static s32 zloghist_centroid_cross_summary()
+static s32 zstat_loghist_centroid_cross_summary()
 {
     if (g_dist_summaries.empty())
     {
@@ -598,7 +622,7 @@ static s32 zloghist_centroid_cross_summary()
 // -----------------------------------------------------------------------------
 // For every distribution we print, per centroid-mode, two ASCII figures:
 //   (A) BUCKET view    : one row per non-empty bucket. Bar width is
-//                        proportional to bucket_count / total (the fraction of
+//                        proportional to bucket_valid_count / total (the fraction of
 //                        traffic in this bucket, i.e. the quantile *width* it
 //                        occupies). We also print the cumulative quantile
 //                        interval [p_lo, p_hi) this bucket covers.
@@ -614,10 +638,8 @@ static s32 zloghist_centroid_cross_summary()
 //   * shape of density (fig A: wider bar == more traffic in that bucket)
 //   * shape of the quantile-value curve (fig B: bar length grows with value)
 // -----------------------------------------------------------------------------
-static s32 zloghist_bucket_info_compare_on(const char* tag, const std::vector<s64>& raw_in)
+static s32 zstat_loghist_bucket_info_compare_on(const char* tag, const std::vector<s64>& raw)
 {
-    std::vector<s64> raw = raw_in;
-
     zstat_loghist<2, 32, kCentroidOff>              h0;
     zstat_loghist<2, 32, kCentroidLocalLinear>      h1;
     zstat_loghist<2, 32, kCentroidNeighborLinear>   h2;
@@ -637,20 +659,20 @@ static s32 zloghist_bucket_info_compare_on(const char* tag, const std::vector<s6
     // enumerate non-empty buckets from M0 (shape is mode-independent)
     std::vector<int> non_empty;
     for (int i = 0; i < h0.bucket_count(); ++i)
-        if (h0.bucket_hits(i) > 0) non_empty.push_back(i);
+        if (h0.bucket_valid_count(i) > 0) non_empty.push_back(i);
 
     // total count for the bucket-fraction bar in figure A.
-    s64 total_hits = 0;
-    for (int i : non_empty) total_hits += h0.bucket_hits(i);
+    s64 total_valid_count = 0;
+    for (int i : non_empty) total_valid_count += h0.bucket_valid_count(i);
 
-    // for figure A: use the max bucket_hits so the fullest bucket == 40-wide bar
-    s64 max_bucket_hit = 0;
+    // for figure A: use the max bucket_valid_count so the fullest bucket == 40-wide bar
+    s64 max_bucket_count = 0;
     for (int i : non_empty)
-        if (h0.bucket_hits(i) > max_bucket_hit) max_bucket_hit = h0.bucket_hits(i);
-    f64 max_frac = (total_hits > 0) ? (f64)max_bucket_hit / (f64)total_hits : 1.0;
+        if (h0.bucket_valid_count(i) > max_bucket_count) max_bucket_count = h0.bucket_valid_count(i);
+    f64 max_frac = (total_valid_count > 0) ? (f64)max_bucket_count / (f64)total_valid_count : 1.0;
 
     // per-mode dispatch shim: bucket_info() and quantile() switching by m.
-    auto bkt_info = [&](int m, int i) -> zstat_loghist_quantile_result
+    auto bkt_info = [&](int m, int i) -> zstat_loghist_hit_result
     {
         switch (m)
         {
@@ -661,7 +683,7 @@ static s32 zloghist_bucket_info_compare_on(const char* tag, const std::vector<s6
         default: return h4.bucket_info(i);
         }
     };
-    auto quant = [&](int m, f64 p) -> zstat_loghist_quantile_result
+    auto quant = [&](int m, f64 p) -> zstat_loghist_hit_result
     {
         switch (m)
         {
@@ -688,7 +710,7 @@ static s32 zloghist_bucket_info_compare_on(const char* tag, const std::vector<s6
     };
 
     LOGFMTI("===== bucket_info dump on %s (N=%d, non_empty=%d, total=%lld) =====",
-            tag, (int)raw.size(), (int)non_empty.size(), (long long)total_hits);
+            tag, (int)raw.size(), (int)non_empty.size(), (long long)total_valid_count);
 
     for (int m = 0; m < 5; ++m)
     {
@@ -698,15 +720,15 @@ static s32 zloghist_bucket_info_compare_on(const char* tag, const std::vector<s6
         LOGRAW("%s",
                "  [A] BUCKET view     : bar ~ bucket_frac / max_frac  (max_frac == fullest bucket)");
         LOGRAW("%s",
-               "     idx | [        low,        high)   height     cnt   [p_lo   , p_hi   )  bar#... p%");
+               "     idx | [        low,        high)   height valid_count [p_lo   , p_hi   )  bar#... p%");
         s64 cum = 0;
         for (int i : non_empty)
         {
-            zstat_loghist_quantile_result info = bkt_info(m, i);
-            s64 hit  = (s64)info.bucket_count;
-            f64 p_lo = (total_hits > 0) ? (f64)cum          / (f64)total_hits : 0.0;
-            cum += hit;
-            f64 p_hi = (total_hits > 0) ? (f64)cum          / (f64)total_hits : 0.0;
+            zstat_loghist_hit_result info = bkt_info(m, i);
+            s64 bucket_valid_count = (s64)info.bucket_valid_count;
+            f64 p_lo = (total_valid_count > 0) ? (f64)cum          / (f64)total_valid_count : 0.0;
+            cum += bucket_valid_count;
+            f64 p_hi = (total_valid_count > 0) ? (f64)cum          / (f64)total_valid_count : 0.0;
             f64 frac = p_hi - p_lo;
 
             char bar[80];
@@ -714,7 +736,7 @@ static s32 zloghist_bucket_info_compare_on(const char* tag, const std::vector<s6
             LOGRAW("    [%3d] | [%11lld, %11lld) %10.2f  %6lld   [%7.4f, %7.4f)  %s %6.2f%%",
                    info.bucket_idx,
                    (long long)info.bucket_low, (long long)info.bucket_high,
-                   info.height, (long long)hit, p_lo, p_hi, bar, p_hi * 100.0);
+                   info.height, (long long)bucket_valid_count, p_lo, p_hi, bar, p_hi * 100.0);
         }
 
         // ------- Figure B: quantile curve at 1/32 step -------
@@ -723,13 +745,13 @@ static s32 zloghist_bucket_info_compare_on(const char* tag, const std::vector<s6
         // the histogram already encodes the exact log-range position we want.
         const int STEPS = 32;
         LOGRAW("%s",
-               "  [B] QUANTILE view   : bar ~ res.log2_height rescaled to 40 (log-range position of height within valid_max)");
+               "  [B] QUANTILE view   : bar ~ res.log2_height rescaled to 40 (log-range position of height within valid_bucket_high)");
         LOGRAW("%s",
                "     p%     | est_height    bucket_idx  [   low,    high)  bar(log-range)#... p%");
         for (int s = 0; s <= STEPS; ++s)
         {
             f64 p = (f64)s / (f64)STEPS;
-            zstat_loghist_quantile_result q = quant(m, p);
+            zstat_loghist_hit_result q = quant(m, p);
             int n = q.log2_height * 40 / 60;
             char bar[80];
             for (int k = 0; k < n; ++k) bar[k] = '#';
@@ -748,20 +770,20 @@ static s32 zloghist_bucket_info_compare_on(const char* tag, const std::vector<s6
 //  Each one just builds the sample vector then delegates to the helper above,
 //  mirroring the 5 quantile-mode compare tests.
 // -----------------------------------------------------------------------------
-static s32 zloghist_bucket_info_spike_test()
+static s32 zstat_loghist_bucket_info_spike_test()
 {
-    struct pair_t { s64 value; int cnt; };
+    struct pair_t { s64 value; int count; };
     pair_t cases[] = {
         {     100, 200 }, {  10000,  50 }, { 100000,  30 },
         { 200000,  10 }, { 500000,   5 }, { 800000,   4 }, {1000000,   1 },
     };
     std::vector<s64> raw;
     for (auto& c : cases)
-        for (int i = 0; i < c.cnt; ++i) raw.push_back(c.value);
-    return zloghist_bucket_info_compare_on("discrete-spike(7 spikes,N=300)", raw);
+        for (int i = 0; i < c.count; ++i) raw.push_back(c.value);
+    return zstat_loghist_bucket_info_compare_on("discrete-spike(7 spikes,N=300)", raw);
 }
 
-static s32 zloghist_bucket_info_lognormal_test()
+static s32 zstat_loghist_bucket_info_lognormal_test()
 {
     const int N = 5000;
     std::mt19937 rng(20260714u);
@@ -774,10 +796,10 @@ static s32 zloghist_bucket_info_lognormal_test()
         if (x < 1.0) x = 1.0;
         raw.push_back((s64)x);
     }
-    return zloghist_bucket_info_compare_on("log-normal(mu=6,sigma=1.5,N=5000)", raw);
+    return zstat_loghist_bucket_info_compare_on("log-normal(mu=6,sigma=1.5,N=5000)", raw);
 }
 
-static s32 zloghist_bucket_info_pareto_test()
+static s32 zstat_loghist_bucket_info_pareto_test()
 {
     const int N = 5000;
     const double xm    = 100.0;
@@ -794,10 +816,10 @@ static s32 zloghist_bucket_info_pareto_test()
         if (x > 1e12) x = 1e12;
         raw.push_back((s64)x);
     }
-    return zloghist_bucket_info_compare_on("pareto(xm=100,alpha=1.2,N=5000)", raw);
+    return zstat_loghist_bucket_info_compare_on("pareto(xm=100,alpha=1.2,N=5000)", raw);
 }
 
-static s32 zloghist_bucket_info_exponential_test()
+static s32 zstat_loghist_bucket_info_exponential_test()
 {
     const int N = 5000;
     std::mt19937 rng(20260716u);
@@ -810,10 +832,10 @@ static s32 zloghist_bucket_info_exponential_test()
         if (x < 1.0) x = 1.0;
         raw.push_back((s64)x);
     }
-    return zloghist_bucket_info_compare_on("exponential(mean=5000,N=5000)", raw);
+    return zstat_loghist_bucket_info_compare_on("exponential(mean=5000,N=5000)", raw);
 }
 
-static s32 zloghist_bucket_info_uniform_test()
+static s32 zstat_loghist_bucket_info_uniform_test()
 {
     const int N = 100000;
     std::mt19937 rng(20260713u);
@@ -821,10 +843,10 @@ static s32 zloghist_bucket_info_uniform_test()
     std::vector<s64> raw;
     raw.reserve(N);
     for (int i = 0; i < N; ++i) raw.push_back((s64)dist(rng));
-    return zloghist_bucket_info_compare_on("uniform(0..1e5,N=100000)", raw);
+    return zstat_loghist_bucket_info_compare_on("uniform(0..1e5,N=100000)", raw);
 }
 
-static s32 zloghist_bench_test()
+static s32 zstat_loghist_bench_test()
 {
     zstat_loghist<> h;
     h.reset(0);
@@ -843,7 +865,7 @@ static s32 zloghist_bench_test()
     return 0;
 }
 
-static s32 zloghist_bucket_info_bench_test()
+static s32 zstat_loghist_bucket_info_bench_test()
 {
     // Fill a histogram with a realistic-ish distribution so that many buckets are
     // non-empty; this makes bucket_info() do actual work on non-degenerate paths.
@@ -871,7 +893,7 @@ static s32 zloghist_bucket_info_bench_test()
     {
         for (int i = 0; i < B; ++i)
         {
-            zstat_loghist_quantile_result r = h.bucket_info(i);
+            zstat_loghist_hit_result r = h.bucket_info(i);
             salt += r.bucket_low + r.log2_height;
         }
     }
@@ -892,7 +914,7 @@ static s32 zloghist_bucket_info_bench_test()
         for (int s = 0; s < Q_STEPS; ++s)
         {
             f64 p = (f64)s / (f64)(Q_STEPS - 1);
-            zstat_loghist_quantile_result r = h.quantile(p);
+            zstat_loghist_hit_result r = h.quantile(p);
             salt += (s64)r.height + r.log2_height;
         }
     }
@@ -914,26 +936,26 @@ int main(int argc, char* argv[])
 
     LogDebug() << " main begin test. ";
 
-    ASSERT_TEST(zloghist_boundary_test()         == 0);
-    ASSERT_TEST(zloghist_edge_test()             == 0);
-    ASSERT_TEST(zloghist_window_safety_test()    == 0);
-    ASSERT_TEST(zloghist_userdist_test()         == 0);
-    ASSERT_TEST(zloghist_userdist_shifted_test() == 0);
-    ASSERT_TEST(zloghist_centroid_compare_test()     == 0);
-    ASSERT_TEST(zloghist_centroid_lognormal_test()   == 0);
-    ASSERT_TEST(zloghist_centroid_pareto_test()      == 0);
-    ASSERT_TEST(zloghist_centroid_exponential_test() == 0);
-    ASSERT_TEST(zloghist_centroid_uniform_test()     == 0);
-    ASSERT_TEST(zloghist_centroid_cross_summary()    == 0);
-    ASSERT_TEST(zloghist_bucket_info_spike_test()       == 0);
-    ASSERT_TEST(zloghist_bucket_info_lognormal_test()   == 0);
-    ASSERT_TEST(zloghist_bucket_info_pareto_test()      == 0);
-    ASSERT_TEST(zloghist_bucket_info_exponential_test() == 0);
-    ASSERT_TEST(zloghist_bucket_info_uniform_test()     == 0);
-    ASSERT_TEST(zloghist_uniform_stress_test()   == 0);
-    ASSERT_TEST(zloghist_template_test()         == 0);
-    ASSERT_TEST(zloghist_bench_test()            == 0);
-    ASSERT_TEST(zloghist_bucket_info_bench_test()== 0);
+    ASSERT_TEST(zstat_loghist_boundary_test()         == 0);
+    ASSERT_TEST(zstat_loghist_edge_test()             == 0);
+    ASSERT_TEST(zstat_loghist_window_safety_test()    == 0);
+    ASSERT_TEST(zstat_loghist_userdist_test()         == 0);
+    ASSERT_TEST(zstat_loghist_userdist_shifted_test() == 0);
+    ASSERT_TEST(zstat_loghist_centroid_compare_test()     == 0);
+    ASSERT_TEST(zstat_loghist_centroid_lognormal_test()   == 0);
+    ASSERT_TEST(zstat_loghist_centroid_pareto_test()      == 0);
+    ASSERT_TEST(zstat_loghist_centroid_exponential_test() == 0);
+    ASSERT_TEST(zstat_loghist_centroid_uniform_test()     == 0);
+    ASSERT_TEST(zstat_loghist_centroid_cross_summary()    == 0);
+    ASSERT_TEST(zstat_loghist_bucket_info_spike_test()       == 0);
+    ASSERT_TEST(zstat_loghist_bucket_info_lognormal_test()   == 0);
+    ASSERT_TEST(zstat_loghist_bucket_info_pareto_test()      == 0);
+    ASSERT_TEST(zstat_loghist_bucket_info_exponential_test() == 0);
+    ASSERT_TEST(zstat_loghist_bucket_info_uniform_test()     == 0);
+    ASSERT_TEST(zstat_loghist_uniform_stress_test()   == 0);
+    ASSERT_TEST(zstat_loghist_template_test()         == 0);
+    ASSERT_TEST(zstat_loghist_bench_test()            == 0);
+    ASSERT_TEST(zstat_loghist_bucket_info_bench_test()== 0);
 
     LogInfo() << "all test finish .";
     return 0;
