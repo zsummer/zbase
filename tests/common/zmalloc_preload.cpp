@@ -167,6 +167,25 @@ ZMALLOC_PRELOAD_API void* pvalloc(size_t size)
 // Debug CRT wrappers for Windows /MDd builds
 // These functions ignore the debug parameters and forward to the standard implementations
 #if defined(_WIN32)
+// Some Windows SDK headers (corecrt_malloc.h / crtdbg.h) may define these as
+// function-like macros that rewrite the call site (e.g. `_malloc_dbg(s,t,f,l)`
+// -> `malloc(s)`). If those macros survive to this point they will destroy
+// our function signatures (the extra parameters get discarded, producing
+// "redefinition of malloc" and "undeclared identifier blockType" errors).
+// Undefine them defensively before providing real symbol bodies.
+#ifdef _malloc_dbg
+#undef _malloc_dbg
+#endif
+#ifdef _free_dbg
+#undef _free_dbg
+#endif
+#ifdef _calloc_dbg
+#undef _calloc_dbg
+#endif
+#ifdef _realloc_dbg
+#undef _realloc_dbg
+#endif
+
 ZMALLOC_PRELOAD_API void* _malloc_dbg(size_t size, int blockType, const char* filename, int line)
 {
     (void)blockType;
