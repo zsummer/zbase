@@ -33,7 +33,6 @@ int main(int argc, char *argv[])
         std::unique_ptr<zmalloc> zstate(new zmalloc());
         memset(zstate.get(), 0, sizeof(zmalloc));
         zstate->set_global(zstate.get());
-        void* p = nullptr;
 
 
         if (true)

@@ -42,7 +42,7 @@ static void ensure_init()
         return;
     }
 
-    memset(&g_zmalloc_mt_instance, 0, sizeof(g_zmalloc_mt_instance));
+    memset(static_cast<void*>(&g_zmalloc_mt_instance), 0, sizeof(g_zmalloc_mt_instance));
     zmalloc_mt::set_global(&g_zmalloc_mt_instance);
     g_zmalloc_mt_instance.init();
     g_inited.store(true, std::memory_order_release);
@@ -141,13 +141,10 @@ ZMALLOC_PRELOAD_API void* memalign(size_t alignment, size_t size)
 ZMALLOC_PRELOAD_API int posix_memalign(void** memptr, size_t alignment, size_t size)
 {
     (void)alignment;
+    //POSIX : memptr is nonnull   (-Wnonnull-compare).
     void* ptr = malloc(size);
     if (ptr == nullptr)
     {
-        if (memptr)
-        {
-            *memptr = nullptr;
-        }
         return ENOMEM;
     }
     *memptr = ptr;

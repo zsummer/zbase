@@ -27,7 +27,7 @@ s32 zmalloc_mt_base_test()
     // 测试1: 基本 alloc/free (size=0)
     {
         std::unique_ptr<zmalloc_mt> zstate(new zmalloc_mt());
-        memset(zstate.get(), 0, sizeof(zmalloc_mt));
+        memset(static_cast<void*>(zstate.get()), 0, sizeof(zmalloc_mt));
         zstate->init();
         zstate->set_global(zstate.get());
 
@@ -44,7 +44,7 @@ s32 zmalloc_mt_base_test()
     // 测试2: 小对象分配与释放
     {
         std::unique_ptr<zmalloc_mt> zstate(new zmalloc_mt());
-        memset(zstate.get(), 0, sizeof(zmalloc_mt));
+        memset(static_cast<void*>(zstate.get()), 0, sizeof(zmalloc_mt));
         zstate->init();
         zstate->set_global(zstate.get());
 
@@ -62,7 +62,7 @@ s32 zmalloc_mt_base_test()
     // 测试3: 中等对象 (1024~512K 范围)
     {
         std::unique_ptr<zmalloc_mt> zstate(new zmalloc_mt());
-        memset(zstate.get(), 0, sizeof(zmalloc_mt));
+        memset(static_cast<void*>(zstate.get()), 0, sizeof(zmalloc_mt));
         zstate->init();
         zstate->set_global(zstate.get());
 
@@ -85,7 +85,7 @@ s32 zmalloc_mt_base_test()
     // 测试4: 大对象 (>512K direct alloc)
     {
         std::unique_ptr<zmalloc_mt> zstate(new zmalloc_mt());
-        memset(zstate.get(), 0, sizeof(zmalloc_mt));
+        memset(static_cast<void*>(zstate.get()), 0, sizeof(zmalloc_mt));
         zstate->init();
         zstate->set_global(zstate.get());
 
@@ -103,7 +103,7 @@ s32 zmalloc_mt_base_test()
     // 测试5: 连续分配和释放多种大小
     {
         std::unique_ptr<zmalloc_mt> zstate(new zmalloc_mt());
-        memset(zstate.get(), 0, sizeof(zmalloc_mt));
+        memset(static_cast<void*>(zstate.get()), 0, sizeof(zmalloc_mt));
         zstate->init();
         zstate->set_global(zstate.get());
 
@@ -137,7 +137,7 @@ s32 zmalloc_mt_base_test()
     // 测试6: thread-local cache 命中测试 (同一 size 反复 alloc/free)
     {
         std::unique_ptr<zmalloc_mt> zstate(new zmalloc_mt());
-        memset(zstate.get(), 0, sizeof(zmalloc_mt));
+        memset(static_cast<void*>(zstate.get()), 0, sizeof(zmalloc_mt));
         zstate->init();
         zstate->set_global(zstate.get());
 
@@ -169,7 +169,7 @@ s32 zmalloc_mt_single_thread_stress()
     LogInfo() << "========== zmalloc_mt_single_thread_stress begin ==========";
 
     std::unique_ptr<zmalloc_mt> zstate(new zmalloc_mt());
-    memset(zstate.get(), 0, sizeof(zmalloc_mt));
+        memset(static_cast<void*>(zstate.get()), 0, sizeof(zmalloc_mt));
     zstate->init();
     zstate->set_global(zstate.get());
 
@@ -458,7 +458,7 @@ s32 zmalloc_mt_concurrent_stress()
     LogInfo() << "========== zmalloc_mt_concurrent_stress begin ==========";
 
     std::unique_ptr<zmalloc_mt> zstate(new zmalloc_mt());
-    memset(zstate.get(), 0, sizeof(zmalloc_mt));
+        memset(static_cast<void*>(zstate.get()), 0, sizeof(zmalloc_mt));
     zstate->init();
     zstate->set_global(zstate.get());
 
@@ -475,7 +475,7 @@ s32 zmalloc_mt_concurrent_stress()
 
         // 每次重新创建 zmalloc_mt 实例
         std::unique_ptr<zmalloc_mt> local_zstate(new zmalloc_mt());
-        memset(local_zstate.get(), 0, sizeof(zmalloc_mt));
+        memset(static_cast<void*>(local_zstate.get()), 0, sizeof(zmalloc_mt));
         local_zstate->init();
         local_zstate->set_global(local_zstate.get());
 
@@ -686,7 +686,7 @@ s32 zmalloc_mt_cross_thread_stress()
     LogInfo() << "  (producer alloc, consumer free — 跨线程 free 场景)";
 
     std::unique_ptr<zmalloc_mt> zstate(new zmalloc_mt());
-    memset(zstate.get(), 0, sizeof(zmalloc_mt));
+        memset(static_cast<void*>(zstate.get()), 0, sizeof(zmalloc_mt));
     zstate->init();
     zstate->set_global(zstate.get());
 
@@ -913,7 +913,7 @@ s32 zmalloc_mt_mixed_stress()
                   << kIterationsPerThread << " iters/thread ---";
 
         std::unique_ptr<zmalloc_mt> zstate(new zmalloc_mt());
-        memset(zstate.get(), 0, sizeof(zmalloc_mt));
+        memset(static_cast<void*>(zstate.get()), 0, sizeof(zmalloc_mt));
         zstate->init();
         zstate->set_global(zstate.get());
 
@@ -1100,7 +1100,7 @@ s32 zmalloc_mt_vs_sys_benchmark()
         // zmalloc_mt
         {
             std::unique_ptr<zmalloc_mt> zstate(new zmalloc_mt());
-            memset(zstate.get(), 0, sizeof(zmalloc_mt));
+            memset(static_cast<void*>(zstate.get()), 0, sizeof(zmalloc_mt));
             zstate->init();
             zstate->set_global(zstate.get());
 

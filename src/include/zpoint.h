@@ -11,6 +11,7 @@
 
 #include <math.h>
 #include <cmath>
+#include <cstring>
 #include <type_traits>
 
 //default use format compatible short type .  
@@ -142,9 +143,11 @@ public:
     static inline float INVERSE_SQRT(float val)
     {
         float xhalf = 0.5f * val;
-        int i = *(int*)&val;
+        //copy use memcpy (-Wstrict-aliasing), and it's will optimize by copmpiler   
+        s32 i;
+        std::memcpy(&i, &val, sizeof(i));
         i = 0x5f3759df - (i >> 1);
-        val = *(float*)&i;
+        std::memcpy(&val, &i, sizeof(val));
         val = val * (1.5f - xhalf * val * val);
         return val;
     }

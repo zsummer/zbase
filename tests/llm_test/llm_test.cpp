@@ -619,6 +619,7 @@ int main(int argc, char *argv[])
     c = gelu_scalar(3.0f);
     c = gelu_scalar(4.0f);
     c = gelu_scalar(5.0f);
+    (void)c;
 
 
     /* 线性串起来：每一步都必须 PASS，否则提前返回 */

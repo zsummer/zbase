@@ -31,11 +31,6 @@ static char md5_num2hex[] = {
     'a','b','c','d','e','f'
 };
 
-static char md5_num2HEX[] = {
-    '0','1','2','3','4','5','6','7','8','9',
-    'A','B','C','D','E','F'
-};
-
 static std::string _md5_result2string(unsigned char(&result)[16],
     char(&num2hex)[16])
 {
@@ -82,6 +77,7 @@ int main(int argc, char *argv[])
         zpoint b = { 0, 1, 0 };
 
         zpoint right = a.cross(b);
+        (void)right;
 
 
     }

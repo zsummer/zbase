@@ -191,6 +191,7 @@ public:
     {
         if (other.real_ptr_ == &other.data_[0])
         {
+            check_realloc(other.size());
             count_ = other.size();
             std::uninitialized_copy_n(other.begin(), count_, ptr(0));
         }
