@@ -16,7 +16,7 @@
 #include <math.h>
 #include <utility>
 
-#if !defined(ZBASE_USE_AHEAD_TYPE) && !defined(ZBASE_USE_DEFAULT_TYPE)
+#if !defined(ZBASE_USE_OUTSIDE_TYPE) && !defined(ZBASE_USE_AHEAD_TYPE) && !defined(ZBASE_USE_DEFAULT_TYPE)
 #define ZBASE_USE_DEFAULT_TYPE
 #endif
 

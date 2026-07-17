@@ -14,9 +14,9 @@
 #include <type_traits>
 
 //default use format compatible short type .  
-#if !defined(ZBASE_USE_AHEAD_TYPE) && !defined(ZBASE_USE_DEFAULT_TYPE)
+#if !defined(ZBASE_USE_OUTSIDE_TYPE) && !defined(ZBASE_USE_AHEAD_TYPE) && !defined(ZBASE_USE_DEFAULT_TYPE)
 #define ZBASE_USE_DEFAULT_TYPE
-#endif 
+#endif
 
 //win & unix format incompatible   
 #ifdef ZBASE_USE_AHEAD_TYPE

@@ -24,9 +24,9 @@
 
 
 //default use format compatible short type .  
-#if !defined(ZBASE_USE_AHEAD_TYPE) && !defined(ZBASE_USE_DEFAULT_TYPE)
+#if !defined(ZBASE_USE_OUTSIDE_TYPE) && !defined(ZBASE_USE_AHEAD_TYPE) && !defined(ZBASE_USE_DEFAULT_TYPE)
 #define ZBASE_USE_DEFAULT_TYPE
-#endif 
+#endif
 
 //win & unix format incompatible   
 #ifdef ZBASE_USE_AHEAD_TYPE
@@ -688,7 +688,7 @@ namespace zclock_impl
     {
     public:
         static constexpr clock_type C = _C;
-
+        static inline double get_clock_period() { return zclock_impl::get_clock_period<_C>(); }
     private:
         long long begin_;
         long long ticks_;
@@ -733,7 +733,7 @@ namespace zclock_impl
         long long cost()const { return ticks_; }
         long long ticks()const { return ticks_; }
         long long cycles()const { return ticks_; }
-        long long cost_ns()const { return (long long)(ticks_ * get_clock_period<_C>()); }
+        long long cost_ns()const { return (long long)(ticks_ * zclock_impl::get_clock_period<_C>()); }
         long long cost_ms()const { return cost_ns() / 1000 / 1000; }
         double cost_s() const { return (double)cost_ns() / (1000.0 * 1000.0 * 1000.0); }
 
