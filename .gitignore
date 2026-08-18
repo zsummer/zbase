@@ -42,14 +42,13 @@ vs_sln
 *.out
 *.app
 *.bin
-bin/test_*
-bin/stress_*
-bin/benchmark_*
-bin/Debug
-bin/Release
 .gdb_history
 
+# bin/ 目录只保留跟踪的脚本 其余全是构建产物 可执行文件 core dump 等 一律忽略
+bin/*
+!bin/local_coverage.sh
+!bin/make.sh
+
 # log
-bin/*.log.*
-bin/*.log
-bin/log
+*.log
+*.log.*
