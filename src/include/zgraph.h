@@ -15,6 +15,9 @@
 #include <type_traits>
 #include "zpoint.h"
 #include <vector>
+#include "zlist_ext.h"
+#include "zarray.h"
+#include "zlist.h"
 
 //default use format compatible short type .
 #if !defined(ZBASE_USE_OUTSIDE_TYPE) && !defined(ZBASE_USE_AHEAD_TYPE) && !defined(ZBASE_USE_DEFAULT_TYPE)
@@ -70,22 +73,82 @@ zpoint 提供向量计算 坐标封装
 */
 
 
+template<class Node, class Link>
 class zgraph
 {
+    // all 0 index is invalid !!
+    //may be all constexpr value as template args;
 public:
-    struct link
+    static constexpr s32 kMaxLinkCnt = 5000;
+    static constexpr s32 kMaxNodeCnt = 5000;
+    static constexpr s32 kMaxGridCnt = 100 * 100;
+
+    static constexpr s32 kGridP90LinkCnt = 5;
+    static constexpr s32 kGridP90NodeCnt = 5;
+
+    static constexpr s32 kGridSize = 1000; //cm
+    static constexpr f32 kMergeDist = 0.001f; //cm
+
+
+public:
+    struct path_node
     {
-        u32 left_vex_id;
-        u32 right_vex_id;
-        u32 flag;
+        Node v;
+        zpoint pos;
+        s32 x;
+        s32 y;
+        s32 node_color;
+    };
+    
+    struct path_link
+    {
+        Link v;
+        s32 node_id1;
+        s32 node_id2;
     };
 
-    struct ref
+
+    struct terrain
     {
-        u32 vertex_id;
-        u32 link_id;
-        u32 flag; //插值点或者真实点
-    };
+        zarray<s32,kGridP90LinkCnt> links;
+        std::vector<s32> ext_links; //expire empty
+        zarray<s32,kGridP90NodeCnt> nodes;
+        std::vector<s32> ext_nodes; //expire empty
+    }
+
+private:
+    zlist<path_node, kMaxNodeCnt> grid_nodes_;
+    zlist<path_link, kMaxLinkCnt> grid_links_;
+    zlist<terrain, kMaxGridCnt> grid_terrains_;
+
+
+public:
+    static constexpr std::pair<s32, s32> to_int_pos(const zpoint& pos)
+    {
+        return std::pair<(s32)std::floor(pos.x/kGridSize), (s32)std::floor(pos.y/kGridSize)>;
+    }
+    static constexpr const zpoint & to_f32_pos(s32 x, s32 y, f32 z)
+    {
+        return zpoint((f32)x*kGridSize + kGridSize/2, (f32)y*kGridSize + kGridSize/2,  z);
+    }
+
+
+    s32 add_node(const zpoint& pos, Node v, s32 node_color = 0)
+    {
+        auto xy = to_int_pos(pos);
+        if (grid_nodes_)
+        {
+            /* code */
+        }
+        
+        grid_nodes_.push_back(path_node(v, pos, xy.x, xy.y, node_color));
+        grid_nodes_.back();
+
+    }
+
+
+
+
 
 public:
     static constexpr u32 kMaxLinks = 4096;
@@ -94,13 +157,25 @@ public:
     static constexpr f32 kGridCellSize = 500.0f;
     static_assert((kGridCellBuckets & (kGridCellBuckets - 1)) == 0, "kGridCellBuckets must be power of 2");
 
-public:
-    zgraph()
+
+    // grid space 
+    template <s32 kP90Cnt, s32 kP100Cnt>
+    struct  terrain_impl
     {
-        vertex_using_cnt_ = 0;
-        link_using_cnt_ = 0;
-        grid_reset();
-    }
+        zlist_ext<s32, kP100Cnt, kP90Cnt> links; // destroy when empty
+    };
+    
+    using terrain = terrain_impl<5, 10>;
+
+
+    private:
+    zlist<terrain,10000> terrains_;
+
+
+
+
+public:
+    inline zgraph();
 
 public:
     std::vector<zpoint>  vertexs_;
@@ -113,172 +188,25 @@ public:
 
 
 public:
-
-    //候选 link 先由内置空间索引按方形范围筛出来 再逐条做点到线段投影 取真正最近的一条
-    //out_ref.flag 暂时借用来存归一化 t 的 u16 定点 0 到 65535 独立的 t 字段是提案里待改项 这里先不动 struct 布局
-    //kMaxCandidates 是查询候选缓冲区的容量 命中数超过它时 hit 仍会数满实际命中总数 调用方可据此判断是否发生截断
-    s32 find_nearst_ref(zpoint center, f32 max_radius, ref& out_ref)
-    {
-        static constexpr u32 kMaxCandidates = 64;
-        u32 candidates[kMaxCandidates];
-        u32 hit = grid_query(center, max_radius, candidates, kMaxCandidates);
-        u32 loop_count = hit < kMaxCandidates ? hit : kMaxCandidates;
-
-        u32 best_link_id = link_using_cnt_ + link_frees_.size(); //links_.size() 的哨兵值 代表未命中
-        f32 best_dist_sq = max_radius * max_radius;
-        u16 best_t_fixed = 0;
-
-        for (u32 i = 0; i < loop_count; i++)
-        {
-            u32 link_id = candidates[i];
-            const link& l = links_[link_id];
-            zpoint a = vertexs_[l.left_vex_id];
-            zpoint b = vertexs_[l.right_vex_id];
-            zpoint ab = b - a;
-            f32 len_sq = ab.square_length_2d();
-            f32 t = len_sq > zpoint::kFloatPrecision ? (center - a).dot_2d(ab) / len_sq : 0.0f;
-            t = t < 0.0f ? 0.0f : (t > 1.0f ? 1.0f : t);
-            zpoint proj = a + ab * t;
-            f32 dist_sq = (center - proj).square_length_2d();
-            if (dist_sq <= best_dist_sq)
-            {
-                best_dist_sq = dist_sq;
-                best_link_id = link_id;
-                best_t_fixed = (u16)(t * 65535.0f + 0.5f);
-            }
-        }
-
-        if (best_link_id >= links_.size())
-        {
-            return -1;
-        }
-        out_ref.vertex_id = links_[best_link_id].left_vex_id;
-        out_ref.link_id = best_link_id;
-        out_ref.flag = best_t_fixed;
-        return 0;
-    }
-
-    //A* 还没上 属于第一阶后续内容 这里先占位
-    s32 path_find(ref start, ref end)
-    {
-        return -1;
-    }
-
-    s32 path_find(zpoint start, zpoint end)
-    {
-        ref start_ref;
-        ref end_ref;
-        if (find_nearst_ref(start, kGridCellSize * 4, start_ref) != 0)
-        {
-            return -1;
-        }
-        if (find_nearst_ref(end, kGridCellSize * 4, end_ref) != 0)
-        {
-            return -1;
-        }
-        return path_find(start_ref, end_ref);
-    }
-
-    s32 remove_link(u32 link_id)
-    {
-        if (link_id >= links_.size())
-        {
-            return -1;
-        }
-        grid_remove(link_id);
-        link_frees_.push_back(link_id);
-        link_using_cnt_--;
-        return 0;
-    }
-
-    s32 remove_vertex(u32 vertex_id)
-    {
-        if (vertex_id >= vertexs_.size())
-        {
-            return -1;
-        }
-        vertex_frees_.push_back(vertex_id);
-        vertex_using_cnt_--;
-        return 0;
-    }
-
-    //ref 是否要支持独立的编辑期落点 owner 反查等语义还没定 先占位
-    s32 remove_ref(ref& ref)
-    {
-        return -1;
-    }
-
-    s32 add_vertex(zpoint point, u32 flag)
-    {
-        u32 id;
-        if (!vertex_frees_.empty())
-        {
-            id = vertex_frees_.back();
-            vertex_frees_.pop_back();
-            vertexs_[id] = point;
-        }
-        else
-        {
-            id = (u32)vertexs_.size();
-            vertexs_.push_back(point);
-        }
-        vertex_using_cnt_++;
-        return (s32)id;
-    }
-
-    //空间索引容量是编译期常量 link id 超出 kMaxLinks 时直接失败 不做静默截断
-    s32 add_link(u32 left_vex_id, u32 right_vex_id, u32 flag)
-    {
-        if (left_vex_id >= vertexs_.size() || right_vex_id >= vertexs_.size())
-        {
-            return -1;
-        }
-
-        u32 id;
-        if (!link_frees_.empty())
-        {
-            id = link_frees_.back();
-            link_frees_.pop_back();
-        }
-        else
-        {
-            id = (u32)links_.size();
-            links_.push_back({});
-        }
-
-        if (id >= kMaxLinks)
-        {
-            link_frees_.push_back(id);
-            return -2;
-        }
-
-        s32 grid_ret = grid_insert(id, vertexs_[left_vex_id], vertexs_[right_vex_id]);
-        if (grid_ret != 0)
-        {
-            link_frees_.push_back(id);
-            return grid_ret;
-        }
-
-        links_[id].left_vex_id = left_vex_id;
-        links_[id].right_vex_id = right_vex_id;
-        links_[id].flag = flag;
-        link_using_cnt_++;
-        return (s32)id;
-    }
-
-    //同上 语义未定 先占位
-    s32 add_ref(u32 vertex_id, u32 link_id, u32 flag)
-    {
-        return -1;
-    }
+    inline s32 find_nearst_ref(zpoint center, f32 max_radius, ref& out_ref);
+    inline s32 path_find(ref start, ref end);
+    inline s32 path_find(zpoint start, zpoint end);
+    inline s32 remove_link(u32 link_id);
+    inline s32 remove_vertex(u32 vertex_id);
+    inline s32 remove_ref(ref& ref);
+    inline s32 add_vertex(zpoint point, u32 flag);
+    inline s32 add_link(u32 left_vex_id, u32 right_vex_id, u32 flag);
+    inline s32 add_ref(u32 vertex_id, u32 link_id, u32 flag);
 
 
     // ============================================================================
     // 空间索引 内部实现 只服务本类自己的 link 池 不是通用组件 不要指望脱离 zgraph 复用
     // item_id 就是 link 池的 u32 下标 上限就是 kMaxLinks 跟外部完全没有独立身份概念
     // 光栅化 加 节点池 加 位掩码桶 的做法参见提案 zgraph 动态导航图 的空间索引决策一节
+    // 内部再分三段 grid 管理只认节点id和cell key / walker只做几何直线光栅化 / graph link绑定层是item_id对外的入口
     // ============================================================================
 private:
+    // ---- grid 管理 节点池 加 桶数组 加 free list 不感知 item 语义 只认 u32 节点 id 与 cell key ----
     struct grid_node_type
     {
         u32 item_id;
@@ -291,42 +219,17 @@ private:
 
     grid_node_type grid_node_pool_[kMaxLinkCoverage + 1];
     u32 grid_buckets_[kGridCellBuckets];
-    u32 grid_item_head_[kMaxLinks];
-    mutable u32 grid_item_stamp_[kMaxLinks];
-    mutable u32 grid_cur_stamp_;
     u32 grid_exploit_offset_;
     u32 grid_count_;
 
-    void grid_reset()
-    {
-        grid_exploit_offset_ = 0;
-        grid_count_ = 0;
-        grid_cur_stamp_ = 0;
-        grid_node_pool_[kGridFreePoolSize].next_in_item = kGridFreePoolSize;
-        memset(grid_buckets_, 0, sizeof(grid_buckets_));
-        memset(grid_item_head_, 0, sizeof(grid_item_head_));
-        memset(grid_item_stamp_, 0, sizeof(grid_item_stamp_));
-    }
+    inline static s32 grid_quantize(f32 v);
+    inline static u64 grid_make_cell_key(s32 cx, s32 cy);
+    inline static u32 grid_bucket_of(u64 key);
+    inline u32 grid_pop_free();
+    inline void grid_push_free(u32 node_id);
+    inline void grid_unlink_from_bucket(u32 node_id);
 
-    static s32 grid_quantize(f32 v)
-    {
-        return (s32)std::floor(v / kGridCellSize);
-    }
-
-    static u64 grid_make_cell_key(s32 cx, s32 cy)
-    {
-        return (((u64)(u32)cx) << 32) | (u32)cy;
-    }
-
-    static u32 grid_bucket_of(u64 key)
-    {
-        s32 cx = (s32)(key >> 32);
-        s32 cy = (s32)(key & 0xFFFFFFFFu);
-        //经典空间哈希的乘数 来自 Optimized Spatial Hashing (Teschner et al.) 目的只是把量化坐标打散 不追求密码学强度
-        u32 h = ((u32)cx * 73856093u) ^ ((u32)cy * 19349663u);
-        return h & (kGridCellBuckets - 1);
-    }
-
+    // ---- walker 直线光栅化 纯几何 每次 next 前进一格 不感知 grid 存储也不感知 link ----
     //Bresenham 风格的整数格子遍历 每 next() 前进一格 首次调用返回起点 走完返回 false
     //不用回调 因为 grid_insert 要在遍历途中随时可能因为节点池耗尽而中断并回滚 用 next() 逐格拉取更直接
     struct grid_cell_walker
@@ -387,151 +290,368 @@ private:
         u32 step_total_;
     };
 
-    u32 grid_pop_free()
-    {
-        if (grid_node_pool_[kGridFreePoolSize].next_in_item != kGridFreePoolSize)
-        {
-            u32 ret = grid_node_pool_[kGridFreePoolSize].next_in_item;
-            grid_node_pool_[kGridFreePoolSize].next_in_item = grid_node_pool_[ret].next_in_item;
-            grid_count_++;
-            return ret;
-        }
-        if (grid_exploit_offset_ < kMaxLinkCoverage)
-        {
-            grid_count_++;
-            return ++grid_exploit_offset_;
-        }
-        return kGridFreePoolSize;
-    }
+    // ---- graph link 绑定层 item_id 即 link 池下标 对外暴露 insert remove query 三个入口 加生命周期 reset ----
+    //grid_reset 顺带清零上面 grid 管理段的桶数组与节点池状态 因为整套索引只有一个生命周期入口
+    u32 grid_item_head_[kMaxLinks];
+    mutable u32 grid_item_stamp_[kMaxLinks];
+    mutable u32 grid_cur_stamp_;
 
-    void grid_push_free(u32 node_id)
-    {
-        grid_node_pool_[node_id].next_in_item = grid_node_pool_[kGridFreePoolSize].next_in_item;
-        grid_node_pool_[kGridFreePoolSize].next_in_item = node_id;
-        grid_count_--;
-    }
-
-    void grid_unlink_from_bucket(u32 node_id)
-    {
-        grid_node_type& node = grid_node_pool_[node_id];
-        u32 bucket = grid_bucket_of(node.cell_key);
-        u32 cur = grid_buckets_[bucket];
-        if (cur == node_id)
-        {
-            grid_buckets_[bucket] = node.next_in_cell;
-            return;
-        }
-        while (cur != kGridFreePoolSize)
-        {
-            u32 next = grid_node_pool_[cur].next_in_cell;
-            if (next == node_id)
-            {
-                grid_node_pool_[cur].next_in_cell = node.next_in_cell;
-                return;
-            }
-            cur = next;
-        }
-    }
-
-    //按 kGridCellSize 把线段 a->b 光栅化进格子 每条覆盖到的格子记一份归属节点
-    //item_id 必须小于 kMaxLinks 且当前未被 insert 过 重复 insert 前必须先 remove
-    //节点池耗尽时整条 item 回滚 不留半条 item 的归属
-    s32 grid_insert(u32 item_id, zpoint a, zpoint b)
-    {
-        if (item_id >= kMaxLinks || grid_item_head_[item_id] != kGridFreePoolSize)
-        {
-            return -1;
-        }
-
-        grid_cell_walker walker;
-        walker.init(a, b);
-
-        s32 cx = 0;
-        s32 cy = 0;
-        while (walker.next(cx, cy))
-        {
-            u64 key = grid_make_cell_key(cx, cy);
-            u32 node_id = grid_pop_free();
-            if (node_id == kGridFreePoolSize)
-            {
-                grid_remove(item_id);
-                return -2;
-            }
-            grid_node_type& node = grid_node_pool_[node_id];
-            node.item_id = item_id;
-            node.cell_key = key;
-
-            u32 bucket = grid_bucket_of(key);
-            node.next_in_cell = grid_buckets_[bucket];
-            grid_buckets_[bucket] = node_id;
-
-            node.next_in_item = grid_item_head_[item_id];
-            grid_item_head_[item_id] = node_id;
-        }
-        return 0;
-    }
-
-    s32 grid_remove(u32 item_id)
-    {
-        if (item_id >= kMaxLinks)
-        {
-            return -1;
-        }
-        u32 node_id = grid_item_head_[item_id];
-        while (node_id != kGridFreePoolSize)
-        {
-            u32 next_item_node = grid_node_pool_[node_id].next_in_item;
-            grid_unlink_from_bucket(node_id);
-            grid_push_free(node_id);
-            node_id = next_item_node;
-        }
-        grid_item_head_[item_id] = kGridFreePoolSize;
-        return 0;
-    }
-
-    //以 center 为中心 边长 2*radius 的方形范围做候选查询 不是精确圆 精确裁剪由调用方对拿到的 item 再做一次几何判定
-    //同一个 item 覆盖多个候选格子时只写一次 用时间戳标记法去重 不清数组
-    //out_items 由调用方提供 装不下时仍然继续数 返回值可能大于 max_out 调用方据此判断是否发生截断 不做静默丢弃
-    u32 grid_query(zpoint center, f32 radius, u32* out_items, u32 max_out) const
-    {
-        s32 cx0 = grid_quantize(center.x - radius);
-        s32 cx1 = grid_quantize(center.x + radius);
-        s32 cy0 = grid_quantize(center.y - radius);
-        s32 cy1 = grid_quantize(center.y + radius);
-
-        u32 stamp = ++grid_cur_stamp_;
-        u32 hit = 0;
-        for (s32 cx = cx0; cx <= cx1; cx++)
-        {
-            for (s32 cy = cy0; cy <= cy1; cy++)
-            {
-                u64 key = grid_make_cell_key(cx, cy);
-                u32 bucket = grid_bucket_of(key);
-                u32 node_id = grid_buckets_[bucket];
-                while (node_id != kGridFreePoolSize)
-                {
-                    const grid_node_type& node = grid_node_pool_[node_id];
-                    if (node.cell_key == key && grid_item_stamp_[node.item_id] != stamp)
-                    {
-                        grid_item_stamp_[node.item_id] = stamp;
-                        if (hit < max_out)
-                        {
-                            out_items[hit] = node.item_id;
-                        }
-                        hit++;
-                    }
-                    node_id = node.next_in_cell;
-                }
-            }
-        }
-        return hit;
-    }
+    inline void grid_reset();
+    inline s32 grid_insert(u32 item_id, zpoint a, zpoint b);
+    inline s32 grid_remove(u32 item_id);
+    inline u32 grid_query(zpoint center, f32 radius, u32* out_items, u32 max_out) const;
     // ============================================================================
     // 空间索引实现结束
     // ============================================================================
+
+
+
+public:
+
+
+
+
 };
 
 
+
+
+zgraph::zgraph()
+{
+    vertex_using_cnt_ = 0;
+    link_using_cnt_ = 0;
+    grid_reset();
+}
+
+//候选 link 先由内置空间索引按方形范围筛出来 再逐条做点到线段投影 取真正最近的一条
+//out_ref.flag 暂时借用来存归一化 t 的 u16 定点 0 到 65535 独立的 t 字段是提案里待改项 这里先不动 struct 布局
+//kMaxCandidates 是查询候选缓冲区的容量 命中数超过它时 hit 仍会数满实际命中总数 调用方可据此判断是否发生截断
+s32 zgraph::find_nearst_ref(zpoint center, f32 max_radius, ref& out_ref)
+{
+    static constexpr u32 kMaxCandidates = 64;
+    u32 candidates[kMaxCandidates];
+    u32 hit = grid_query(center, max_radius, candidates, kMaxCandidates);
+    u32 loop_count = hit < kMaxCandidates ? hit : kMaxCandidates;
+
+    u32 best_link_id = link_using_cnt_ + link_frees_.size(); //links_.size() 的哨兵值 代表未命中
+    f32 best_dist_sq = max_radius * max_radius;
+    u16 best_t_fixed = 0;
+
+    for (u32 i = 0; i < loop_count; i++)
+    {
+        u32 link_id = candidates[i];
+        const link& l = links_[link_id];
+        zpoint a = vertexs_[l.left_vex_id];
+        zpoint b = vertexs_[l.right_vex_id];
+        zpoint ab = b - a;
+        f32 len_sq = ab.square_length_2d();
+        f32 t = len_sq > zpoint::kFloatPrecision ? (center - a).dot_2d(ab) / len_sq : 0.0f;
+        t = t < 0.0f ? 0.0f : (t > 1.0f ? 1.0f : t);
+        zpoint proj = a + ab * t;
+        f32 dist_sq = (center - proj).square_length_2d();
+        if (dist_sq <= best_dist_sq)
+        {
+            best_dist_sq = dist_sq;
+            best_link_id = link_id;
+            best_t_fixed = (u16)(t * 65535.0f + 0.5f);
+        }
+    }
+
+    if (best_link_id >= links_.size())
+    {
+        return -1;
+    }
+    out_ref.vertex_id = links_[best_link_id].left_vex_id;
+    out_ref.link_id = best_link_id;
+    out_ref.flag = best_t_fixed;
+    return 0;
+}
+
+//A* 还没上 属于第一阶后续内容 这里先占位
+s32 zgraph::path_find(ref start, ref end)
+{
+    return -1;
+}
+
+s32 zgraph::path_find(zpoint start, zpoint end)
+{
+    ref start_ref;
+    ref end_ref;
+    if (find_nearst_ref(start, kGridCellSize * 4, start_ref) != 0)
+    {
+        return -1;
+    }
+    if (find_nearst_ref(end, kGridCellSize * 4, end_ref) != 0)
+    {
+        return -1;
+    }
+    return path_find(start_ref, end_ref);
+}
+
+s32 zgraph::remove_link(u32 link_id)
+{
+    if (link_id >= links_.size())
+    {
+        return -1;
+    }
+    grid_remove(link_id);
+    link_frees_.push_back(link_id);
+    link_using_cnt_--;
+    return 0;
+}
+
+s32 zgraph::remove_vertex(u32 vertex_id)
+{
+    if (vertex_id >= vertexs_.size())
+    {
+        return -1;
+    }
+    vertex_frees_.push_back(vertex_id);
+    vertex_using_cnt_--;
+    return 0;
+}
+
+//ref 是否要支持独立的编辑期落点 owner 反查等语义还没定 先占位
+s32 zgraph::remove_ref(ref& ref)
+{
+    return -1;
+}
+
+s32 zgraph::add_vertex(zpoint point, u32 flag)
+{
+    u32 id;
+    if (!vertex_frees_.empty())
+    {
+        id = vertex_frees_.back();
+        vertex_frees_.pop_back();
+        vertexs_[id] = point;
+    }
+    else
+    {
+        id = (u32)vertexs_.size();
+        vertexs_.push_back(point);
+    }
+    vertex_using_cnt_++;
+    return (s32)id;
+}
+
+//空间索引容量是编译期常量 link id 超出 kMaxLinks 时直接失败 不做静默截断
+s32 zgraph::add_link(u32 left_vex_id, u32 right_vex_id, u32 flag)
+{
+    if (left_vex_id >= vertexs_.size() || right_vex_id >= vertexs_.size())
+    {
+        return -1;
+    }
+
+    u32 id;
+    if (!link_frees_.empty())
+    {
+        id = link_frees_.back();
+        link_frees_.pop_back();
+    }
+    else
+    {
+        id = (u32)links_.size();
+        links_.push_back({});
+    }
+
+    if (id >= kMaxLinks)
+    {
+        link_frees_.push_back(id);
+        return -2;
+    }
+
+    s32 grid_ret = grid_insert(id, vertexs_[left_vex_id], vertexs_[right_vex_id]);
+    if (grid_ret != 0)
+    {
+        link_frees_.push_back(id);
+        return grid_ret;
+    }
+
+    links_[id].left_vex_id = left_vex_id;
+    links_[id].right_vex_id = right_vex_id;
+    links_[id].flag = flag;
+    link_using_cnt_++;
+    return (s32)id;
+}
+
+//同上 语义未定 先占位
+s32 zgraph::add_ref(u32 vertex_id, u32 link_id, u32 flag)
+{
+    return -1;
+}
+
+// ---- grid 管理实现 节点池 加 桶数组 加 free list ----
+s32 zgraph::grid_quantize(f32 v)
+{
+    return (s32)std::floor(v / kGridCellSize);
+}
+
+u64 zgraph::grid_make_cell_key(s32 cx, s32 cy)
+{
+    return (((u64)(u32)cx) << 32) | (u32)cy;
+}
+
+u32 zgraph::grid_bucket_of(u64 key)
+{
+    s32 cx = (s32)(key >> 32);
+    s32 cy = (s32)(key & 0xFFFFFFFFu);
+    //经典空间哈希的乘数 来自 Optimized Spatial Hashing (Teschner et al.) 目的只是把量化坐标打散 不追求密码学强度
+    u32 h = ((u32)cx * 73856093u) ^ ((u32)cy * 19349663u);
+    return h & (kGridCellBuckets - 1);
+}
+
+u32 zgraph::grid_pop_free()
+{
+    if (grid_node_pool_[kGridFreePoolSize].next_in_item != kGridFreePoolSize)
+    {
+        u32 ret = grid_node_pool_[kGridFreePoolSize].next_in_item;
+        grid_node_pool_[kGridFreePoolSize].next_in_item = grid_node_pool_[ret].next_in_item;
+        grid_count_++;
+        return ret;
+    }
+    if (grid_exploit_offset_ < kMaxLinkCoverage)
+    {
+        grid_count_++;
+        return ++grid_exploit_offset_;
+    }
+    return kGridFreePoolSize;
+}
+
+void zgraph::grid_push_free(u32 node_id)
+{
+    grid_node_pool_[node_id].next_in_item = grid_node_pool_[kGridFreePoolSize].next_in_item;
+    grid_node_pool_[kGridFreePoolSize].next_in_item = node_id;
+    grid_count_--;
+}
+
+void zgraph::grid_unlink_from_bucket(u32 node_id)
+{
+    grid_node_type& node = grid_node_pool_[node_id];
+    u32 bucket = grid_bucket_of(node.cell_key);
+    u32 cur = grid_buckets_[bucket];
+    if (cur == node_id)
+    {
+        grid_buckets_[bucket] = node.next_in_cell;
+        return;
+    }
+    while (cur != kGridFreePoolSize)
+    {
+        u32 next = grid_node_pool_[cur].next_in_cell;
+        if (next == node_id)
+        {
+            grid_node_pool_[cur].next_in_cell = node.next_in_cell;
+            return;
+        }
+        cur = next;
+    }
+}
+
+// ---- graph link 绑定层实现 item_id 即 link 池下标 ----
+void zgraph::grid_reset()
+{
+    grid_exploit_offset_ = 0;
+    grid_count_ = 0;
+    grid_cur_stamp_ = 0;
+    grid_node_pool_[kGridFreePoolSize].next_in_item = kGridFreePoolSize;
+    memset(grid_buckets_, 0, sizeof(grid_buckets_));
+    memset(grid_item_head_, 0, sizeof(grid_item_head_));
+    memset(grid_item_stamp_, 0, sizeof(grid_item_stamp_));
+}
+
+//按 kGridCellSize 把线段 a->b 光栅化进格子 每条覆盖到的格子记一份归属节点
+//item_id 必须小于 kMaxLinks 且当前未被 insert 过 重复 insert 前必须先 remove
+//节点池耗尽时整条 item 回滚 不留半条 item 的归属
+s32 zgraph::grid_insert(u32 item_id, zpoint a, zpoint b)
+{
+    if (item_id >= kMaxLinks || grid_item_head_[item_id] != kGridFreePoolSize)
+    {
+        return -1;
+    }
+
+    grid_cell_walker walker;
+    walker.init(a, b);
+
+    s32 cx = 0;
+    s32 cy = 0;
+    while (walker.next(cx, cy))
+    {
+        u64 key = grid_make_cell_key(cx, cy);
+        u32 node_id = grid_pop_free();
+        if (node_id == kGridFreePoolSize)
+        {
+            grid_remove(item_id);
+            return -2;
+        }
+        grid_node_type& node = grid_node_pool_[node_id];
+        node.item_id = item_id;
+        node.cell_key = key;
+
+        u32 bucket = grid_bucket_of(key);
+        node.next_in_cell = grid_buckets_[bucket];
+        grid_buckets_[bucket] = node_id;
+
+        node.next_in_item = grid_item_head_[item_id];
+        grid_item_head_[item_id] = node_id;
+    }
+    return 0;
+}
+
+s32 zgraph::grid_remove(u32 item_id)
+{
+    if (item_id >= kMaxLinks)
+    {
+        return -1;
+    }
+    u32 node_id = grid_item_head_[item_id];
+    while (node_id != kGridFreePoolSize)
+    {
+        u32 next_item_node = grid_node_pool_[node_id].next_in_item;
+        grid_unlink_from_bucket(node_id);
+        grid_push_free(node_id);
+        node_id = next_item_node;
+    }
+    grid_item_head_[item_id] = kGridFreePoolSize;
+    return 0;
+}
+
+//以 center 为中心 边长 2*radius 的方形范围做候选查询 不是精确圆 精确裁剪由调用方对拿到的 item 再做一次几何判定
+//同一个 item 覆盖多个候选格子时只写一次 用时间戳标记法去重 不清数组
+//out_items 由调用方提供 装不下时仍然继续数 返回值可能大于 max_out 调用方据此判断是否发生截断 不做静默丢弃
+u32 zgraph::grid_query(zpoint center, f32 radius, u32* out_items, u32 max_out) const
+{
+    s32 cx0 = grid_quantize(center.x - radius);
+    s32 cx1 = grid_quantize(center.x + radius);
+    s32 cy0 = grid_quantize(center.y - radius);
+    s32 cy1 = grid_quantize(center.y + radius);
+
+    u32 stamp = ++grid_cur_stamp_;
+    u32 hit = 0;
+    for (s32 cx = cx0; cx <= cx1; cx++)
+    {
+        for (s32 cy = cy0; cy <= cy1; cy++)
+        {
+            u64 key = grid_make_cell_key(cx, cy);
+            u32 bucket = grid_bucket_of(key);
+            u32 node_id = grid_buckets_[bucket];
+            while (node_id != kGridFreePoolSize)
+            {
+                const grid_node_type& node = grid_node_pool_[node_id];
+                if (node.cell_key == key && grid_item_stamp_[node.item_id] != stamp)
+                {
+                    grid_item_stamp_[node.item_id] = stamp;
+                    if (hit < max_out)
+                    {
+                        out_items[hit] = node.item_id;
+                    }
+                    hit++;
+                }
+                node_id = node.next_in_cell;
+            }
+        }
+    }
+    return hit;
+}
 
 
 #endif

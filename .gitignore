@@ -52,3 +52,6 @@ bin/*
 # log
 *.log
 *.log.*
+*.codebuddy
+*.claude
+*.tclaude
