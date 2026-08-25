@@ -365,6 +365,19 @@ public:
         }
         return false;
     }
+    node_type* node_of(_Ty* ptr) noexcept
+    {
+        space_type* sp = reinterpret_cast<space_type*>(ptr);
+        if (sp >= &fixed_space_[0] && sp < &fixed_space_[0] + _FixedSize)
+        {
+            return &data_[sp - &fixed_space_[0]];
+        }
+        if (dync_space_ != NULL && sp >= dync_space_ && sp < dync_space_ + (_Size - _FixedSize))
+        {
+            return &data_[_FixedSize + (sp - dync_space_)];
+        }
+        return NULL;
+    }
 
     void clear()
     {

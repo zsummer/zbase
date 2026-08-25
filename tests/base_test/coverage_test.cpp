@@ -638,6 +638,9 @@ s32 list_test()
     ASSERT_TEST_EQ(bound_test.is_valid_node((void*)((u64)&bound_test + sizeof(bound_test))), false, "");
     ASSERT_TEST_EQ(!bound_test.is_valid_node((void*)((u64)&bound_test + sizeof(zlist<int, 100>::node_type) * 99 )), false, "");
 
+    bound_test.push_back(77);
+    using bound_test_list = zlist<int, 100>;
+    ASSERT_TEST_EQ(bound_test_list::node_of(&bound_test.front()), const_cast<bound_test_list::node_type*>(bound_test.data() + bound_test.begin().id_), "");
 
     for (size_t i = 0; i < 100; i++)
     {

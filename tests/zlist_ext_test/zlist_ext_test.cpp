@@ -27,6 +27,7 @@ s32 coverage_test()
         ASSERT_TEST(c1.size() == 2);
         ASSERT_TEST(c1.full());
         ASSERT_TEST(c1.back() == 2);
+        ASSERT_TEST(c1.node_of(&c1.front()) == c1.data() + c1.begin().id_);
         if (true)
         {
             zlist_ext<int, 2, 1> c2(c1);

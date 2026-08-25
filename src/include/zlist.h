@@ -193,6 +193,10 @@ public:
         space_type space;
     };
     static _Ty* node_cast(node_type& node) { return reinterpret_cast<_Ty*>(&node.space); }
+    static node_type* node_of(_Ty* ptr) noexcept
+    {
+        return reinterpret_cast<node_type*>(reinterpret_cast<u8*>(ptr) - offsetof(node_type, space));
+    }
 public:
 
     zlist()
