@@ -99,6 +99,10 @@ public:
 
     static constexpr s32 kDefaultLinkCost = Config::kDefaultLinkCost;
 
+    static constexpr s32 kSlotS = 0;
+    static constexpr s32 kSlotT = 1;
+    static constexpr s32 kSlotMax = 2;
+
 
 public:
     struct graph_node
@@ -109,16 +113,17 @@ public:
         s32 y;
         s32 refs;
         s32 cls;
+        s32 first_link[kSlotMax]; //invalid: -1 
     };
     
     struct graph_link
     {
         Link link;
-        s32 source;
-        s32 target;
+        s32 node[kSlotMax];
         s32 refs;
         s32 color;
         s32 cost;
+        s32 next[kSlotMax];
     };
 
     struct graph_find_option
@@ -161,6 +166,44 @@ private:
         return option.link_color == 0 || link->color == option.link_color;
     }
 
+    s32 unlink_from_chain(s32 link_id, s32 slot)
+    {
+        graph_link* link = ref_link(link_id);
+        if (link == nullptr)
+        {
+            return -1;
+        }
+        graph_node* node = ref_node(link->node[slot]);
+        if (node == nullptr)
+        {
+            return -2;
+        }
+        s32 prev_id = -1;
+        s32 curr_id = node->first_link[slot];
+        while (curr_id != -1)
+        {
+            if (curr_id == link_id)
+            {
+                break;
+            }
+            prev_id = curr_id;
+            curr_id = ref_link(curr_id)->next[slot];
+        }
+        if (curr_id == -1)
+        {
+            return -5;
+        }
+        if (prev_id == -1)
+        {
+            node->first_link[slot] = link->next[slot];
+        }
+        else
+        {
+            ref_link(prev_id)->next[slot] = link->next[slot];
+        }
+        return 0;
+    }
+
 public:
     static std::pair<s32, s32> to_int_pos(const zpoint& pos)
     {
@@ -187,6 +230,8 @@ public:
         node.y = xy.second;
         node.refs = 0;
         node.cls = cls;
+        node.first_link[0] = -1;
+        node.first_link[1] = -1;
         nodes_.push_back(node);
 
         s32 inner_node_id = nodes_.data()[node_list::END_ID].front;
@@ -311,15 +356,20 @@ public:
 
         graph_link link;
         link.link = v;
-        link.source = source;
-        link.target = target;
+        link.node[kSlotS] = source;
+        link.node[kSlotT] = target;
         link.refs = 0;
         link.color = color;
         link.cost = cost;
+        link.next[kSlotS] = ref_node(source)->first_link[kSlotS];
+        link.next[kSlotT] = ref_node(target)->first_link[kSlotT];
 
         links_.push_back(link);
 
         s32 inner_link_id = links_.data()[link_list::END_ID].front;
+
+        ref_node(source)->first_link[kSlotS] = inner_link_id;
+        ref_node(target)->first_link[kSlotT] = inner_link_id;
 
         return inner_link_id;
     }
@@ -351,17 +401,27 @@ public:
             return -2;
         }
 
-        graph_node* source = ref_node(link->source);
+        graph_node* source = ref_node(link->node[kSlotS]);
         if (source == nullptr)
         {
             return -3;
         }
-        graph_node* target = ref_node(link->target);
+        graph_node* target = ref_node(link->node[kSlotT]);
         if (target == nullptr)
         {
             return -4;
         }
 
+        s32 ret = unlink_from_chain(link_id, kSlotS);
+        if (ret != 0)
+        {
+            return ret;
+        }
+        ret = unlink_from_chain(link_id, kSlotT);
+        if (ret != 0)
+        {
+            return ret;
+        }
 
         source->refs--;
         target->refs--;
@@ -379,12 +439,12 @@ public:
             return -2;
         }
 
-        graph_node* source_node = ref_node(link->source);
+        graph_node* source_node = ref_node(link->node[kSlotS]);
         if (source_node == nullptr)
         {
             return -3;
         }
-        graph_node* target_node = ref_node(link->target);
+        graph_node* target_node = ref_node(link->node[kSlotT]);
         if (target_node == nullptr)
         {
             return -4;
@@ -475,12 +535,12 @@ public:
             return -2;
         }
 
-        graph_node* source_node = ref_node(link->source);
+        graph_node* source_node = ref_node(link->node[kSlotS]);
         if (source_node == nullptr)
         {
             return -3;
         }
-        graph_node* target_node = ref_node(link->target);
+        graph_node* target_node = ref_node(link->node[kSlotT]);
         if (target_node == nullptr)
         {
             return -4;
@@ -578,8 +638,8 @@ public:
     }
 
 
-    s32 find_nearest_node(const zpoint& pos, s32& out_link_id, bool& out_is_source, s32 exclude_node_id = -1,
-                           const graph_find_option& option = graph_find_option()) const
+    s32 find_nearest_link_sample(const zpoint& pos, s32& out_link_id, bool& out_is_source, s32 exclude_node_id = -1,
+                                  const graph_find_option& option = graph_find_option()) const
     {
         auto xy = to_int_pos(pos);
         s32 cx = xy.first;
@@ -596,17 +656,15 @@ public:
             {
                 return;
             }
-            s32 node_ids[2] = {link->source, link->target};
-            bool is_source_flags[2] = {true, false};
             for (s32 i = 0; i < 2; i++)
             {
-                s32 node_id = node_ids[i];
+                s32 node_id = link->node[i];
                 if (node_id == exclude_node_id)
                 {
                     continue;
                 }
                 const graph_node* node = const_cast<zgraph*>(this)->ref_node(node_id);
-                if (node == nullptr || !match_node(node, option))
+                if (node == nullptr)
                 {
                     continue;
                 }
@@ -616,7 +674,7 @@ public:
                 if (best_link_id == -1 || sq_dist < best_sq_dist)
                 {
                     best_link_id = link_id;
-                    best_is_source = is_source_flags[i];
+                    best_is_source = (i == kSlotS);
                     best_sq_dist = sq_dist;
                 }
             }
@@ -655,8 +713,9 @@ public:
     }
 
 
-    s32 find_nearest_link(const zpoint& pos, s32& out_link_id, zpoint& out_nearest_pos, bool& out_is_source_side,
-                           s32 exclude_link_id = -1, const graph_find_option& option = graph_find_option()) const
+    s32 find_nearest_link(const zpoint& pos, s32& out_link_id, s32& out_slot, zpoint& out_nearest_pos,
+                          f32& out_slot_sq_dist,
+                          s32 exclude_link_id = -1, const graph_find_option& option = graph_find_option()) const
     {
         auto xy = to_int_pos(pos);
         s32 cx = xy.first;
@@ -664,7 +723,7 @@ public:
 
         s32 best_link_id = -1;
         zpoint best_pos;
-        bool best_is_source_side = false;
+        s32 best_slot = kSlotS;
         f32 best_sq_dist = 0.0f;
 
         auto try_link = [&](s32 link_id)
@@ -678,16 +737,17 @@ public:
             {
                 return;
             }
-            const graph_node* source = const_cast<zgraph*>(this)->ref_node(link->source);
-            const graph_node* target = const_cast<zgraph*>(this)->ref_node(link->target);
-            if (source == nullptr || target == nullptr)
+            const graph_node* ends[2] =
+            {
+                const_cast<zgraph*>(this)->ref_node(link->node[kSlotS]),
+                const_cast<zgraph*>(this)->ref_node(link->node[kSlotT])
+            };
+            if (ends[0] == nullptr || ends[1] == nullptr)
             {
                 return;
             }
-            if (!match_node(source, option) || !match_node(target, option))
-            {
-                return;
-            }
+            const graph_node* source = ends[0];
+            const graph_node* target = ends[1];
 
             f32 ex = target->pos.x - source->pos.x;
             f32 ey = target->pos.y - source->pos.y;
@@ -710,7 +770,7 @@ public:
             {
                 best_link_id = link_id;
                 best_pos = nearest;
-                best_is_source_side = (t <= 0.5f);
+                best_slot = (t <= 0.5f) ? kSlotS : kSlotT;
                 best_sq_dist = sq_dist;
             }
         };
@@ -742,8 +802,9 @@ public:
             return -1;
         }
         out_link_id = best_link_id;
+        out_slot = best_slot;
         out_nearest_pos = best_pos;
-        out_is_source_side = best_is_source_side;
+        out_slot_sq_dist = best_sq_dist;
         return 0;
     }
 

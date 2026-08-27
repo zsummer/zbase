@@ -173,11 +173,11 @@ static s32 zgraph_find_nearest_and_neighbor_bench_test()
         {
             s32 out_link_id = -1;
             bool out_is_source = false;
-            s32 ret = g_graph.find_nearest_node(points[i], out_link_id, out_is_source);
+            s32 ret = g_graph.find_nearest_link_sample(points[i], out_link_id, out_is_source);
             salt += (ret == 0) ? out_link_id : 0;
         }
         cost.stop_and_save();
-        LOGFMTI("zgraph.find_nearest_node() avg cost: %.2f ns/op  (calls=%d, links_in_graph=%zu)",
+        LOGFMTI("zgraph.find_nearest_link_sample() avg cost: %.2f ns/op  (calls=%d, links_in_graph=%zu)",
                 (f64)cost.cost_ns() / (f64)N, N, g_node_ids.size() - 1);
     }
 
@@ -187,10 +187,11 @@ static s32 zgraph_find_nearest_and_neighbor_bench_test()
         for (int i = 0; i < N; i++)
         {
             s32 out_link_id = -1;
+            s32 out_slot = -1;
             zpoint out_nearest_pos;
-            bool out_is_source_side = false;
-            s32 ret = g_graph.find_nearest_link(points[i], out_link_id, out_nearest_pos, out_is_source_side);
-            salt += (ret == 0) ? (out_link_id + (out_is_source_side ? 1 : 0)) : 0;
+            f32 out_slot_sq_dist = 0.0f;
+            s32 ret = g_graph.find_nearest_link(points[i], out_link_id, out_slot, out_nearest_pos, out_slot_sq_dist);
+            salt += (ret == 0) ? (out_link_id + out_slot + (s32)out_slot_sq_dist) : 0;
         }
         cost.stop_and_save();
         LOGFMTI("zgraph.find_nearest_link() avg cost: %.2f ns/op  (calls=%d, links_in_graph=%zu)",
@@ -377,6 +378,143 @@ static s32 zgraph_destroy_test()
 }
 
 
+static s32 zgraph_adjacency_chain_test()
+{
+    static test_graph g;
+
+    s32 n0 = g.new_node(zpoint(100, 100, 0), 0);
+    s32 n1 = g.new_node(zpoint(200, 100, 0), 1);
+    s32 n2 = g.new_node(zpoint(300, 100, 0), 2);
+    s32 n3 = g.new_node(zpoint(400, 100, 0), 3);
+    ASSERT_TEST(n0 >= 0 && n1 >= 0 && n2 >= 0 && n3 >= 0, "new_node fail");
+
+    ASSERT_TEST(g.ref_node(n0)->first_link[0] == -1 && g.ref_node(n0)->first_link[1] == -1,
+                "fresh node first_link should be -1");
+
+    s32 l01 = g.new_link(n0, n1, 0);
+    s32 l02 = g.new_link(n0, n2, 1);
+    s32 l03 = g.new_link(n0, n3, 2);
+    s32 l21 = g.new_link(n2, n1, 3);
+    ASSERT_TEST(l01 >= 0 && l02 >= 0 && l03 >= 0 && l21 >= 0, "new_link fail");
+
+    {
+        std::vector<s32> out_chain;
+        s32 curr = g.ref_node(n0)->first_link[0];
+        while (curr != -1)
+        {
+            out_chain.push_back(curr);
+            curr = g.ref_link(curr)->next[0];
+        }
+        std::vector<s32> expect = { l03, l02, l01 };
+        ASSERT_TEST(out_chain == expect, "n0 slot0 (out) chain order broken");
+    }
+    {
+        std::vector<s32> in_chain;
+        s32 curr = g.ref_node(n1)->first_link[1];
+        while (curr != -1)
+        {
+            in_chain.push_back(curr);
+            curr = g.ref_link(curr)->next[1];
+        }
+        std::vector<s32> expect = { l21, l01 };
+        ASSERT_TEST(in_chain == expect, "n1 slot1 (in) chain order broken");
+    }
+    {
+        std::vector<s32> out_chain;
+        s32 curr = g.ref_node(n2)->first_link[0];
+        while (curr != -1)
+        {
+            out_chain.push_back(curr);
+            curr = g.ref_link(curr)->next[0];
+        }
+        std::vector<s32> expect = { l21 };
+        ASSERT_TEST(out_chain == expect, "n2 slot0 (out) chain order broken");
+    }
+    {
+        ASSERT_TEST(g.ref_node(n0)->first_link[1] == -1, "n0 has no in-links, slot1 should be empty");
+        ASSERT_TEST(g.ref_node(n2)->first_link[1] == l02, "n2 slot1 should hold its only in-link l02");
+        ASSERT_TEST(g.ref_node(n1)->first_link[0] == -1, "n1 has no out-links, slot0 should be empty");
+        ASSERT_TEST(g.ref_node(n3)->first_link[0] == -1, "n3 has no out-links, slot0 should be empty");
+    }
+
+    {
+        s32 ret = g.free_link(l02);
+        ASSERT_TEST(ret == 0, "free middle link fail ret=", ret);
+        std::vector<s32> out_chain;
+        s32 curr = g.ref_node(n0)->first_link[0];
+        while (curr != -1)
+        {
+            out_chain.push_back(curr);
+            curr = g.ref_link(curr)->next[0];
+        }
+        std::vector<s32> expect = { l03, l01 };
+        ASSERT_TEST(out_chain == expect, "n0 slot0 chain broken after removing middle link");
+
+        std::vector<s32> in_chain;
+        curr = g.ref_node(n1)->first_link[1];
+        while (curr != -1)
+        {
+            in_chain.push_back(curr);
+            curr = g.ref_link(curr)->next[1];
+        }
+        std::vector<s32> in_expect = { l21, l01 };
+        ASSERT_TEST(in_chain == in_expect, "n1 slot1 chain broken after removing middle link");
+    }
+
+    {
+        s32 ret = g.free_link(l03);
+        ASSERT_TEST(ret == 0, "free head link fail ret=", ret);
+        std::vector<s32> out_chain;
+        s32 curr = g.ref_node(n0)->first_link[0];
+        while (curr != -1)
+        {
+            out_chain.push_back(curr);
+            curr = g.ref_link(curr)->next[0];
+        }
+        std::vector<s32> expect = { l01 };
+        ASSERT_TEST(out_chain == expect, "n0 slot0 chain broken after removing head link");
+    }
+
+    {
+        s32 ret = g.free_link(l01);
+        ASSERT_TEST(ret == 0, "free last link fail ret=", ret);
+        ASSERT_TEST(g.ref_node(n0)->first_link[0] == -1, "n0 slot0 chain should be empty");
+        ASSERT_TEST(g.ref_node(n1)->first_link[1] == l21, "n1 slot1 chain should still hold l21");
+        ASSERT_TEST(g.ref_node(n0)->refs == 0, "n0 refs should drop to 0");
+    }
+
+    {
+        s32 l_new = g.new_link(n0, n2, 9);
+        ASSERT_TEST(l_new >= 0, "new_link after chain empty fail");
+        std::vector<s32> out_chain;
+        s32 curr = g.ref_node(n0)->first_link[0];
+        while (curr != -1)
+        {
+            out_chain.push_back(curr);
+            curr = g.ref_link(curr)->next[0];
+        }
+        ASSERT_TEST(out_chain.size() == 1 && out_chain[0] == l_new, "reused slot should be the only out-link on n0");
+        s32 ret = g.free_link(l_new);
+        ASSERT_TEST(ret == 0, "free reused link fail ret=", ret);
+    }
+
+    {
+        s32 l_self = g.new_link(n3, n3, 10);
+        ASSERT_TEST(l_self >= 0, "new self-loop link fail");
+        ASSERT_TEST(g.ref_node(n3)->first_link[0] == l_self && g.ref_node(n3)->first_link[1] == l_self,
+                    "self-loop should sit on both chains of n3");
+        ASSERT_TEST(g.ref_node(n3)->refs == 2, "self-loop should add 2 refs");
+        s32 ret = g.free_link(l_self);
+        ASSERT_TEST(ret == 0, "free self-loop fail ret=", ret);
+        ASSERT_TEST(g.ref_node(n3)->first_link[0] == -1 && g.ref_node(n3)->first_link[1] == -1,
+                    "n3 both chains should be empty after self-loop free");
+        ASSERT_TEST(g.ref_node(n3)->refs == 0, "n3 refs should drop to 0");
+    }
+
+    return 0;
+}
+
+
 int main(int argc, char* argv[])
 {
     ztest_init();
@@ -386,6 +524,7 @@ int main(int argc, char* argv[])
 
     LogDebug() << " main begin test. ";
 
+    ASSERT_TEST(zgraph_adjacency_chain_test()                     == 0);
     ASSERT_TEST(zgraph_build_2000_links_test()                    == 0);
     ASSERT_TEST(zgraph_build_2000_nodes_test()                    == 0);
     ASSERT_TEST(zgraph_find_nearest_and_neighbor_bench_test()      == 0);
