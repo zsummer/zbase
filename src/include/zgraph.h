@@ -79,6 +79,8 @@ struct DefaultGraphConfig
 
     static constexpr s32 kGridSize = 1000; //cm
     static constexpr f32 kMergeDist = 0.001f; //cm
+
+    static constexpr s32 kDefaultLinkCost = 100;
 };
 
 template<class Node, class Link, typename Config = DefaultGraphConfig>
@@ -95,6 +97,8 @@ public:
     static constexpr s32 kGridSize = Config::kGridSize;
     static constexpr f32 kMergeDist = Config::kMergeDist;
 
+    static constexpr s32 kDefaultLinkCost = Config::kDefaultLinkCost;
+
 
 public:
     struct graph_node
@@ -104,6 +108,7 @@ public:
         s32 x;
         s32 y;
         s32 refs;
+        s32 cls;
     };
     
     struct graph_link
@@ -112,6 +117,14 @@ public:
         s32 source;
         s32 target;
         s32 refs;
+        s32 color;
+        s32 cost;
+    };
+
+    struct graph_find_option
+    {
+        s32 node_cls = 0;
+        s32 link_color = 0;
     };
 
 
@@ -138,6 +151,16 @@ private:
 
     zhash_map<u64, terrain, kMaxGridCnt> terrain_map_;
 
+private:
+    static bool match_node(const graph_node* node, const graph_find_option& option)
+    {
+        return option.node_cls == 0 || node->cls == option.node_cls;
+    }
+    static bool match_link(const graph_link* link, const graph_find_option& option)
+    {
+        return option.link_color == 0 || link->color == option.link_color;
+    }
+
 public:
     static std::pair<s32, s32> to_int_pos(const zpoint& pos)
     {
@@ -150,7 +173,7 @@ public:
     static  u64 to_terrain_key(s64 x, s64 y){return ((u64)x << 32) | (u64)y;}
 
 
-    s32 new_node(const zpoint& pos, Node v)
+    s32 new_node(const zpoint& pos, Node v, s32 cls = 0)
     {
         auto xy = to_int_pos(pos);
         if (nodes_.full())
@@ -163,6 +186,7 @@ public:
         node.x = xy.first;
         node.y = xy.second;
         node.refs = 0;
+        node.cls = cls;
         nodes_.push_back(node);
 
         s32 inner_node_id = nodes_.data()[node_list::END_ID].front;
@@ -271,7 +295,7 @@ public:
 
 
 
-    s32 new_link(s32 source, s32 target, const Link& v)
+    s32 new_link(s32 source, s32 target, const Link& v, s32 color = 0, s32 cost = kDefaultLinkCost)
     {
         if (links_.full())
         {
@@ -290,6 +314,8 @@ public:
         link.source = source;
         link.target = target;
         link.refs = 0;
+        link.color = color;
+        link.cost = cost;
 
         links_.push_back(link);
 
@@ -552,7 +578,8 @@ public:
     }
 
 
-    s32 find_nearest_node(const zpoint& pos, s32& out_link_id, bool& out_is_source, s32 exclude_node_id = -1) const
+    s32 find_nearest_node(const zpoint& pos, s32& out_link_id, bool& out_is_source, s32 exclude_node_id = -1,
+                           const graph_find_option& option = graph_find_option()) const
     {
         auto xy = to_int_pos(pos);
         s32 cx = xy.first;
@@ -565,7 +592,7 @@ public:
         auto try_link = [&](s32 link_id)
         {
             const graph_link* link = const_cast<zgraph*>(this)->ref_link(link_id);
-            if (link == nullptr)
+            if (link == nullptr || !match_link(link, option))
             {
                 return;
             }
@@ -579,7 +606,7 @@ public:
                     continue;
                 }
                 const graph_node* node = const_cast<zgraph*>(this)->ref_node(node_id);
-                if (node == nullptr)
+                if (node == nullptr || !match_node(node, option))
                 {
                     continue;
                 }
@@ -629,7 +656,7 @@ public:
 
 
     s32 find_nearest_link(const zpoint& pos, s32& out_link_id, zpoint& out_nearest_pos, bool& out_is_source_side,
-                           s32 exclude_link_id = -1) const
+                           s32 exclude_link_id = -1, const graph_find_option& option = graph_find_option()) const
     {
         auto xy = to_int_pos(pos);
         s32 cx = xy.first;
@@ -647,13 +674,17 @@ public:
                 return;
             }
             const graph_link* link = const_cast<zgraph*>(this)->ref_link(link_id);
-            if (link == nullptr)
+            if (link == nullptr || !match_link(link, option))
             {
                 return;
             }
             const graph_node* source = const_cast<zgraph*>(this)->ref_node(link->source);
             const graph_node* target = const_cast<zgraph*>(this)->ref_node(link->target);
             if (source == nullptr || target == nullptr)
+            {
+                return;
+            }
+            if (!match_node(source, option) || !match_node(target, option))
             {
                 return;
             }
@@ -718,7 +749,7 @@ public:
 
     template<size_t MaxOut, class Filter = default_node_filter>
     s32 find_neighbor_nodes(const zpoint& pos, zarray<s32, MaxOut>& out_node_ids, s32 exclude_node_id = -1,
-                             Filter filter = Filter()) const
+                             Filter filter = Filter(), const graph_find_option& option = graph_find_option()) const
     {
         auto xy = to_int_pos(pos);
         s32 cx = xy.first;
@@ -731,7 +762,7 @@ public:
                 return;
             }
             const graph_node* node = const_cast<zgraph*>(this)->ref_node(node_id);
-            if (node == nullptr || filter(node->node))
+            if (node == nullptr || !match_node(node, option) || filter(node->node))
             {
                 return;
             }
