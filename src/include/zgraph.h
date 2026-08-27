@@ -68,24 +68,36 @@ link和node独立入图 用作视野管理时 可不入link   用作寻路时候
 */
 
 
-template<class Node, class Link>
-class zgraph
+struct DefaultGraphConfig
 {
-    //may be all constexpr value as template args;
-public:
     static constexpr s32 kMaxLinkCnt = 5000;
     static constexpr s32 kMaxNodeCnt = 5000;
     static constexpr s32 kMaxGridCnt = 100 * 100;
 
-
     static constexpr s32 kGridP90LinkCnt = 5;
+    static constexpr s32 kGridP90NodeCnt = 10;
 
     static constexpr s32 kGridSize = 1000; //cm
     static constexpr f32 kMergeDist = 0.001f; //cm
+};
+
+template<class Node, class Link, typename Config = DefaultGraphConfig>
+class zgraph
+{
+public:
+    static constexpr s32 kMaxLinkCnt = Config::kMaxLinkCnt;
+    static constexpr s32 kMaxNodeCnt = Config::kMaxNodeCnt;
+    static constexpr s32 kMaxGridCnt = Config::kMaxGridCnt;
+
+    static constexpr s32 kGridP90LinkCnt = Config::kGridP90LinkCnt;
+    static constexpr s32 kGridP90NodeCnt = Config::kGridP90NodeCnt;
+
+    static constexpr s32 kGridSize = Config::kGridSize;
+    static constexpr f32 kMergeDist = Config::kMergeDist;
 
 
 public:
-    struct path_node
+    struct graph_node
     {
         Node node;
         zpoint pos;
@@ -94,7 +106,7 @@ public:
         s32 refs;
     };
     
-    struct path_link
+    struct graph_link
     {
         Link link;
         s32 source;
@@ -105,18 +117,23 @@ public:
 
     struct terrain
     {
-        // 空间索引只登记 link(边), 不登记 node(点): node 稠密数组下标本身已是最紧凑的定位方式,
-        // 需要"node 的空间位置"时, 走它所属的 link 的两端点(source/target)间接得到即可,
-        // 没必要为 node 单独维护一份终归会与 link 端点重复的空间索引.
         zarray<s32, kGridP90LinkCnt> links;
         std::vector<s32> ext_links; //expire empty
+        zarray<s32, kGridP90NodeCnt> nodes;
+        std::vector<s32> ext_nodes; //expire empty
     };
 
 private:
-    using node_list = zlist<path_node, kMaxNodeCnt>;
+    struct default_node_filter
+    {
+        bool operator()(const Node&) const { return false; }
+    };
+
+private:
+    using node_list = zlist<graph_node, kMaxNodeCnt>;
     node_list nodes_;
 
-    using link_list = zlist<path_link, kMaxLinkCnt>;
+    using link_list = zlist<graph_link, kMaxLinkCnt>;
     link_list links_;
 
     zhash_map<u64, terrain, kMaxGridCnt> terrain_map_;
@@ -140,12 +157,12 @@ public:
         {
             return -1;
         }
-        path_node node;
+        graph_node node;
         node.node = v;
         node.pos = pos;
         node.x = xy.first;
         node.y = xy.second;
-        node.refs = 0; // must init: path_node is a plain struct, refs is otherwise indeterminate garbage
+        node.refs = 0;
         nodes_.push_back(node);
 
         s32 inner_node_id = nodes_.data()[node_list::END_ID].front;
@@ -157,7 +174,7 @@ public:
         return nodes_.is_valid_node(nodes_.data() + node_id);
     }
 
-    path_node* ref_node(s32 node_id)
+    graph_node* ref_node(s32 node_id)
     {
         if (!is_valid_node(node_id))
         {
@@ -168,7 +185,7 @@ public:
 
     s32 free_node(s32 node_id)
     {
-        path_node* node = ref_node(node_id);
+        graph_node* node = ref_node(node_id);
         if (node == nullptr)
         {
             return -1;
@@ -182,6 +199,75 @@ public:
         nodes_.erase(node_list::iterator(nodes_.data(), node_id));
         return 0;
     }
+
+    s32 push_node(s32 node_id)
+    {
+        graph_node* node = ref_node(node_id);
+        if (node == nullptr)
+        {
+            return -1;
+        }
+        u64 key = to_terrain_key(node->x, node->y);
+        if (terrain_map_.full())
+        {
+            auto iter = terrain_map_.find(key);
+            if (iter == terrain_map_.end())
+            {
+                return -2;
+            }
+        }
+        terrain& t = terrain_map_[key];
+        if (!t.nodes.full())
+        {
+            t.nodes.push_back(node_id);
+        }
+        else
+        {
+            t.ext_nodes.push_back(node_id);
+        }
+        node->refs++;
+        return 0;
+    }
+
+    s32 pop_node(s32 node_id)
+    {
+        graph_node* node = ref_node(node_id);
+        if (node == nullptr)
+        {
+            return -1;
+        }
+        u64 key = to_terrain_key(node->x, node->y);
+        auto iter = terrain_map_.find(key);
+        if (iter == terrain_map_.end())
+        {
+            return -2;
+        }
+        terrain& t = iter->second;
+        auto nit = std::find(t.nodes.begin(), t.nodes.end(), node_id);
+        if (nit != t.nodes.end())
+        {
+            t.nodes.erase(nit);
+            node->refs--;
+        }
+        else
+        {
+            auto eit = std::find(t.ext_nodes.begin(), t.ext_nodes.end(), node_id);
+            if (eit == t.ext_nodes.end())
+            {
+                return -2;
+            }
+            t.ext_nodes.erase(eit);
+            node->refs--;
+        }
+        if (iter->second.links.empty() && iter->second.ext_links.empty()
+            && iter->second.nodes.empty() && iter->second.ext_nodes.empty())
+        {
+            terrain_map_.erase(iter);
+        }
+        return 0;
+    }
+
+
 
 
 
@@ -199,11 +285,11 @@ public:
         ref_node(source)->refs++;
         ref_node(target)->refs++;
 
-        path_link link;
+        graph_link link;
         link.link = v;
         link.source = source;
         link.target = target;
-        link.refs = 0; // must init: path_link is a plain struct, refs is otherwise indeterminate garbage
+        link.refs = 0;
 
         links_.push_back(link);
 
@@ -217,7 +303,7 @@ public:
         return links_.is_valid_node(links_.data() + link_id);
     }
 
-    path_link* ref_link(s32 link_id)
+    graph_link* ref_link(s32 link_id)
     {
         if (!is_valid_link(link_id))
         {
@@ -228,7 +314,7 @@ public:
 
     s32 free_link(s32 link_id)
     {
-        path_link* link = ref_link(link_id);
+        graph_link* link = ref_link(link_id);
         if (link == nullptr)
         {
             return -1;
@@ -239,12 +325,12 @@ public:
             return -2;
         }
 
-        path_node* source = ref_node(link->source);
+        graph_node* source = ref_node(link->source);
         if (source == nullptr)
         {
             return -3;
         }
-        path_node* target = ref_node(link->target);
+        graph_node* target = ref_node(link->target);
         if (target == nullptr)
         {
             return -4;
@@ -261,18 +347,18 @@ public:
     s32 push_link(s32 link_id, s32& affects)
     {
         affects = 0;
-        path_link* link = ref_link(link_id);
+        graph_link* link = ref_link(link_id);
         if (link == nullptr)
         {
             return -2;
         }
 
-        path_node* source_node = ref_node(link->source);
+        graph_node* source_node = ref_node(link->source);
         if (source_node == nullptr)
         {
             return -3;
         }
-        path_node* target_node = ref_node(link->target);
+        graph_node* target_node = ref_node(link->target);
         if (target_node == nullptr)
         {
             return -4;
@@ -357,18 +443,18 @@ public:
     s32 pop_link(s32 link_id, s32& affects)
     {
         affects = 0;
-        path_link* link = ref_link(link_id);
+        graph_link* link = ref_link(link_id);
         if (link == nullptr)
         {
             return -2;
         }
 
-        path_node* source_node = ref_node(link->source);
+        graph_node* source_node = ref_node(link->source);
         if (source_node == nullptr)
         {
             return -3;
         }
-        path_node* target_node = ref_node(link->target);
+        graph_node* target_node = ref_node(link->target);
         if (target_node == nullptr)
         {
             return -4;
@@ -421,7 +507,8 @@ public:
                         affects++;
                     }
                 }
-                if (iter->second.links.empty() && iter->second.ext_links.empty())
+                if (iter->second.links.empty() && iter->second.ext_links.empty()
+                    && iter->second.nodes.empty() && iter->second.ext_nodes.empty())
                 {
                     terrain_map_.erase(iter);
                 }
@@ -464,6 +551,7 @@ public:
         return 0;
     }
 
+
     s32 find_nearest_node(const zpoint& pos, s32& out_link_id, bool& out_is_source, s32 exclude_node_id = -1) const
     {
         auto xy = to_int_pos(pos);
@@ -476,7 +564,7 @@ public:
 
         auto try_link = [&](s32 link_id)
         {
-            const path_link* link = const_cast<zgraph*>(this)->ref_link(link_id);
+            const graph_link* link = const_cast<zgraph*>(this)->ref_link(link_id);
             if (link == nullptr)
             {
                 return;
@@ -490,7 +578,7 @@ public:
                 {
                     continue;
                 }
-                const path_node* node = const_cast<zgraph*>(this)->ref_node(node_id);
+                const graph_node* node = const_cast<zgraph*>(this)->ref_node(node_id);
                 if (node == nullptr)
                 {
                     continue;
@@ -558,13 +646,13 @@ public:
             {
                 return;
             }
-            const path_link* link = const_cast<zgraph*>(this)->ref_link(link_id);
+            const graph_link* link = const_cast<zgraph*>(this)->ref_link(link_id);
             if (link == nullptr)
             {
                 return;
             }
-            const path_node* source = const_cast<zgraph*>(this)->ref_node(link->source);
-            const path_node* target = const_cast<zgraph*>(this)->ref_node(link->target);
+            const graph_node* source = const_cast<zgraph*>(this)->ref_node(link->source);
+            const graph_node* target = const_cast<zgraph*>(this)->ref_node(link->target);
             if (source == nullptr || target == nullptr)
             {
                 return;
@@ -575,10 +663,10 @@ public:
             f32 len_sq = ex * ex + ey * ey;
 
             f32 t = 0.0f;
-            if (len_sq > kMergeDist * kMergeDist) // source/target 几乎重合(退化线段)时直接取 t=0(source端)
+            if (len_sq > kMergeDist * kMergeDist)
             {
                 t = ((pos.x - source->pos.x) * ex + (pos.y - source->pos.y) * ey) / len_sq;
-                t = t < 0.0f ? 0.0f : (t > 1.0f ? 1.0f : t); // clamp到线段范围内, 垂足落在线段外则退化为端点距离
+                t = t < 0.0f ? 0.0f : (t > 1.0f ? 1.0f : t);
             }
 
             zpoint nearest(source->pos.x + t * ex, source->pos.y + t * ey,
@@ -625,6 +713,52 @@ public:
         out_link_id = best_link_id;
         out_nearest_pos = best_pos;
         out_is_source_side = best_is_source_side;
+        return 0;
+    }
+
+    template<size_t MaxOut, class Filter = default_node_filter>
+    s32 find_neighbor_nodes(const zpoint& pos, zarray<s32, MaxOut>& out_node_ids, s32 exclude_node_id = -1,
+                             Filter filter = Filter()) const
+    {
+        auto xy = to_int_pos(pos);
+        s32 cx = xy.first;
+        s32 cy = xy.second;
+
+        auto try_node = [&](s32 node_id)
+        {
+            if (out_node_ids.full() || node_id == exclude_node_id)
+            {
+                return;
+            }
+            const graph_node* node = const_cast<zgraph*>(this)->ref_node(node_id);
+            if (node == nullptr || filter(node->node))
+            {
+                return;
+            }
+            out_node_ids.push_back(node_id);
+        };
+
+        for (s32 dx = -1; dx <= 1 && !out_node_ids.full(); dx++)
+        {
+            for (s32 dy = -1; dy <= 1 && !out_node_ids.full(); dy++)
+            {
+                u64 key = to_terrain_key(cx + dx, cy + dy);
+                auto iter = terrain_map_.find(key);
+                if (iter == terrain_map_.end())
+                {
+                    continue;
+                }
+                const terrain& t = iter->second;
+                for (s32 node_id : t.nodes)
+                {
+                    try_node(node_id);
+                }
+                for (s32 node_id : t.ext_nodes)
+                {
+                    try_node(node_id);
+                }
+            }
+        }
         return 0;
     }
 
