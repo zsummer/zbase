@@ -288,8 +288,9 @@ public:
     const bool empty() const noexcept { return !used_count_; }
     const bool full() const noexcept { return free_id_ == END_ID && exploit_offset_ >= END_ID; }
     size_type capacity() const { return max_size(); }
+    node_type* data() noexcept { return data_; }
     const node_type* data() const noexcept { return data_; }
-    const bool is_valid_node(void* addr) const noexcept
+    const bool is_valid_node(const void* addr) const noexcept
     {
         u64 uaddr = (u64)addr;
         u64 udata = (u64)data_;
