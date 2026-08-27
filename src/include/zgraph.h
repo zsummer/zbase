@@ -13,6 +13,7 @@
 #include <cmath>
 #include <cstring>
 #include <type_traits>
+#include <algorithm>
 #include "zpoint.h"
 #include <vector>
 #include "zlist_ext.h"
@@ -60,16 +61,9 @@ using f64 = double;
 #endif
 
 /*
-zgraph面向小规模图寻路
+zgraph面向小规模动态图寻路
 
-zpoint 提供向量计算 坐标封装
-
-这个graph有非常强的动态调整能力
-
-空间索引不再拆成独立组件 直接内置实现 因为它对 item_id 必须是稠密数组下标这个要求
-本质上就是复用 zgraph 自己的 link 池形状 拆出去只是形式上的解耦 实际是结构硬拆
-真正想要跟 zhash_map 一样通用的话 得换成 zhash_map<cell_key, zhash_set<link_id>> 那种实现
-代价是多一层哈希和一份反查索引 现在的场景不需要 见类内 空间索引 分区注释
+link和node独立入图 用作视野管理时 可不入link   用作寻路时候 可不入node  
 
 */
 
@@ -85,7 +79,6 @@ public:
 
 
     static constexpr s32 kGridP90LinkCnt = 5;
-    static constexpr s32 kGridP90NodeCnt = 5;
 
     static constexpr s32 kGridSize = 1000; //cm
     static constexpr f32 kMergeDist = 0.001f; //cm
@@ -112,6 +105,9 @@ public:
 
     struct terrain
     {
+        // 空间索引只登记 link(边), 不登记 node(点): node 稠密数组下标本身已是最紧凑的定位方式,
+        // 需要"node 的空间位置"时, 走它所属的 link 的两端点(source/target)间接得到即可,
+        // 没必要为 node 单独维护一份终归会与 link 端点重复的空间索引.
         zarray<s32, kGridP90LinkCnt> links;
         std::vector<s32> ext_links; //expire empty
     };
@@ -134,7 +130,7 @@ public:
     {
         return zpoint((f32)x*kGridSize + kGridSize/2, (f32)y*kGridSize + kGridSize/2,  z);
     }
-    static  u64 to_terrain_key(s32 x, s32 y){return ((u64)x << 32) | (u64)y;}
+    static  u64 to_terrain_key(s64 x, s64 y){return ((u64)x << 32) | (u64)y;}
 
 
     s32 new_node(const zpoint& pos, Node v)
@@ -149,6 +145,7 @@ public:
         node.pos = pos;
         node.x = xy.first;
         node.y = xy.second;
+        node.refs = 0; // must init: path_node is a plain struct, refs is otherwise indeterminate garbage
         nodes_.push_back(node);
 
         s32 inner_node_id = nodes_.data()[node_list::END_ID].front;
@@ -181,6 +178,7 @@ public:
         {
             return -2;
         }
+
         nodes_.erase(node_list::iterator(nodes_.data(), node_id));
         return 0;
     }
@@ -205,6 +203,7 @@ public:
         link.link = v;
         link.source = source;
         link.target = target;
+        link.refs = 0; // must init: path_link is a plain struct, refs is otherwise indeterminate garbage
 
         links_.push_back(link);
 
@@ -312,7 +311,7 @@ public:
 
             if (!t.links.full())
             {
-                t.links.push(link_id);
+                t.links.push_back(link_id);
             }
             else
             {
@@ -462,6 +461,170 @@ public:
             }
         } while (true);
 
+        return 0;
+    }
+
+    s32 find_nearest_node(const zpoint& pos, s32& out_link_id, bool& out_is_source, s32 exclude_node_id = -1) const
+    {
+        auto xy = to_int_pos(pos);
+        s32 cx = xy.first;
+        s32 cy = xy.second;
+
+        s32 best_link_id = -1;
+        bool best_is_source = false;
+        f32 best_sq_dist = 0.0f;
+
+        auto try_link = [&](s32 link_id)
+        {
+            const path_link* link = const_cast<zgraph*>(this)->ref_link(link_id);
+            if (link == nullptr)
+            {
+                return;
+            }
+            s32 node_ids[2] = {link->source, link->target};
+            bool is_source_flags[2] = {true, false};
+            for (s32 i = 0; i < 2; i++)
+            {
+                s32 node_id = node_ids[i];
+                if (node_id == exclude_node_id)
+                {
+                    continue;
+                }
+                const path_node* node = const_cast<zgraph*>(this)->ref_node(node_id);
+                if (node == nullptr)
+                {
+                    continue;
+                }
+                f32 ddx = node->pos.x - pos.x;
+                f32 ddy = node->pos.y - pos.y;
+                f32 sq_dist = ddx * ddx + ddy * ddy;
+                if (best_link_id == -1 || sq_dist < best_sq_dist)
+                {
+                    best_link_id = link_id;
+                    best_is_source = is_source_flags[i];
+                    best_sq_dist = sq_dist;
+                }
+            }
+        };
+
+        for (s32 dx = -1; dx <= 1; dx++)
+        {
+            for (s32 dy = -1; dy <= 1; dy++)
+            {
+                u64 key = to_terrain_key(cx + dx, cy + dy);
+                auto iter = terrain_map_.find(key);
+                if (iter == terrain_map_.end())
+                {
+                    continue;
+                }
+                const terrain& t = iter->second;
+
+                for (s32 link_id : t.links)
+                {
+                    try_link(link_id);
+                }
+                for (s32 link_id : t.ext_links)
+                {
+                    try_link(link_id);
+                }
+            }
+        }
+
+        if (best_link_id == -1)
+        {
+            return -1;
+        }
+        out_link_id = best_link_id;
+        out_is_source = best_is_source;
+        return 0;
+    }
+
+
+    s32 find_nearest_link(const zpoint& pos, s32& out_link_id, zpoint& out_nearest_pos, bool& out_is_source_side,
+                           s32 exclude_link_id = -1) const
+    {
+        auto xy = to_int_pos(pos);
+        s32 cx = xy.first;
+        s32 cy = xy.second;
+
+        s32 best_link_id = -1;
+        zpoint best_pos;
+        bool best_is_source_side = false;
+        f32 best_sq_dist = 0.0f;
+
+        auto try_link = [&](s32 link_id)
+        {
+            if (link_id == exclude_link_id)
+            {
+                return;
+            }
+            const path_link* link = const_cast<zgraph*>(this)->ref_link(link_id);
+            if (link == nullptr)
+            {
+                return;
+            }
+            const path_node* source = const_cast<zgraph*>(this)->ref_node(link->source);
+            const path_node* target = const_cast<zgraph*>(this)->ref_node(link->target);
+            if (source == nullptr || target == nullptr)
+            {
+                return;
+            }
+
+            f32 ex = target->pos.x - source->pos.x;
+            f32 ey = target->pos.y - source->pos.y;
+            f32 len_sq = ex * ex + ey * ey;
+
+            f32 t = 0.0f;
+            if (len_sq > kMergeDist * kMergeDist) // source/target 几乎重合(退化线段)时直接取 t=0(source端)
+            {
+                t = ((pos.x - source->pos.x) * ex + (pos.y - source->pos.y) * ey) / len_sq;
+                t = t < 0.0f ? 0.0f : (t > 1.0f ? 1.0f : t); // clamp到线段范围内, 垂足落在线段外则退化为端点距离
+            }
+
+            zpoint nearest(source->pos.x + t * ex, source->pos.y + t * ey,
+                            source->pos.z + t * (target->pos.z - source->pos.z));
+
+            f32 ddx = nearest.x - pos.x;
+            f32 ddy = nearest.y - pos.y;
+            f32 sq_dist = ddx * ddx + ddy * ddy;
+            if (best_link_id == -1 || sq_dist < best_sq_dist)
+            {
+                best_link_id = link_id;
+                best_pos = nearest;
+                best_is_source_side = (t <= 0.5f);
+                best_sq_dist = sq_dist;
+            }
+        };
+
+        for (s32 dx = -1; dx <= 1; dx++)
+        {
+            for (s32 dy = -1; dy <= 1; dy++)
+            {
+                u64 key = to_terrain_key(cx + dx, cy + dy);
+                auto iter = terrain_map_.find(key);
+                if (iter == terrain_map_.end())
+                {
+                    continue;
+                }
+                const terrain& t = iter->second;
+                for (s32 link_id : t.links)
+                {
+                    try_link(link_id);
+                }
+                for (s32 link_id : t.ext_links)
+                {
+                    try_link(link_id);
+                }
+            }
+        }
+
+        if (best_link_id == -1)
+        {
+            return -1;
+        }
+        out_link_id = best_link_id;
+        out_nearest_pos = best_pos;
+        out_is_source_side = best_is_source_side;
         return 0;
     }
 
