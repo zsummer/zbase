@@ -307,6 +307,108 @@ static s32 zgraph_add_and_remove_one_bench_test()
     return 0;
 }
 
+static s32 astar_group_report(const char* group_name, s32 loops, s32 ok_cnt, s64 step_total, s64 cost_ns)
+{
+    LOGFMTI("group[%s] avg cost: %.2f ns/op  (calls=%d, ok=%d, avg_steps=%.1f)",
+            group_name, (f64)cost_ns / (f64)loops, loops, ok_cnt,
+            ok_cnt > 0 ? (f64)step_total / (f64)ok_cnt : 0.0);
+    LOGFMTI("group[%s] open peak: %u / %d   visit peak: %u / %d",
+            group_name, g_graph.path_open_peak(), test_graph::kMaxOpenCnt,
+            g_graph.path_visit_peak(), test_graph::kMaxNodeCnt);
+    LOGFMTI("group[%s] nodes: %d / %d   links: %d / %d   grids: %d / %d",
+            group_name, g_graph.node_count(), test_graph::kMaxNodeCnt,
+            g_graph.link_count(), test_graph::kMaxLinkCnt,
+            g_graph.grid_count(), test_graph::kMaxGridCnt);
+    return 0;
+}
+
+static s32 astar_turns_group_run(const char* group_name, std::mt19937& rng, s32 loops,
+                                 s32 gap_min, s32 gap_max, volatile s32& salt)
+{
+    std::uniform_int_distribution<s32> gap_dist(gap_min, gap_max);
+    std::uniform_int_distribution<s32> head_dist(0, (s32)g_node_ids.size() - 1 - gap_max);
+    std::vector<test_graph::graph_path_step> steps;
+    g_graph.path_peak_reset();
+    zclock<> cost;
+    cost.start();
+    s32 ok_cnt = 0;
+    s64 step_total = 0;
+    for (s32 i = 0; i < loops; i++)
+    {
+        s32 head = head_dist(rng);
+        s32 tail = head + gap_dist(rng);
+        s32 ret = g_graph.find_path(g_node_ids[head], g_node_ids[tail], steps);
+        ASSERT_TEST_NOLOG(ret != -4, "open heap overflow in group ", group_name, " at i=", i);
+        if (ret == 0)
+        {
+            ok_cnt++;
+            step_total += (s64)steps.size();
+            salt += (s32)steps.size();
+        }
+    }
+    cost.stop_and_save();
+    return astar_group_report(group_name, loops, ok_cnt, step_total, cost.cost_ns());
+}
+
+static s32 astar_diagonal_group_run(std::mt19937& rng, s32 loops, volatile s32& salt)
+{
+    std::uniform_real_distribution<float> low_dist(0.0f, 5000.0f);
+    std::uniform_real_distribution<float> high_dist(95000.0f, kMapSizeCm - 1.0f);
+    std::uniform_int_distribution<s32> flip_dist(0, 1);
+    std::vector<test_graph::graph_path_step> steps;
+    g_graph.path_peak_reset();
+    zclock<> cost;
+    cost.start();
+    s32 ok_cnt = 0;
+    s64 step_total = 0;
+    for (s32 i = 0; i < loops; )
+    {
+        zpoint from(low_dist(rng), low_dist(rng), 0.0f);
+        zpoint to(high_dist(rng), high_dist(rng), 0.0f);
+        if (flip_dist(rng) == 1)
+        {
+            from.y = high_dist(rng);
+            to.y = low_dist(rng);
+        }
+        s32 ret = g_graph.find_path(from, to, steps);
+        if (ret == -1 || ret == -2)
+        {
+            continue;
+        }
+        i++;
+        ASSERT_TEST_NOLOG(ret != -4, "open heap overflow in group diagonal at i=", i);
+        if (ret == 0)
+        {
+            ok_cnt++;
+            step_total += (s64)steps.size();
+            salt += (s32)steps.size();
+        }
+    }
+    cost.stop_and_save();
+    return astar_group_report("diagonal", loops, ok_cnt, step_total, cost.cost_ns());
+}
+
+static s32 zgraph_astar_bench_test()
+{
+    ASSERT_TEST(!g_node_ids.empty(), "graph not built, run zgraph_build_2000_links_test first");
+    const s32 N = 20000;
+    std::mt19937 rng(20260830u);
+    volatile s32 salt = 0;
+    {
+        std::vector<test_graph::graph_path_step> warm_steps;
+        for (s32 i = 0; i < 100; i++)
+        {
+            g_graph.find_path(g_node_ids[i], g_node_ids[g_node_ids.size() - 1 - i], warm_steps);
+        }
+    }
+    ASSERT_TEST(astar_turns_group_run("turns03", rng, N, 3, 5, salt) == 0, "group turns03 fail");
+    ASSERT_TEST(astar_turns_group_run("turns10", rng, N, 10, 12, salt) == 0, "group turns10 fail");
+    ASSERT_TEST(astar_turns_group_run("turns20", rng, N, 20, 22, salt) == 0, "group turns20 fail");
+    ASSERT_TEST(astar_diagonal_group_run(rng, N, salt) == 0, "group diagonal fail");
+    LOGFMTI("(anti-optimize salt=%d)", (int)salt);
+    return 0;
+}
+
 static s32 zgraph_destroy_test()
 {
     ASSERT_TEST(!g_node_ids.empty(), "graph not built, run zgraph_build_2000_links_test first");
@@ -377,6 +479,197 @@ static s32 zgraph_destroy_test()
     return 0;
 }
 
+
+static s32 zgraph_astar_grid_test()
+{
+    test_graph g;
+    const s32 W = 8;
+    const s32 H = 8;
+    const f32 STEP = (f32)test_graph::kGridSize;
+    s32 ids[8][8];
+    for (s32 y = 0; y < H; y++)
+    {
+        for (s32 x = 0; x < W; x++)
+        {
+            ids[x][y] = g.new_node(zpoint((f32)x * STEP, (f32)y * STEP, 0.0f), y * W + x);
+            ASSERT_TEST_NOLOG(ids[x][y] >= 0, "new_node fail at x=", x, " y=", y);
+        }
+    }
+    for (s32 y = 0; y < H; y++)
+    {
+        for (s32 x = 0; x < W; x++)
+        {
+            if (x + 1 < W)
+            {
+                s32 lid = g.new_link(ids[x][y], ids[x + 1][y], 0);
+                ASSERT_TEST_NOLOG(lid >= 0, "new_link fail at x=", x, " y=", y);
+            }
+            if (y + 1 < H)
+            {
+                s32 lid = g.new_link(ids[x][y], ids[x][y + 1], 0);
+                ASSERT_TEST_NOLOG(lid >= 0, "new_link fail at x=", x, " y=", y);
+            }
+        }
+    }
+
+    std::vector<test_graph::graph_path_step> steps;
+    s32 ret = g.find_path(ids[0][0], ids[7][7], steps);
+    ASSERT_TEST(ret == 0, "find_path fail ret=", ret);
+    ASSERT_TEST((s32)steps.size() == 14, "expect 14 steps, got=", (s32)steps.size());
+
+    f32 total = 0.0f;
+    s32 curr = ids[0][0];
+    for (size_t i = 0; i < steps.size(); i++)
+    {
+        const test_graph::graph_path_step& step = steps[i];
+        ASSERT_TEST(step.link_id >= 0, "grid step link_id invalid at i=", (s32)i);
+        test_graph::graph_link* link = g.ref_link(step.link_id);
+        ASSERT_TEST(link->node[0] == curr || link->node[1] == curr, "path discontinuity at i=", (s32)i);
+        s32 depart_slot = link->node[0] == curr ? 0 : 1;
+        s32 next = link->node[1 - depart_slot];
+        ASSERT_TEST(step.slot == 1 - depart_slot, "step slot mismatch at i=", (s32)i);
+        f32 dx = g.ref_node(next)->pos.x - g.ref_node(curr)->pos.x;
+        f32 dy = g.ref_node(next)->pos.y - g.ref_node(curr)->pos.y;
+        ASSERT_TEST(fabsf(step.pos.x - g.ref_node(next)->pos.x) < 0.001f
+                    && fabsf(step.pos.y - g.ref_node(next)->pos.y) < 0.001f,
+                    "step pos mismatch at i=", (s32)i);
+        total += sqrtf(dx * dx + dy * dy);
+        curr = next;
+    }
+    ASSERT_TEST(curr == ids[7][7], "path endpoint mismatch");
+    ASSERT_TEST(fabsf(total - 14.0f * STEP) < 1.0f, "expect total len 14000, got=", total);
+
+    ret = g.find_path(ids[3][3], ids[3][3], steps);
+    ASSERT_TEST(ret == 0 && steps.empty(), "source==target expect 0 with empty steps, ret=", ret);
+    ret = g.find_path(-1, ids[0][0], steps);
+    ASSERT_TEST(ret == -1, "invalid source expect -1, ret=", ret);
+    ret = g.find_path(ids[0][0], 99999, steps);
+    ASSERT_TEST(ret == -2, "invalid target expect -2, ret=", ret);
+    return 0;
+}
+
+static s32 astar_corridor_build(test_graph& g, s32 short_cost, s32& out_a, s32& out_c)
+{
+    out_a = g.new_node(zpoint(0, 0, 0), 0);
+    s32 b = g.new_node(zpoint(1000, 0, 0), 1);
+    out_c = g.new_node(zpoint(2000, 0, 0), 2);
+    s32 d = g.new_node(zpoint(0, 1000, 0), 3);
+    s32 e = g.new_node(zpoint(1000, 1000, 0), 4);
+    s32 f = g.new_node(zpoint(2000, 1000, 0), 5);
+    ASSERT_TEST_NOLOG(out_a >= 0 && b >= 0 && out_c >= 0 && d >= 0 && e >= 0 && f >= 0, "corridor new_node fail");
+    s32 l1 = g.new_link(out_a, b, 0, 0, short_cost);
+    s32 l2 = g.new_link(b, out_c, 0);
+    s32 l3 = g.new_link(out_a, d, 0);
+    s32 l4 = g.new_link(d, e, 0);
+    s32 l5 = g.new_link(e, f, 0);
+    s32 l6 = g.new_link(f, out_c, 0);
+    ASSERT_TEST_NOLOG(l1 >= 0 && l2 >= 0 && l3 >= 0 && l4 >= 0 && l5 >= 0 && l6 >= 0, "corridor new_link fail");
+    return 0;
+}
+
+static s32 zgraph_astar_cost_test()
+{
+    test_graph g;
+    s32 a = -1;
+    s32 c = -1;
+    ASSERT_TEST(astar_corridor_build(g, 30000, a, c) == 0, "corridor build fail");
+    std::vector<test_graph::graph_path_step> steps;
+    s32 ret = g.find_path(a, c, steps);
+    ASSERT_TEST(ret == 0, "find_path fail ret=", ret);
+    ASSERT_TEST((s32)steps.size() == 4, "expensive short corridor should be avoided, steps=", (s32)steps.size());
+
+    test_graph g2;
+    s32 a2 = -1;
+    s32 c2 = -1;
+    ASSERT_TEST(astar_corridor_build(g2, 0, a2, c2) == 0, "corridor build fail");
+    std::vector<test_graph::graph_path_step> steps2;
+    ret = g2.find_path(a2, c2, steps2);
+    ASSERT_TEST(ret == 0, "find_path fail ret=", ret);
+    ASSERT_TEST((s32)steps2.size() == 2, "cheap short corridor should be taken, steps=", (s32)steps2.size());
+    return 0;
+}
+
+static s32 zgraph_astar_unreachable_test()
+{
+    test_graph g;
+    s32 a = g.new_node(zpoint(0, 0, 0), 0);
+    s32 b = g.new_node(zpoint(1000, 0, 0), 1);
+    s32 c = g.new_node(zpoint(5000, 0, 0), 2);
+    s32 d = g.new_node(zpoint(6000, 0, 0), 3);
+    ASSERT_TEST_NOLOG(a >= 0 && b >= 0 && c >= 0 && d >= 0, "unreachable new_node fail");
+    ASSERT_TEST_NOLOG(g.new_link(a, b, 0) >= 0, "unreachable new_link fail");
+    ASSERT_TEST_NOLOG(g.new_link(c, d, 0) >= 0, "unreachable new_link fail");
+    std::vector<test_graph::graph_path_step> steps;
+    s32 ret = g.find_path(a, d, steps);
+    ASSERT_TEST(ret == -3, "unreachable should return -3, ret=", ret);
+    ASSERT_TEST(steps.empty(), "unreachable steps should be empty");
+    return 0;
+}
+
+static s32 zgraph_astar_composite_test()
+{
+    test_graph g;
+    s32 a = g.new_node(zpoint(0, 0, 0), 0);
+    s32 b = g.new_node(zpoint(1000, 0, 0), 1);
+    s32 c = g.new_node(zpoint(2000, 0, 0), 2);
+    ASSERT_TEST_NOLOG(a >= 0 && b >= 0 && c >= 0, "composite new_node fail");
+    s32 lab = g.new_link(a, b, 0);
+    s32 lbc = g.new_link(b, c, 0);
+    ASSERT_TEST_NOLOG(lab >= 0 && lbc >= 0, "composite new_link fail");
+    s32 affects = 0;
+    ASSERT_TEST_NOLOG(g.push_link(lab, affects) == 0, "composite push_link fail");
+    ASSERT_TEST_NOLOG(g.push_link(lbc, affects) == 0, "composite push_link fail");
+
+    std::vector<test_graph::graph_path_step> steps;
+    zpoint from(200.0f, -500.0f, 0.0f);
+    zpoint to(1800.0f, 300.0f, 0.0f);
+    s32 ret = g.find_path(from, to, steps);
+    ASSERT_TEST(ret == 0, "composite find_path fail ret=", ret);
+    ASSERT_TEST((s32)steps.size() == 4, "composite expect 4 steps, got=", (s32)steps.size());
+    if (steps.size() == 4)
+    {
+        ASSERT_TEST(steps[0].link_id == -1 && steps[0].slot == -1
+                    && fabsf(steps[0].pos.x - 200.0f) < 0.001f && fabsf(steps[0].pos.y) < 0.001f,
+                    "composite walk-a step mismatch");
+        ASSERT_TEST(steps[1].link_id == lab && steps[1].slot == 1
+                    && fabsf(steps[1].pos.x - 1000.0f) < 0.001f,
+                    "composite seed step mismatch");
+        ASSERT_TEST(steps[2].link_id == lbc && steps[2].slot == 1
+                    && fabsf(steps[2].pos.x - 1800.0f) < 0.001f,
+                    "composite truncated step mismatch");
+        ASSERT_TEST(steps[3].link_id == -1 && steps[3].slot == -1
+                    && fabsf(steps[3].pos.x - 1800.0f) < 0.001f && fabsf(steps[3].pos.y - 300.0f) < 0.001f,
+                    "composite walk-b step mismatch");
+    }
+
+    zpoint from2(300.0f, -400.0f, 0.0f);
+    zpoint to2(700.0f, 400.0f, 0.0f);
+    ret = g.find_path(from2, to2, steps);
+    ASSERT_TEST(ret == 0, "same-link find_path fail ret=", ret);
+    ASSERT_TEST((s32)steps.size() == 3, "same-link expect 3 steps, got=", (s32)steps.size());
+    if (steps.size() == 3)
+    {
+        ASSERT_TEST(steps[0].link_id == -1 && fabsf(steps[0].pos.x - 300.0f) < 0.001f,
+                    "same-link walk-a step mismatch");
+        ASSERT_TEST(steps[1].link_id == lab && steps[1].slot == 1
+                    && fabsf(steps[1].pos.x - 700.0f) < 0.001f,
+                    "same-link ride step mismatch");
+        ASSERT_TEST(steps[2].link_id == -1 && fabsf(steps[2].pos.x - 700.0f) < 0.001f
+                    && fabsf(steps[2].pos.y - 400.0f) < 0.001f,
+                    "same-link walk-b step mismatch");
+    }
+
+    test_graph::graph_find_option opt;
+    opt.link_color = 2;
+    ret = g.find_path(a, c, steps, opt);
+    ASSERT_TEST(ret == -3, "color filter should make path unreachable, ret=", ret);
+
+    ret = g.find_path(zpoint(50000.0f, 50000.0f, 0.0f), to, steps);
+    ASSERT_TEST(ret == -1, "no nearby link for from expect -1, ret=", ret);
+    ret = g.find_path(from, zpoint(50000.0f, 50000.0f, 0.0f), steps);
+    ASSERT_TEST(ret == -2, "no nearby link for to expect -2, ret=", ret);
+    return 0;
+}
 
 static s32 zgraph_adjacency_chain_test()
 {
@@ -525,9 +818,14 @@ int main(int argc, char* argv[])
     LogDebug() << " main begin test. ";
 
     ASSERT_TEST(zgraph_adjacency_chain_test()                     == 0);
+    ASSERT_TEST(zgraph_astar_grid_test()                          == 0);
+    ASSERT_TEST(zgraph_astar_cost_test()                          == 0);
+    ASSERT_TEST(zgraph_astar_unreachable_test()                   == 0);
+    ASSERT_TEST(zgraph_astar_composite_test()                     == 0);
     ASSERT_TEST(zgraph_build_2000_links_test()                    == 0);
     ASSERT_TEST(zgraph_build_2000_nodes_test()                    == 0);
     ASSERT_TEST(zgraph_find_nearest_and_neighbor_bench_test()      == 0);
+    ASSERT_TEST(zgraph_astar_bench_test()                         == 0);
     ASSERT_TEST(zgraph_add_and_remove_one_bench_test()            == 0);
     ASSERT_TEST(zgraph_destroy_test()                             == 0);
 

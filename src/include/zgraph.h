@@ -73,6 +73,7 @@ struct DefaultGraphConfig
     static constexpr s32 kMaxLinkCnt = 5000;
     static constexpr s32 kMaxNodeCnt = 5000;
     static constexpr s32 kMaxGridCnt = 100 * 100;
+    static constexpr s32 kMaxOpenCnt = 2048;
 
     static constexpr s32 kGridP90LinkCnt = 5;
     static constexpr s32 kGridP90NodeCnt = 10;
@@ -80,7 +81,8 @@ struct DefaultGraphConfig
     static constexpr s32 kGridSize = 1000; //cm
     static constexpr f32 kMergeDist = 0.001f; //cm
 
-    static constexpr s32 kDefaultLinkCost = 100;
+    static constexpr s32 kCostScaleN = 10000;
+    static constexpr s32 kDefaultLinkCost = 0;
 };
 
 template<class Node, class Link, typename Config = DefaultGraphConfig>
@@ -90,6 +92,7 @@ public:
     static constexpr s32 kMaxLinkCnt = Config::kMaxLinkCnt;
     static constexpr s32 kMaxNodeCnt = Config::kMaxNodeCnt;
     static constexpr s32 kMaxGridCnt = Config::kMaxGridCnt;
+    static constexpr s32 kMaxOpenCnt = Config::kMaxOpenCnt;
 
     static constexpr s32 kGridP90LinkCnt = Config::kGridP90LinkCnt;
     static constexpr s32 kGridP90NodeCnt = Config::kGridP90NodeCnt;
@@ -97,6 +100,7 @@ public:
     static constexpr s32 kGridSize = Config::kGridSize;
     static constexpr f32 kMergeDist = Config::kMergeDist;
 
+    static constexpr s32 kCostScaleN = Config::kCostScaleN;
     static constexpr s32 kDefaultLinkCost = Config::kDefaultLinkCost;
 
     static constexpr s32 kSlotS = 0;
@@ -132,6 +136,13 @@ public:
         s32 link_color = 0;
     };
 
+    struct graph_path_step
+    {
+        s32 link_id;
+        s32 slot;
+        zpoint pos;
+    };
+
 
     struct terrain
     {
@@ -147,6 +158,14 @@ private:
         bool operator()(const Node&) const { return false; }
     };
 
+    struct path_node_state
+    {
+        f32 cost;
+        f32 estimate;
+        s32 came_from_link;
+        u32 stamp;
+    };
+
 private:
     using node_list = zlist<graph_node, kMaxNodeCnt>;
     node_list nodes_;
@@ -155,6 +174,13 @@ private:
     link_list links_;
 
     zhash_map<u64, terrain, kMaxGridCnt> terrain_map_;
+
+    zarray<path_node_state, kMaxNodeCnt> path_node_states_;
+    zarray<s32, kMaxOpenCnt> path_open_;
+    u32 path_current_stamp_ = 0;
+    u32 path_open_peak_ = 0;
+    u32 path_visit_count_ = 0;
+    u32 path_visit_peak_ = 0;
 
 private:
     static bool match_node(const graph_node* node, const graph_find_option& option)
@@ -202,6 +228,184 @@ private:
             ref_link(prev_id)->next[slot] = link->next[slot];
         }
         return 0;
+    }
+
+    static f32 dist_2d(const zpoint& a, const zpoint& b)
+    {
+        f32 dx = a.x - b.x;
+        f32 dy = a.y - b.y;
+        return sqrtf(dx * dx + dy * dy);
+    }
+
+    s32 path_heap_push(s32 node_id)
+    {
+        if (path_open_.full())
+        {
+            return -1;
+        }
+        path_open_.push_back(node_id);
+        if (path_open_.size() > path_open_peak_)
+        {
+            path_open_peak_ = path_open_.size();
+        }
+        s32 hole = (s32)path_open_.size() - 1;
+        while (hole > 0)
+        {
+            s32 parent = (hole - 1) / 2;
+            if (path_node_states_[path_open_[parent]].estimate <= path_node_states_[path_open_[hole]].estimate)
+            {
+                break;
+            }
+            std::swap(path_open_[parent], path_open_[hole]);
+            hole = parent;
+        }
+        return 0;
+    }
+
+    s32 path_heap_pop(s32& out_node_id)
+    {
+        if (path_open_.empty())
+        {
+            return -1;
+        }
+        out_node_id = path_open_[0];
+        path_open_[0] = path_open_.back();
+        path_open_.pop_back();
+        size_t cnt = path_open_.size();
+        size_t hole = 0;
+        while (true)
+        {
+            size_t left = hole * 2 + 1;
+            size_t right = left + 1;
+            size_t best = hole;
+            if (left < cnt && path_node_states_[path_open_[left]].estimate < path_node_states_[path_open_[best]].estimate)
+            {
+                best = left;
+            }
+            if (right < cnt && path_node_states_[path_open_[right]].estimate < path_node_states_[path_open_[best]].estimate)
+            {
+                best = right;
+            }
+            if (best == hole)
+            {
+                break;
+            }
+            std::swap(path_open_[hole], path_open_[best]);
+            hole = best;
+        }
+        return 0;
+    }
+
+    s32 path_visit_touch()
+    {
+        path_visit_count_++;
+        if (path_visit_count_ > path_visit_peak_)
+        {
+            path_visit_peak_ = path_visit_count_;
+        }
+        return 0;
+    }
+
+    s32 path_search(s32 source_node_id, s32 target_node_id, const graph_find_option& option,
+                    std::vector<graph_path_step>& out_steps)
+    {
+        out_steps.clear();
+        if (path_current_stamp_ == 0 || path_current_stamp_ == 0xFFFFFFFFu)
+        {
+            for (s32 i = 0; i < kMaxNodeCnt; i++)
+            {
+                path_node_states_[i].stamp = 0;
+            }
+            path_current_stamp_ = 1;
+        }
+        else
+        {
+            path_current_stamp_++;
+        }
+        u32 stamp = path_current_stamp_;
+        path_open_.clear();
+        path_visit_count_ = 0;
+        const graph_node* target_node = ref_node(target_node_id);
+        if (target_node == nullptr)
+        {
+            return -3;
+        }
+        graph_node* source_node = ref_node(source_node_id);
+        if (source_node == nullptr)
+        {
+            return -3;
+        }
+        path_node_states_[source_node_id].cost = 0.0f;
+        path_node_states_[source_node_id].estimate = dist_2d(source_node->pos, target_node->pos);
+        path_node_states_[source_node_id].came_from_link = -1;
+        path_node_states_[source_node_id].stamp = stamp;
+        path_visit_touch();
+        if (path_heap_push(source_node_id) != 0)
+        {
+            return -4;
+        }
+        while (!path_open_.empty())
+        {
+            s32 current_node_id = -1;
+            path_heap_pop(current_node_id);
+            if (current_node_id == target_node_id)
+            {
+                s32 cursor = current_node_id;
+                while (path_node_states_[cursor].came_from_link != -1)
+                {
+                    graph_link* link = ref_link(path_node_states_[cursor].came_from_link);
+                    graph_path_step step;
+                    step.link_id = path_node_states_[cursor].came_from_link;
+                    step.slot = link->node[kSlotS] == cursor ? kSlotS : kSlotT;
+                    step.pos = ref_node(cursor)->pos;
+                    out_steps.push_back(step);
+                    cursor = link->node[1 - step.slot];
+                }
+                std::reverse(out_steps.begin(), out_steps.end());
+                return 0;
+            }
+            graph_node* current_node = ref_node(current_node_id);
+            for (s32 slot = 0; slot < kSlotMax; slot++)
+            {
+                for (s32 link_id = current_node->first_link[slot]; link_id != -1; link_id = ref_link(link_id)->next[slot])
+                {
+                    graph_link* link = ref_link(link_id);
+                    if (!match_link(link, option))
+                    {
+                        continue;
+                    }
+                    s32 next_node_id = link->node[1 - slot];
+                    if (next_node_id == current_node_id)
+                    {
+                        continue;
+                    }
+                    graph_node* next_node = ref_node(next_node_id);
+                    if (next_node == nullptr || !match_node(next_node, option))
+                    {
+                        continue;
+                    }
+                    graph_node* link_source = ref_node(link->node[kSlotS]);
+                    graph_node* link_target = ref_node(link->node[kSlotT]);
+                    f32 link_length = dist_2d(link_source->pos, link_target->pos);
+                    f32 link_weight = link_length * (f32)(kCostScaleN + link->cost) / (f32)kCostScaleN;
+                    f32 next_cost = path_node_states_[current_node_id].cost + link_weight;
+                    if (path_node_states_[next_node_id].stamp == stamp && next_cost >= path_node_states_[next_node_id].cost)
+                    {
+                        continue;
+                    }
+                    path_node_states_[next_node_id].cost = next_cost;
+                    path_node_states_[next_node_id].estimate = next_cost + dist_2d(next_node->pos, target_node->pos);
+                    path_node_states_[next_node_id].came_from_link = link_id;
+                    path_node_states_[next_node_id].stamp = stamp;
+                    path_visit_touch();
+                    if (path_heap_push(next_node_id) != 0)
+                    {
+                        return -4;
+                    }
+                }
+            }
+        }
+        return -3;
     }
 
 public:
@@ -265,7 +469,7 @@ public:
             return -2;
         }
 
-        nodes_.erase(node_list::iterator(nodes_.data(), node_id));
+        nodes_.erase(typename node_list::iterator(nodes_.data(), node_id));
         return 0;
     }
 
@@ -426,7 +630,7 @@ public:
         source->refs--;
         target->refs--;
 
-        links_.erase(link_list::iterator(links_.data(), link_id));
+        links_.erase(typename link_list::iterator(links_.data(), link_id));
         return 0;
     }
 
@@ -851,6 +1055,106 @@ public:
                 }
             }
         }
+        return 0;
+    }
+
+    const u32 path_open_peak() const { return path_open_peak_; }
+    const u32 path_visit_peak() const { return path_visit_peak_; }
+    const s32 node_count() const { return (s32)nodes_.size(); }
+    const s32 link_count() const { return (s32)links_.size(); }
+    const s32 grid_count() const { return (s32)terrain_map_.size(); }
+    void path_peak_reset() { path_open_peak_ = 0; path_visit_peak_ = 0; }
+
+    s32 find_path(s32 source_node_id, s32 target_node_id, std::vector<graph_path_step>& out_steps,
+                  const graph_find_option& option = graph_find_option())
+    {
+        out_steps.clear();
+        if (!is_valid_node(source_node_id))
+        {
+            return -1;
+        }
+        if (!is_valid_node(target_node_id))
+        {
+            return -2;
+        }
+        return path_search(source_node_id, target_node_id, option, out_steps);
+    }
+
+    s32 find_path(const zpoint& from, const zpoint& to, std::vector<graph_path_step>& out_steps,
+                  const graph_find_option& option = graph_find_option())
+    {
+        out_steps.clear();
+        s32 entry_link_id = -1;
+        s32 entry_slot = -1;
+        zpoint entry_pos;
+        f32 entry_sq_dist = 0.0f;
+        if (find_nearest_link(from, entry_link_id, entry_slot, entry_pos, entry_sq_dist) != 0)
+        {
+            return -1;
+        }
+        s32 exit_link_id = -1;
+        s32 exit_slot = -1;
+        zpoint exit_pos;
+        f32 exit_sq_dist = 0.0f;
+        if (find_nearest_link(to, exit_link_id, exit_slot, exit_pos, exit_sq_dist) != 0)
+        {
+            return -2;
+        }
+        graph_link* entry_link = ref_link(entry_link_id);
+        graph_link* exit_link = ref_link(exit_link_id);
+        if (entry_link_id == exit_link_id)
+        {
+            graph_path_step step_walk_to_entry;
+            step_walk_to_entry.link_id = -1;
+            step_walk_to_entry.slot = -1;
+            step_walk_to_entry.pos = entry_pos;
+            out_steps.push_back(step_walk_to_entry);
+            graph_path_step step_ride;
+            step_ride.link_id = entry_link_id;
+            step_ride.slot = exit_slot;
+            step_ride.pos = exit_pos;
+            out_steps.push_back(step_ride);
+            graph_path_step step_walk_to_target;
+            step_walk_to_target.link_id = -1;
+            step_walk_to_target.slot = -1;
+            step_walk_to_target.pos = to;
+            out_steps.push_back(step_walk_to_target);
+            return 0;
+        }
+        s32 entry_node_id = entry_link->node[entry_slot];
+        s32 target_node_id = exit_link->node[exit_slot];
+        std::vector<graph_path_step> ride_steps;
+        s32 ret = path_search(entry_node_id, target_node_id, option, ride_steps);
+        if (ret != 0)
+        {
+            return ret;
+        }
+        graph_path_step step_walk_to_entry;
+        step_walk_to_entry.link_id = -1;
+        step_walk_to_entry.slot = -1;
+        step_walk_to_entry.pos = entry_pos;
+        out_steps.push_back(step_walk_to_entry);
+        if (ride_steps.empty() || ride_steps.front().link_id != entry_link_id)
+        {
+            graph_path_step step_ride_to_entry;
+            step_ride_to_entry.link_id = entry_link_id;
+            step_ride_to_entry.slot = entry_slot;
+            step_ride_to_entry.pos = ref_node(entry_node_id)->pos;
+            out_steps.push_back(step_ride_to_entry);
+        }
+        for (size_t i = 0; i < ride_steps.size(); i++)
+        {
+            out_steps.push_back(ride_steps[i]);
+        }
+        if (!ride_steps.empty() && ride_steps.back().link_id == exit_link_id)
+        {
+            out_steps.back().pos = exit_pos;
+        }
+        graph_path_step step_walk_to_target;
+        step_walk_to_target.link_id = -1;
+        step_walk_to_target.slot = -1;
+        step_walk_to_target.pos = to;
+        out_steps.push_back(step_walk_to_target);
         return 0;
     }
 
