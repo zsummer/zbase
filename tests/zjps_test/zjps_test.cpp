@@ -485,6 +485,7 @@ static s32 random_map_check(s32 width, s32 rect_cnt, s32 sample_pairs, u32 seed)
                                      (f32)(bx + bw) * kCellSize, (f32)(by + bh) * kCellSize, false) == 0,
                     "block rect fail i=", i);
     }
+    ASSERT_TEST(grid.build_jps_light() == 0, "light rebuild after raster fail");
 
     std::vector<s32> node_ids((size_t)width * width, -1);
     std::vector<s32> cell_list;
@@ -838,6 +839,7 @@ static s32 zjps_bench_test()
                                        (f32)(bx + bw) * kCellSize, (f32)(by + bh) * kCellSize, false) == 0,
                     "bench block fail i=", i);
     }
+    ASSERT_TEST(rgrid.build_jps_light() == 0, "bench rgrid light rebuild fail");
     std::vector<s32> rcells;
     for (s32 y = 0; y < RW; y++)
     {
@@ -1405,8 +1407,23 @@ static s32 phase5_serpentine_bench()
             }
         }
         c.stop_and_save();
-        LOGFMTI("phase5 dynamic: grid set_blocked/set_walkable(incl incremental index)=%.0fns/op",
+        LOGFMTI("phase5 dynamic: grid set_blocked/set_walkable(mark-dirty only)=%.0fns/op",
                 (f64)c.cost_ns() / (f64)OPS);
+    }
+    {
+        const s32 PAIRS = 2000;
+        zclock<> c;
+        c.start();
+        for (s32 i = 0; i < PAIRS; i++)
+        {
+            grid.set_blocked(6, 5);
+            grid.build_jps_light();
+            grid.set_walkable(6, 5);
+            grid.build_jps_light();
+        }
+        c.stop_and_save();
+        LOGFMTI("phase5 dynamic: edit+light_repair pair(1 cell toggle)=%.0fns/pair",
+                (f64)c.cost_ns() / (f64)PAIRS);
     }
     {
         std::mt19937 arng(20260845u);
@@ -1770,6 +1787,221 @@ static s32 zjps_phase5_bench_test()
     return 0;
 }
 
+static s32 zjps_height_test()
+{
+    zjps_grid grid;
+    ASSERT_TEST(grid.init(10, 10, kCellSize, true) == 0, "height grid init fail");
+    ASSERT_TEST(grid.cell_height(5, 5) == 1, "default voxel height expect 1, got=", grid.cell_height(5, 5));
+    ASSERT_TEST(grid.climb_ok(4, 5, 5, 5), "same height climb should ok");
+    ASSERT_TEST(grid.climb_ok(5, 5, 4, 5), "same height climb reverse ok");
+    u32 version = grid.map_version();
+    ASSERT_TEST(grid.set_cell_height(5, 5, 5) == 0, "set height fail");
+    ASSERT_TEST(grid.map_version() > version, "set height should bump version");
+    ASSERT_TEST(grid.cell_height(5, 5) == 5, "height mismatch, got=", grid.cell_height(5, 5));
+    ASSERT_TEST(grid.climb_ok(4, 5, 5, 5), "diff 4 <= 4 should ok");
+    ASSERT_TEST(grid.set_cell_height(6, 5, 10) == 0, "set height 10 fail");
+    ASSERT_TEST(!grid.climb_ok(5, 5, 6, 5), "diff 5 > 4 should fail");
+    ASSERT_TEST(grid.set_cell_height(5, 5, 1) == 0, "restore height fail");
+    version = grid.map_version();
+    ASSERT_TEST(grid.set_cell_height(5, 5, 1) == 0, "idempotent set fail");
+    ASSERT_TEST(grid.map_version() == version, "idempotent set should not bump version");
+    ASSERT_TEST(grid.cell_height(-1, 0) == -1, "out of range height expect -1");
+    ASSERT_TEST(grid.set_cell_height(0, 0, 200) == 0, "set 200 fail");
+    ASSERT_TEST(grid.cell_height(0, 0) == 200, "height 200 mismatch");
+    ASSERT_TEST(!grid.climb_ok(1, 0, 0, 0), "diff 199 should fail");
+    std::vector<s32> cells;
+    s32 ret = grid.find_path_jps(2, 2, 8, 8, cells);
+    ASSERT_TEST(ret == 0, "jps unaffected by height data, ret=", ret);
+    LOGFMTI("zjps height: flag/height planes + climb_ok(voxel=cell/2, limit=4) reserved, move_valid untouched");
+    return 0;
+}
+
+static s32 zjps_batch_edit_test()
+{
+    zjps_grid grid;
+    ASSERT_TEST(grid.init(40, 40, kCellSize, true) == 0, "batch grid init fail");
+    ASSERT_TEST(grid.build_jps_light() == 0, "batch light build fail");
+    std::vector<s32> acells;
+    std::vector<s32> jcells;
+    s32 ret = grid.find_path(0, 0, 39, 39, acells);
+    ASSERT_TEST(ret == 0, "batch open path fail ret=", ret);
+    s32 open_cost = grid.last_path_cost();
+
+    ASSERT_TEST(grid.set_cell_rect(15, 15, 24, 24, false) == 0, "batch block rect fail");
+    for (s32 y = 15; y <= 24; y++)
+    {
+        for (s32 x = 15; x <= 24; x++)
+        {
+            ASSERT_TEST(!grid.cell_walkable(x, y), "batch cell still walkable x=", x, " y=", y);
+        }
+    }
+    ret = grid.find_path(0, 0, 39, 39, acells);
+    ASSERT_TEST(ret == 0, "batch detour path fail ret=", ret);
+    s32 detour_cost = grid.last_path_cost();
+    ASSERT_TEST(detour_cost > open_cost, "batch detour not longer, got=", detour_cost);
+    ret = grid.find_path_jps(0, 0, 39, 39, jcells);
+    ASSERT_TEST(ret == 0 && grid.last_path_cost() == detour_cost, "batch jps mismatch, jps=", grid.last_path_cost(),
+                " astar=", detour_cost);
+
+    ASSERT_TEST(grid.set_cell_rect(15, 15, 24, 24, true) == 0, "batch unblock rect fail");
+    ret = grid.find_path(0, 0, 39, 39, acells);
+    ASSERT_TEST(ret == 0 && grid.last_path_cost() == open_cost, "batch restore cost mismatch");
+    ret = grid.find_path_jps(0, 0, 39, 39, jcells);
+    ASSERT_TEST(ret == 0 && grid.last_path_cost() == open_cost, "batch restore jps mismatch");
+
+    u32 version = grid.map_version();
+    ASSERT_TEST(grid.set_cell_rect(15, 15, 24, 24, true) == 0, "batch idempotent call fail");
+    ASSERT_TEST(grid.map_version() == version, "batch idempotent should not bump version");
+
+    ASSERT_TEST(grid.set_cell_rect(24, 24, 15, 15, false) == -1, "batch inverted rect expect -1");
+    ASSERT_TEST(grid.set_cell_rect(-1, 0, 5, 5, false) == -1, "batch out of range expect -1");
+
+    zjps_grid bench_rect;
+    zjps_grid bench_cell;
+    ASSERT_TEST(bench_rect.init(400, 400, kCellSize, true) == 0, "bench rect grid fail");
+    ASSERT_TEST(bench_rect.build_jps_light() == 0, "bench rect build fail");
+    ASSERT_TEST(bench_cell.init(400, 400, kCellSize, true) == 0, "bench cell grid fail");
+    ASSERT_TEST(bench_cell.build_jps_light() == 0, "bench cell build fail");
+    std::vector<s32> c;
+    const s32 ESIZE = 5;
+    {
+        zclock<> cost;
+        cost.start();
+        ASSERT_TEST(bench_rect.set_cell_rect(100, 100, 100 + ESIZE - 1, 100 + ESIZE - 1, false) == 0, "bench rect block fail");
+        ASSERT_TEST(bench_rect.build_jps_light() == 0, "bench rect repair fail");
+        cost.stop_and_save();
+        LOGFMTI("batch edit+repair %dx%d on 400x400: set_cell_rect+light_repair=%.0fns",
+                ESIZE, ESIZE, (f64)cost.cost_ns());
+    }
+    {
+        zclock<> cost;
+        cost.start();
+        for (s32 y = 100; y <= 100 + ESIZE - 1; y++)
+        {
+            for (s32 x = 100; x <= 100 + ESIZE - 1; x++)
+            {
+                bench_cell.set_blocked(x, y);
+            }
+        }
+        ASSERT_TEST(bench_cell.build_jps_light() == 0, "bench cell repair fail");
+        cost.stop_and_save();
+        LOGFMTI("batch edit+repair %dx%d on 400x400: %dx set_cell+light_repair=%.0fns",
+                ESIZE, ESIZE, ESIZE * ESIZE, (f64)cost.cost_ns());
+    }
+    ASSERT_TEST(bench_rect.set_cell_rect(100, 100, 100 + ESIZE - 1, 100 + ESIZE - 1, true) == 0, "bench rect restore fail");
+    ASSERT_TEST(bench_rect.build_jps_light() == 0, "bench rect restore repair fail");
+    ASSERT_TEST(bench_cell.set_cell_rect(100, 100, 100 + ESIZE - 1, 100 + ESIZE - 1, true) == 0, "bench cell restore fail");
+    ASSERT_TEST(bench_cell.build_jps_light() == 0, "bench cell restore repair fail");
+
+    const s32 ESIZE2 = 40;
+    {
+        zclock<> cost;
+        cost.start();
+        ASSERT_TEST(bench_rect.set_cell_rect(100, 100, 100 + ESIZE2 - 1, 100 + ESIZE2 - 1, false) == 0, "bench rect block 2 fail");
+        ASSERT_TEST(bench_rect.build_jps_light() == 0, "bench rect repair 2 fail");
+        cost.stop_and_save();
+        LOGFMTI("batch edit+repair %dx%d on 400x400: set_cell_rect+light_repair=%.0fns",
+                ESIZE2, ESIZE2, (f64)cost.cost_ns());
+    }
+    {
+        zclock<> cost;
+        cost.start();
+        for (s32 y = 100; y <= 100 + ESIZE2 - 1; y++)
+        {
+            for (s32 x = 100; x <= 100 + ESIZE2 - 1; x++)
+            {
+                bench_cell.set_blocked(x, y);
+            }
+        }
+        ASSERT_TEST(bench_cell.build_jps_light() == 0, "bench cell repair 2 fail");
+        cost.stop_and_save();
+        LOGFMTI("batch edit+repair %dx%d on 400x400: %dx set_cell+light_repair=%.0fns",
+                ESIZE2, ESIZE2, ESIZE2 * ESIZE2, (f64)cost.cost_ns());
+    }
+    for (s32 y = 100; y <= 100 + ESIZE2 - 1; y++)
+    {
+        for (s32 x = 100; x <= 100 + ESIZE2 - 1; x++)
+        {
+            ASSERT_TEST(!bench_rect.cell_walkable(x, y) && !bench_cell.cell_walkable(x, y), "bench grids diverge");
+        }
+    }
+    for (s32 y = 100; y <= 119; y++)
+    {
+        for (s32 x = 100; x <= 119; x++)
+        {
+            ASSERT_TEST(!bench_rect.cell_walkable(x, y) && !bench_cell.cell_walkable(x, y), "bench grids diverge");
+        }
+    }
+    s32 r1 = bench_rect.find_path_jps(0, 0, 399, 399, c);
+    s32 k1 = bench_rect.last_path_cost();
+    s32 r2 = bench_cell.find_path_jps(0, 0, 399, 399, c);
+    s32 k2 = bench_cell.last_path_cost();
+    ASSERT_TEST(r1 == r2 && k1 == k2, "bench grids path diverge r1=", r1, " r2=", r2, " k1=", k1, " k2=", k2);
+    return 0;
+}
+
+static s32 zjps_dirty_flow_test()
+{
+    zjps_grid grid;
+    ASSERT_TEST(grid.init(40, 40, kCellSize, true) == 0, "dirty grid init fail");
+    std::vector<s32> acells;
+    std::vector<s32> jcells;
+
+    s32 ret = grid.find_path_jps(0, 0, 39, 39, jcells);
+    ASSERT_TEST(ret == 0, "dirty raw jps fail ret=", ret);
+    ASSERT_TEST(grid.last_tier() == 0, "no light built expect tier 0, got=", grid.last_tier());
+
+    ASSERT_TEST(grid.build_jps_light() == 0, "dirty light build fail");
+    ASSERT_TEST(grid.light_dirty() == 0, "after build expect dirty 0, got=", grid.light_dirty());
+    ret = grid.find_path_jps(0, 0, 39, 39, jcells);
+    ASSERT_TEST(ret == 0, "dirty light jps fail ret=", ret);
+    ASSERT_TEST(grid.last_tier() == 1, "light clean expect tier 1, got=", grid.last_tier());
+    s32 open_cost = grid.last_path_cost();
+
+    ASSERT_TEST(grid.set_blocked(20, 20) == 0, "dirty set_blocked fail");
+    ASSERT_TEST(grid.light_dirty() == 2, "single cell expect dirty 2(1row+1col), got=", grid.light_dirty());
+    ret = grid.find_path_jps(0, 0, 39, 39, jcells);
+    ASSERT_TEST(ret == 0, "dirty degraded jps fail ret=", ret);
+    ASSERT_TEST(grid.last_tier() == 0, "dirty expect tier 0, got=", grid.last_tier());
+    ASSERT_TEST(grid.find_path(0, 0, 39, 39, acells) == 0, "dirty astar fail");
+    ASSERT_TEST(grid.last_path_cost() == grid.last_path_cost(), "cost self mismatch");
+
+    ASSERT_TEST(grid.build_jps_light() == 0, "dirty repair fail");
+    ASSERT_TEST(grid.light_dirty() == 0, "after repair expect dirty 0, got=", grid.light_dirty());
+    ret = grid.find_path_jps(0, 0, 39, 39, jcells);
+    ASSERT_TEST(ret == 0 && grid.last_tier() == 1, "after repair expect tier 1, got=", grid.last_tier());
+
+    ASSERT_TEST(grid.set_cell_rect(15, 15, 19, 19, false) == 0, "dirty rect block fail");
+    ASSERT_TEST(grid.light_dirty() == 10, "5x5 rect expect dirty 10(5rows+5cols), got=", grid.light_dirty());
+    ret = grid.find_path_jps(0, 0, 39, 39, jcells);
+    ASSERT_TEST(ret == 0 && grid.last_tier() == 0, "rect dirty expect tier 0");
+    ASSERT_TEST(grid.build_jps_light() == 0, "rect repair fail");
+    ret = grid.find_path_jps(0, 0, 39, 39, jcells);
+    ASSERT_TEST(ret == 0 && grid.last_tier() == 1, "rect repaired expect tier 1");
+    s32 detour_cost = grid.last_path_cost();
+    ASSERT_TEST(detour_cost > open_cost, "rect detour not longer");
+
+    ASSERT_TEST(grid.build_jps_plus() == 0, "dirty plus build fail");
+    ret = grid.find_path_jps_plus(0, 0, 39, 39, jcells);
+    ASSERT_TEST(ret == 0 && grid.last_tier() == 2, "plus ok expect tier 2, got=", grid.last_tier());
+    ASSERT_TEST(grid.last_path_cost() == detour_cost, "plus cost mismatch");
+
+    ASSERT_TEST(grid.set_blocked(30, 30) == 0, "dirty edit after plus fail");
+    ret = grid.find_path_jps_plus(0, 0, 39, 39, jcells);
+    ASSERT_TEST(ret == 0, "plus fallback after edit fail ret=", ret);
+    ASSERT_TEST(grid.last_tier() == 0, "plus stale and light dirty expect tier 0, got=", grid.last_tier());
+
+    ASSERT_TEST(grid.build_jps_light() == 0, "light repair after plus fail");
+    ret = grid.find_path_jps_plus(0, 0, 39, 39, jcells);
+    ASSERT_TEST(ret == 0 && grid.last_tier() == 1, "plus stale light ok expect tier 1, got=", grid.last_tier());
+
+    ASSERT_TEST(grid.build_jps_plus() == 0, "plus rebuild fail");
+    ret = grid.find_path_jps_plus(0, 0, 39, 39, jcells);
+    ASSERT_TEST(ret == 0 && grid.last_tier() == 2, "plus rebuilt expect tier 2, got=", grid.last_tier());
+    LOGFMTI("zjps dirty flow: tier0(raw)/tier1(light)/tier2(plus) fallback chain verified");
+    return 0;
+}
+
 int main(int argc, char* argv[])
 {
     ztest_init();
@@ -1787,6 +2019,9 @@ int main(int argc, char* argv[])
     ASSERT_TEST(zjps_astar_capacity_test()                    == 0);
     ASSERT_TEST(zjps_jps_basic_test()                         == 0);
     ASSERT_TEST(zjps_jps_capacity_test()                      == 0);
+    ASSERT_TEST(zjps_height_test()                            == 0);
+    ASSERT_TEST(zjps_batch_edit_test()                        == 0);
+    ASSERT_TEST(zjps_dirty_flow_test()                        == 0);
     ASSERT_TEST(zjps_bench_test()                             == 0);
     ASSERT_TEST(zjps_fcut_experiment_test()                   == 0);
     ASSERT_TEST(zjps_jps_plus_test()                          == 0);

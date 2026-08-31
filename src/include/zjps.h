@@ -21,6 +21,8 @@ public:
     static constexpr s32 kCostStraight = 1000;
     static constexpr s32 kCostDiagonal = 1414;
     static constexpr s32 kDefaultOpenCnt = 1024;
+    static constexpr u8 kDefaultVoxelHeight = 1;
+    static constexpr s32 kClimbLimitVoxels = 4;
 
     zjps_grid() = default;
 
@@ -34,12 +36,21 @@ public:
         height_ = height;
         cell_size_ = cell_size;
         default_walkable_ = walkable_default ? 1 : 0;
+
         size_t cell_cnt = (size_t)width_ * (size_t)height_;
-        walkable_.assign(cell_cnt, default_walkable_);
+        cell_flag_.assign(cell_cnt, default_walkable_);
+        u8 voxel_init = kDefaultVoxelHeight;
+        cell_voxel_.assign(cell_cnt, voxel_init);
+        light_dirty_row_.assign((size_t)height_, 0);
+        light_dirty_col_.assign((size_t)width_, 0);
+        light_dirty_cnt_ = 0;
+        
         light_row_.assign((size_t)height_ * (size_t)(width_ + 1), 0);
         light_col_.assign((size_t)width_ * (size_t)(height_ + 1), 0);
+
         states_.resize(cell_cnt);
         open_heap_.reserve((size_t)open_capacity_);
+
         map_version_++;
         index_built_ = false;
         jump_table_.clear();
@@ -58,7 +69,7 @@ public:
         {
             return false;
         }
-        return walkable_[(size_t)y * (size_t)width_ + (size_t)x] != 0;
+        return cell_flag_[(size_t)y * (size_t)width_ + (size_t)x] != 0;
     }
 
     s32 set_cell(s32 x, s32 y, bool walkable)
@@ -67,28 +78,57 @@ public:
         {
             return -1;
         }
-        size_t idx = (size_t)y * (size_t)width_ + (size_t)x;
-        u8 old = walkable_[idx];
+        size_t idx = (size_t)width_ * (size_t)y  + (size_t)x;
+        u8 old = cell_flag_[idx];
         u8 next = walkable ? 1 : 0;
         if (old == next)
         {
             return 0;
         }
-        walkable_[idx] = next;
+        cell_flag_[idx] = next;
         map_version_++;
         if (index_built_)
         {
-            s32* row = light_row_head(y);
-            s32* col = light_col_head(x);
-            if (next != 0)
+            mark_light_dirty_row(y);
+            mark_light_dirty_col(x);
+        }
+        return 0;
+    }
+
+    s32 set_cell_rect(s32 x0, s32 y0, s32 x1, s32 y1, bool walkable)
+    {
+        if (x0 < 0 || y0 < 0 || x0 > x1 || y0 > y1 || x1 >= width_ || y1 >= height_)
+        {
+            return -1;
+        }
+        u8 next = walkable ? 1 : 0;
+        bool changed = false;
+        for (s32 y = y0; y <= y1; y++)
+        {
+            u8* row = cell_flag_.data() + (size_t)y * (size_t)width_;
+            for (s32 x = x0; x <= x1; x++)
             {
-                line_remove(row + 1, row[0], x);
-                line_remove(col + 1, col[0], y);
+                if (row[x] != next)
+                {
+                    row[x] = next;
+                    changed = true;
+                }
             }
-            else
+        }
+        if (!changed)
+        {
+            return 0;
+        }
+        map_version_++;
+        if (index_built_)
+        {
+            for (s32 y = y0; y <= y1; y++)
             {
-                line_insert(row + 1, row[0], width_, x);
-                line_insert(col + 1, col[0], height_, y);
+                mark_light_dirty_row(y);
+            }
+            for (s32 x = x0; x <= x1; x++)
+            {
+                mark_light_dirty_col(x);
             }
         }
         return 0;
@@ -102,6 +142,44 @@ public:
     s32 set_walkable(s32 x, s32 y)
     {
         return set_cell(x, y, true);
+    }
+
+    s32 cell_height(s32 x, s32 y) const
+    {
+        if (x < 0 || y < 0 || x >= width_ || y >= height_)
+        {
+            return -1;
+        }
+        return (s32)cell_voxel_[(size_t)y * (size_t)width_ + (size_t)x];
+    }
+
+    s32 set_cell_height(s32 x, s32 y, u8 voxel_height)
+    {
+        if (x < 0 || y < 0 || x >= width_ || y >= height_)
+        {
+            return -1;
+        }
+        size_t idx = (size_t)y * (size_t)width_ + (size_t)x;
+        if (cell_voxel_[idx] == voxel_height)
+        {
+            return 0;
+        }
+        cell_voxel_[idx] = voxel_height;
+        map_version_++;
+        return 0;
+    }
+
+    bool climb_ok(s32 from_x, s32 from_y, s32 to_x, s32 to_y) const
+    {
+        if (from_x < 0 || from_y < 0 || from_x >= width_ || from_y >= height_
+            || to_x < 0 || to_y < 0 || to_x >= width_ || to_y >= height_)
+        {
+            return false;
+        }
+        s32 from_h = (s32)cell_voxel_[(size_t)from_y * (size_t)width_ + (size_t)from_x];
+        s32 to_h = (s32)cell_voxel_[(size_t)to_y * (size_t)width_ + (size_t)to_x];
+        s32 diff = to_h > from_h ? to_h - from_h : from_h - to_h;
+        return diff <= kClimbLimitVoxels;
     }
 
     s32 pos_to_cell(f32 px, f32 py, s32& out_x, s32& out_y) const
@@ -167,6 +245,8 @@ public:
     }
 
     s32 open_capacity() const { return open_capacity_; }
+    s32 light_dirty() const { return light_dirty_cnt_; }
+    s32 last_tier() const { return last_tier_; }
     size_t jps_plus_table_bytes() const { return jump_table_.size() * sizeof(jump_entry); }
     s32 open_push_count() const { return open_push_count_; }
     s32 open_pop_count() const { return open_pop_count_; }
@@ -184,7 +264,7 @@ public:
         }
         s32 start_idx = start_y * width_ + start_x;
         s32 target_idx = target_y * width_ + target_x;
-        if (walkable_[start_idx] == 0 || walkable_[target_idx] == 0)
+        if (cell_flag_[start_idx] == 0 || cell_flag_[target_idx] == 0)
         {
             return -2;
         }
@@ -288,36 +368,41 @@ public:
         {
             return -1;
         }
-        for (s32 y = 0; y < height_; y++)
+        if (index_built_ && light_dirty_cnt_ == 0)
         {
-            const u8* row = walkable_.data() + (size_t)y * (size_t)width_;
-            s32* ln = light_row_head(y);
-            s32* vals = ln + 1;
-            s32 cnt = 0;
+            return 0;
+        }
+        if (!index_built_)
+        {
+            for (s32 y = 0; y < height_; y++)
+            {
+                refill_light_row(y);
+            }
             for (s32 x = 0; x < width_; x++)
             {
-                if (row[x] == 0)
-                {
-                    vals[cnt++] = x;
-                }
+                refill_light_col(x);
             }
-            ln[0] = cnt;
+            index_built_ = true;
+            return 0;
+        }
+        for (s32 y = 0; y < height_; y++)
+        {
+            if (light_dirty_row_[(size_t)y] != 0)
+            {
+                refill_light_row(y);
+                light_dirty_row_[(size_t)y] = 0;
+                light_dirty_cnt_--;
+            }
         }
         for (s32 x = 0; x < width_; x++)
         {
-            s32* ln = light_col_head(x);
-            s32* vals = ln + 1;
-            s32 cnt = 0;
-            for (s32 y = 0; y < height_; y++)
+            if (light_dirty_col_[(size_t)x] != 0)
             {
-                if (walkable_[(size_t)y * (size_t)width_ + (size_t)x] == 0)
-                {
-                    vals[cnt++] = y;
-                }
+                refill_light_col(x);
+                light_dirty_col_[(size_t)x] = 0;
+                light_dirty_cnt_--;
             }
-            ln[0] = cnt;
         }
-        index_built_ = true;
         return 0;
     }
 
@@ -340,7 +425,7 @@ public:
                 s32 next = x + 1;
                 size_t base = ((size_t)y * (size_t)width_ + (size_t)x) * 8;
                 size_t next_base = ((size_t)y * (size_t)width_ + (size_t)next) * 8;
-                if (walkable_[(size_t)y * (size_t)width_ + (size_t)next] == 0)
+                if (cell_flag_[(size_t)y * (size_t)width_ + (size_t)next] == 0)
                 {
                     jump_table_[base].stop = (s32)((size_t)y * (size_t)width_ + (size_t)next);
                     continue;
@@ -360,7 +445,7 @@ public:
                 s32 next = x - 1;
                 size_t base = ((size_t)y * (size_t)width_ + (size_t)x) * 8;
                 size_t next_base = ((size_t)y * (size_t)width_ + (size_t)next) * 8;
-                if (walkable_[(size_t)y * (size_t)width_ + (size_t)next] == 0)
+                if (cell_flag_[(size_t)y * (size_t)width_ + (size_t)next] == 0)
                 {
                     jump_table_[base + 4].stop = (s32)((size_t)y * (size_t)width_ + (size_t)next);
                     continue;
@@ -383,7 +468,7 @@ public:
                 s32 next = y + 1;
                 size_t base = ((size_t)y * (size_t)width_ + (size_t)x) * 8;
                 size_t next_base = ((size_t)next * (size_t)width_ + (size_t)x) * 8;
-                if (walkable_[(size_t)next * (size_t)width_ + (size_t)x] == 0)
+                if (cell_flag_[(size_t)next * (size_t)width_ + (size_t)x] == 0)
                 {
                     jump_table_[base + 2].stop = (s32)((size_t)next * (size_t)width_ + (size_t)x);
                     continue;
@@ -403,7 +488,7 @@ public:
                 s32 next = y - 1;
                 size_t base = ((size_t)y * (size_t)width_ + (size_t)x) * 8;
                 size_t next_base = ((size_t)next * (size_t)width_ + (size_t)x) * 8;
-                if (walkable_[(size_t)next * (size_t)width_ + (size_t)x] == 0)
+                if (cell_flag_[(size_t)next * (size_t)width_ + (size_t)x] == 0)
                 {
                     jump_table_[base + 6].stop = (s32)((size_t)next * (size_t)width_ + (size_t)x);
                     continue;
@@ -433,7 +518,7 @@ public:
         }
         s32 start_idx = start_y * width_ + start_x;
         s32 target_idx = target_y * width_ + target_x;
-        if (walkable_[start_idx] == 0 || walkable_[target_idx] == 0)
+        if (cell_flag_[start_idx] == 0 || cell_flag_[target_idx] == 0)
         {
             return -2;
         }
@@ -443,6 +528,7 @@ public:
             out_cells.push_back(start_idx);
             return 0;
         }
+        last_tier_ = use_plus ? 2 : (light_ready() ? 1 : 0);
         search_stamp_++;
         if (search_stamp_ == 0)
         {
@@ -753,37 +839,58 @@ private:
         return lo;
     }
 
-    static void line_insert(s32* vals, s32& cnt, s32 cap, s32 v)
+    bool light_ready() const
     {
-        s32 pos = line_lower(vals, cnt, v);
-        if (pos < cnt && vals[pos] == v)
-        {
-            return;
-        }
-        if (cnt >= cap)
-        {
-            return;
-        }
-        if (pos < cnt)
-        {
-            memmove(vals + pos + 1, vals + pos, (size_t)(cnt - pos) * sizeof(s32));
-        }
-        vals[pos] = v;
-        cnt++;
+        return index_built_ && light_dirty_cnt_ == 0;
     }
 
-    static void line_remove(s32* vals, s32& cnt, s32 v)
+    void mark_light_dirty_row(s32 y)
     {
-        s32 pos = line_lower(vals, cnt, v);
-        if (pos >= cnt || vals[pos] != v)
+        if (light_dirty_row_[(size_t)y] == 0)
         {
-            return;
+            light_dirty_row_[(size_t)y] = 1;
+            light_dirty_cnt_++;
         }
-        if (pos + 1 < cnt)
+    }
+
+    void mark_light_dirty_col(s32 x)
+    {
+        if (light_dirty_col_[(size_t)x] == 0)
         {
-            memmove(vals + pos, vals + pos + 1, (size_t)(cnt - pos - 1) * sizeof(s32));
+            light_dirty_col_[(size_t)x] = 1;
+            light_dirty_cnt_++;
         }
-        cnt--;
+    }
+
+    void refill_light_row(s32 y)
+    {
+        const u8* row = cell_flag_.data() + (size_t)y * (size_t)width_;
+        s32* ln = light_row_head(y);
+        s32* vals = ln + 1;
+        s32 cnt = 0;
+        for (s32 x = 0; x < width_; x++)
+        {
+            if (row[x] == 0)
+            {
+                vals[cnt++] = x;
+            }
+        }
+        ln[0] = cnt;
+    }
+
+    void refill_light_col(s32 x)
+    {
+        s32* ln = light_col_head(x);
+        s32* vals = ln + 1;
+        s32 cnt = 0;
+        for (s32 y = 0; y < height_; y++)
+        {
+            if (cell_flag_[(size_t)y * (size_t)width_ + (size_t)x] == 0)
+            {
+                vals[cnt++] = y;
+            }
+        }
+        ln[0] = cnt;
     }
 
     s32* light_row_head(s32 y)
@@ -1064,7 +1171,7 @@ private:
     s32 jump_straight(s32 x, s32 y, s32 dx, s32 dy, s32 target_x, s32 target_y, s32 g_base, s32 f_parent)
     {
         s32 g_acc = 0;
-        if (!index_built_)
+        if (!light_ready())
         {
             while (true)
             {
@@ -1209,8 +1316,8 @@ private:
                         break;
                     }
                     s32 ox = o + 1;
-                    if (ox < width_ && walkable_[(size_t)ys * (size_t)width_ + (size_t)ox] != 0
-                        && walkable_[(size_t)y * (size_t)width_ + (size_t)ox] != 0)
+                    if (ox < width_ && cell_flag_[(size_t)ys * (size_t)width_ + (size_t)ox] != 0
+                        && cell_flag_[(size_t)y * (size_t)width_ + (size_t)ox] != 0)
                     {
                         if (best < 0 || o < best)
                         {
@@ -1238,8 +1345,8 @@ private:
                         break;
                     }
                     s32 ox = o - 1;
-                    if (ox >= 0 && walkable_[(size_t)ys * (size_t)width_ + (size_t)ox] != 0
-                        && walkable_[(size_t)y * (size_t)width_ + (size_t)ox] != 0)
+                    if (ox >= 0 && cell_flag_[(size_t)ys * (size_t)width_ + (size_t)ox] != 0
+                        && cell_flag_[(size_t)y * (size_t)width_ + (size_t)ox] != 0)
                     {
                         if (best < 0 || o > best)
                         {
@@ -1284,8 +1391,8 @@ private:
                         break;
                     }
                     s32 oy = o + 1;
-                    if (oy < height_ && walkable_[(size_t)oy * (size_t)width_ + (size_t)xs] != 0
-                        && walkable_[(size_t)oy * (size_t)width_ + (size_t)x] != 0)
+                    if (oy < height_ && cell_flag_[(size_t)oy * (size_t)width_ + (size_t)xs] != 0
+                        && cell_flag_[(size_t)oy * (size_t)width_ + (size_t)x] != 0)
                     {
                         if (best < 0 || o < best)
                         {
@@ -1313,8 +1420,8 @@ private:
                         break;
                     }
                     s32 oy = o - 1;
-                    if (oy >= 0 && walkable_[(size_t)oy * (size_t)width_ + (size_t)xs] != 0
-                        && walkable_[(size_t)oy * (size_t)width_ + (size_t)x] != 0)
+                    if (oy >= 0 && cell_flag_[(size_t)oy * (size_t)width_ + (size_t)xs] != 0
+                        && cell_flag_[(size_t)oy * (size_t)width_ + (size_t)x] != 0)
                     {
                         if (best < 0 || o > best)
                         {
@@ -1594,12 +1701,17 @@ private:
     f32 cell_size_ = 0.0f;
     u8 default_walkable_ = 0;
     u32 map_version_ = 0;
-    std::vector<u8> walkable_;
+    std::vector<u8> cell_flag_;
+    std::vector<u8> cell_voxel_;
 
     s32 open_capacity_ = kDefaultOpenCnt;
     u32 search_stamp_ = 0;
     bool scan_f_cut_ = false;
     bool index_built_ = false;
+    std::vector<u8> light_dirty_row_;
+    std::vector<u8> light_dirty_col_;
+    s32 light_dirty_cnt_ = 0;
+    s32 last_tier_ = 0;
     std::vector<s32> light_row_;
     std::vector<s32> light_col_;
     std::vector<jump_entry> jump_table_;
