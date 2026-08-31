@@ -19,7 +19,7 @@
 
 using test_graph = zgraph<s32, s32>;
 
-static constexpr f32 kMapSizeCm = (f32)test_graph::kGridSize * 100.0f;
+static constexpr f32 kMapSizeCm = (f32)test_graph::kGridSize * 30.0f;
 
 static inline zpoint random_pos(std::mt19937& rng)
 {
@@ -72,10 +72,10 @@ static std::vector<s32> g_node_ids;
 static std::vector<s32> g_link_ids;
 static std::vector<s32> g_extra_node_ids;
 
-static s32 zgraph_build_2000_links_test()
+static s32 zgraph_build_chain_links_test()
 {
     std::mt19937 rng(20260826u);
-    const int LINK_CNT = 2000;
+    const int LINK_CNT = 400;
     const int NODE_CNT = LINK_CNT + 1;
 
     g_node_ids.reserve(NODE_CNT);
@@ -92,7 +92,7 @@ static s32 zgraph_build_2000_links_test()
 
     g_link_ids.reserve(LINK_CNT);
     {
-        PROF_DEFINE_AUTO_MULTI_ANON_RECORD(guard, LINK_CNT, "zgraph: push 2000 links (zprof overall)");
+        PROF_DEFINE_AUTO_MULTI_ANON_RECORD(guard, LINK_CNT, "zgraph: push 400 links (zprof overall)");
 
         for (int i = 0; i < LINK_CNT; i++)
         {
@@ -112,16 +112,16 @@ static s32 zgraph_build_2000_links_test()
         }
     }
 
-    dump_histogram("push_link (2000 links, new_link+push_link each) latency", hist);
+    dump_histogram("push_link (400 links, new_link+push_link each) latency", hist);
     return 0;
 }
 
-static s32 zgraph_build_2000_nodes_test()
+static s32 zgraph_build_extra_nodes_test()
 {
-    ASSERT_TEST(!g_node_ids.empty(), "graph not built, run zgraph_build_2000_links_test first");
+    ASSERT_TEST(!g_node_ids.empty(), "graph not built, run zgraph_build_chain_links_test first");
 
     std::mt19937 rng(20260830u);
-    const int NODE_CNT = 2000;
+    const int NODE_CNT = 400;
 
     g_extra_node_ids.reserve(NODE_CNT);
 
@@ -146,14 +146,14 @@ static s32 zgraph_build_2000_nodes_test()
         g_extra_node_ids.push_back(nid);
     }
 
-    dump_histogram("build 2000 standalone nodes (new_node+push_node each, link-independent) latency", hist);
+    dump_histogram("build 400 standalone nodes (new_node+push_node each, link-independent) latency", hist);
     return 0;
 }
 
 static s32 zgraph_find_nearest_and_neighbor_bench_test()
 {
-    ASSERT_TEST(!g_node_ids.empty(), "graph not built, run zgraph_build_2000_links_test first");
-    ASSERT_TEST(!g_extra_node_ids.empty(), "extra nodes not built, run zgraph_build_2000_nodes_test first");
+    ASSERT_TEST(!g_node_ids.empty(), "graph not built, run zgraph_build_chain_links_test first");
+    ASSERT_TEST(!g_extra_node_ids.empty(), "extra nodes not built, run zgraph_build_extra_nodes_test first");
 
     const int N = 200000;
     std::mt19937 rng(20260827u);
@@ -247,7 +247,7 @@ static s32 zgraph_find_nearest_and_neighbor_bench_test()
 
 static s32 zgraph_add_and_remove_one_bench_test()
 {
-    ASSERT_TEST(!g_node_ids.empty(), "graph not built, run zgraph_build_2000_links_test first");
+    ASSERT_TEST(!g_node_ids.empty(), "graph not built, run zgraph_build_chain_links_test first");
 
     std::mt19937 rng(20260828u);
     std::uniform_int_distribution<size_t> anchor_dist(0, g_node_ids.size() - 1);
@@ -352,8 +352,8 @@ static s32 astar_turns_group_run(const char* group_name, std::mt19937& rng, s32 
 
 static s32 astar_diagonal_group_run(std::mt19937& rng, s32 loops, volatile s32& salt)
 {
-    std::uniform_real_distribution<float> low_dist(0.0f, 5000.0f);
-    std::uniform_real_distribution<float> high_dist(95000.0f, kMapSizeCm - 1.0f);
+    std::uniform_real_distribution<float> low_dist(0.0f, kMapSizeCm * 0.05f);
+    std::uniform_real_distribution<float> high_dist(kMapSizeCm * 0.95f, kMapSizeCm - 1.0f);
     std::uniform_int_distribution<s32> flip_dist(0, 1);
     std::vector<test_graph::graph_path_step> steps;
     g_graph.path_peak_reset();
@@ -390,7 +390,7 @@ static s32 astar_diagonal_group_run(std::mt19937& rng, s32 loops, volatile s32& 
 
 static s32 zgraph_astar_bench_test()
 {
-    ASSERT_TEST(!g_node_ids.empty(), "graph not built, run zgraph_build_2000_links_test first");
+    ASSERT_TEST(!g_node_ids.empty(), "graph not built, run zgraph_build_chain_links_test first");
     const s32 N = 20000;
     std::mt19937 rng(20260830u);
     volatile s32 salt = 0;
@@ -411,8 +411,8 @@ static s32 zgraph_astar_bench_test()
 
 static s32 zgraph_destroy_test()
 {
-    ASSERT_TEST(!g_node_ids.empty(), "graph not built, run zgraph_build_2000_links_test first");
-    ASSERT_TEST(!g_extra_node_ids.empty(), "extra nodes not built, run zgraph_build_2000_nodes_test first");
+    ASSERT_TEST(!g_node_ids.empty(), "graph not built, run zgraph_build_chain_links_test first");
+    ASSERT_TEST(!g_extra_node_ids.empty(), "extra nodes not built, run zgraph_build_extra_nodes_test first");
 
     {
         zstat_loghist<> hist;
@@ -431,7 +431,7 @@ static s32 zgraph_destroy_test()
             ASSERT_TEST_NOLOG(pop_ret == 0, "pop_node at i=", i, " ret=", pop_ret);
             ASSERT_TEST_NOLOG(free_ret == 0, "free_node at i=", i, " ret=", free_ret);
         }
-        dump_histogram("destroy 2000 standalone nodes (pop_node+free_node each) latency", hist);
+        dump_histogram("destroy 400 standalone nodes (pop_node+free_node each) latency", hist);
         g_extra_node_ids.clear();
     }
 
@@ -453,7 +453,7 @@ static s32 zgraph_destroy_test()
             ASSERT_TEST_NOLOG(pop_ret == 0, "pop_link at i=", i, " ret=", pop_ret);
             ASSERT_TEST_NOLOG(free_ret == 0, "free_link at i=", i, " ret=", free_ret);
         }
-        dump_histogram("destroy 2000 links (pop_link+free_link each) latency", hist);
+        dump_histogram("destroy 400 links (pop_link+free_link each) latency", hist);
         g_link_ids.clear();
     }
 
@@ -822,8 +822,8 @@ int main(int argc, char* argv[])
     ASSERT_TEST(zgraph_astar_cost_test()                          == 0);
     ASSERT_TEST(zgraph_astar_unreachable_test()                   == 0);
     ASSERT_TEST(zgraph_astar_composite_test()                     == 0);
-    ASSERT_TEST(zgraph_build_2000_links_test()                    == 0);
-    ASSERT_TEST(zgraph_build_2000_nodes_test()                    == 0);
+    ASSERT_TEST(zgraph_build_chain_links_test()                   == 0);
+    ASSERT_TEST(zgraph_build_extra_nodes_test()                   == 0);
     ASSERT_TEST(zgraph_find_nearest_and_neighbor_bench_test()      == 0);
     ASSERT_TEST(zgraph_astar_bench_test()                         == 0);
     ASSERT_TEST(zgraph_add_and_remove_one_bench_test()            == 0);

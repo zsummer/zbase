@@ -70,10 +70,10 @@ link和node独立入图 用作视野管理时 可不入link   用作寻路时候
 
 struct DefaultGraphConfig
 {
-    static constexpr s32 kMaxLinkCnt = 5000;
-    static constexpr s32 kMaxNodeCnt = 5000;
-    static constexpr s32 kMaxGridCnt = 100 * 100;
-    static constexpr s32 kMaxOpenCnt = 2048;
+    static constexpr s32 kMaxLinkCnt = 2000;
+    static constexpr s32 kMaxNodeCnt = 1000;
+    static constexpr s32 kMaxGridCnt = 30 * 30;
+    static constexpr s32 kMaxOpenCnt = 200;
 
     static constexpr s32 kGridP90LinkCnt = 5;
     static constexpr s32 kGridP90NodeCnt = 10;
