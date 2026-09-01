@@ -22,7 +22,6 @@ public:
     static constexpr s32 kCostDiagonal = 1414;
     static constexpr s32 kDefaultOpenCnt = 1024;
     static constexpr u8 kDefaultVoxelHeight = 1;
-    static constexpr s32 kClimbLimitVoxels = 4;
 
     zjps_grid() = default;
 
@@ -89,13 +88,31 @@ public:
         map_version_++;
         if (index_built_)
         {
-            mark_light_dirty_row(y);
-            mark_light_dirty_col(x);
+            if (light_dirty_row_[(size_t)y] == 0 && light_dirty_col_[(size_t)x] == 0)
+            {
+                s32* row = light_row_head(y);
+                s32* col = light_col_head(x);
+                if (next != 0)
+                {
+                    line_remove(row + 1, row[0], x);
+                    line_remove(col + 1, col[0], y);
+                }
+                else
+                {
+                    line_insert(row + 1, row[0], width_, x);
+                    line_insert(col + 1, col[0], height_, y);
+                }
+            }
+            else
+            {
+                mark_light_dirty_row(y);
+                mark_light_dirty_col(x);
+            }
         }
         return 0;
     }
 
-    s32 set_cell_rect(s32 x0, s32 y0, s32 x1, s32 y1, bool walkable)
+    s32 set_rect_cell(s32 x0, s32 y0, s32 x1, s32 y1, bool walkable)
     {
         if (x0 < 0 || y0 < 0 || x0 > x1 || y0 > y1 || x1 >= width_ || y1 >= height_)
         {
@@ -109,6 +126,77 @@ public:
             for (s32 x = x0; x <= x1; x++)
             {
                 if (row[x] != next)
+                {
+                    row[x] = next;
+                    changed = true;
+                }
+            }
+        }
+        if (!changed)
+        {
+            return 0;
+        }
+        map_version_++;
+        if (index_built_)
+        {
+            for (s32 y = y0; y <= y1; y++)
+            {
+                mark_light_dirty_row(y);
+            }
+            for (s32 x = x0; x <= x1; x++)
+            {
+                mark_light_dirty_col(x);
+            }
+        }
+        return 0;
+    }
+
+    s32 set_triangle_cell(const zpoint& a, const zpoint& b, const zpoint& c, bool walkable)
+    {
+        if (cell_size_ <= 0.0f)
+        {
+            return -1;
+        }
+        f32 area = (b.x - a.x) * (c.y - a.y) - (c.x - a.x) * (b.y - a.y);
+        if (area == 0.0f)
+        {
+            return -1;
+        }
+        f32 lo_x = a.x < b.x ? a.x : b.x;
+        if (c.x < lo_x) lo_x = c.x;
+        f32 hi_x = a.x > b.x ? a.x : b.x;
+        if (c.x > hi_x) hi_x = c.x;
+        f32 lo_y = a.y < b.y ? a.y : b.y;
+        if (c.y < lo_y) lo_y = c.y;
+        f32 hi_y = a.y > b.y ? a.y : b.y;
+        if (c.y > hi_y) hi_y = c.y;
+        s32 x0 = (s32)ceilf(lo_x / cell_size_ - 0.5f);
+        s32 x1 = (s32)floorf(hi_x / cell_size_ - 0.5f);
+        s32 y0 = (s32)ceilf(lo_y / cell_size_ - 0.5f);
+        s32 y1 = (s32)floorf(hi_y / cell_size_ - 0.5f);
+        if (x0 < 0) x0 = 0;
+        if (y0 < 0) y0 = 0;
+        if (x1 >= width_) x1 = width_ - 1;
+        if (y1 >= height_) y1 = height_ - 1;
+        if (x0 > x1 || y0 > y1)
+        {
+            return 0;
+        }
+        u8 next = walkable ? 1 : 0;
+        bool changed = false;
+        for (s32 y = y0; y <= y1; y++)
+        {
+            f32 center_y = ((f32)y + 0.5f) * cell_size_;
+            u8* row = cell_flag_.data() + (size_t)y * (size_t)width_;
+            for (s32 x = x0; x <= x1; x++)
+            {
+                f32 center_x = ((f32)x + 0.5f) * cell_size_;
+                f32 w0 = (b.x - a.x) * (center_y - a.y) - (center_x - a.x) * (b.y - a.y);
+                f32 w1 = (c.x - b.x) * (center_y - b.y) - (center_x - b.x) * (c.y - b.y);
+                f32 w2 = (a.x - c.x) * (center_y - c.y) - (center_x - c.x) * (a.y - c.y);
+                bool inside = (area > 0.0f) ? (w0 >= 0.0f && w1 >= 0.0f && w2 >= 0.0f)
+                                            : (w0 <= 0.0f && w1 <= 0.0f && w2 <= 0.0f);
+                if (inside && row[x] != next)
                 {
                     row[x] = next;
                     changed = true;
@@ -167,19 +255,6 @@ public:
         cell_voxel_[idx] = voxel_height;
         map_version_++;
         return 0;
-    }
-
-    bool climb_ok(s32 from_x, s32 from_y, s32 to_x, s32 to_y) const
-    {
-        if (from_x < 0 || from_y < 0 || from_x >= width_ || from_y >= height_
-            || to_x < 0 || to_y < 0 || to_x >= width_ || to_y >= height_)
-        {
-            return false;
-        }
-        s32 from_h = (s32)cell_voxel_[(size_t)from_y * (size_t)width_ + (size_t)from_x];
-        s32 to_h = (s32)cell_voxel_[(size_t)to_y * (size_t)width_ + (size_t)to_x];
-        s32 diff = to_h > from_h ? to_h - from_h : from_h - to_h;
-        return diff <= kClimbLimitVoxels;
     }
 
     s32 pos_to_cell(f32 px, f32 py, s32& out_x, s32& out_y) const
@@ -254,7 +329,7 @@ public:
     s32 visit_count() const { return visit_count_; }
     s32 last_path_cost() const { return last_path_cost_; }
 
-    s32 find_path(s32 start_x, s32 start_y, s32 target_x, s32 target_y, std::vector<s32>& out_cells)
+    s32 path_search(s32 start_x, s32 start_y, s32 target_x, s32 target_y, std::vector<s32>& out_cells)
     {
         out_cells.clear();
         if (start_x < 0 || start_y < 0 || start_x >= width_ || start_y >= height_
@@ -348,18 +423,9 @@ public:
         return -2;
     }
 
-    s32 find_path_jps(s32 start_x, s32 start_y, s32 target_x, s32 target_y, std::vector<s32>& out_cells)
+    s32 find_path(s32 start_x, s32 start_y, s32 target_x, s32 target_y, std::vector<s32>& out_cells)
     {
-        return jps_search(start_x, start_y, target_x, target_y, out_cells, false);
-    }
-
-    s32 find_path_jps_plus(s32 start_x, s32 start_y, s32 target_x, s32 target_y, std::vector<s32>& out_cells)
-    {
-        if (jump_table_.empty() || jump_build_version_ != map_version_)
-        {
-            return find_path_jps(start_x, start_y, target_x, target_y, out_cells);
-        }
-        return jps_search(start_x, start_y, target_x, target_y, out_cells, true);
+        return jps_search(start_x, start_y, target_x, target_y, out_cells);
     }
 
     s32 build_jps_light()
@@ -403,6 +469,13 @@ public:
                 light_dirty_cnt_--;
             }
         }
+        return 0;
+    }
+
+    s32 drop_jps_plus()
+    {
+        jump_table_.clear();
+        jump_build_version_ = 0;
         return 0;
     }
 
@@ -508,7 +581,7 @@ public:
         return 0;
     }
 
-    s32 jps_search(s32 start_x, s32 start_y, s32 target_x, s32 target_y, std::vector<s32>& out_cells, bool use_plus)
+    s32 jps_search(s32 start_x, s32 start_y, s32 target_x, s32 target_y, std::vector<s32>& out_cells)
     {
         out_cells.clear();
         if (start_x < 0 || start_y < 0 || start_x >= width_ || start_y >= height_
@@ -528,7 +601,9 @@ public:
             out_cells.push_back(start_idx);
             return 0;
         }
-        last_tier_ = use_plus ? 2 : (light_ready() ? 1 : 0);
+        bool jump_table_ok = !jump_table_.empty() && jump_build_version_ == map_version_;
+        bool light_ok = light_ready();
+        last_tier_ = jump_table_ok ? 2 : (light_ok ? 1 : 0);
         search_stamp_++;
         if (search_stamp_ == 0)
         {
@@ -604,8 +679,8 @@ public:
                 s32 d = dirs[k];
                 s32 dx = dir_x(d);
                 s32 dy = dir_y(d);
-                s32 t = use_plus ? plus_jump(cur, d, target_x, target_y)
-                                 : jump(x, y, dx, dy, target_x, target_y, states_[cur].cost, f_cur);
+                s32 t = jump_table_ok ? plus_jump(cur, d, target_x, target_y)
+                                      : jump(x, y, dx, dy, target_x, target_y, states_[cur].cost, f_cur);
                 if (t < 0)
                 {
                     continue;
@@ -629,173 +704,6 @@ public:
             }
         }
         return -2;
-    }
-
-    s32 raster_segment(const zpoint& source, const zpoint& target, f32 radius, bool walkable)
-    {
-        if (cell_size_ <= 0.0f || radius < 0.0f)
-        {
-            return -1;
-        }
-        f32 dx = target.x - source.x;
-        f32 dy = target.y - source.y;
-        f32 len = sqrtf(dx * dx + dy * dy);
-        s32 steps = (s32)(len / cell_size_);
-        if ((f32)steps * cell_size_ < len)
-        {
-            steps++;
-        }
-        if (steps < 1)
-        {
-            steps = 1;
-        }
-        s32 band = (s32)(radius / cell_size_) + 1;
-        f32 radius_sq = radius * radius;
-        for (s32 i = 0; i <= steps; i++)
-        {
-            f32 t = (f32)i / (f32)steps;
-            zpoint sample(source.x + dx * t, source.y + dy * t, 0.0f);
-            s32 sample_x = 0;
-            s32 sample_y = 0;
-            if (pos_to_cell(sample.x, sample.y, sample_x, sample_y) != 0)
-            {
-                continue;
-            }
-            for (s32 y = sample_y - band; y <= sample_y + band; y++)
-            {
-                for (s32 x = sample_x - band; x <= sample_x + band; x++)
-                {
-                    if (x < 0 || y < 0 || x >= width_ || y >= height_)
-                    {
-                        continue;
-                    }
-                    f32 center_x = ((f32)x + 0.5f) * cell_size_;
-                    f32 center_y = ((f32)y + 0.5f) * cell_size_;
-                    if (point_segment_dist_sq(center_x, center_y, source, target) <= radius_sq)
-                    {
-                        set_cell(x, y, walkable);
-                    }
-                }
-            }
-        }
-        return 0;
-    }
-
-    s32 raster_rect(f32 min_x, f32 min_y, f32 max_x, f32 max_y, bool walkable)
-    {
-        if (cell_size_ <= 0.0f || min_x > max_x || min_y > max_y)
-        {
-            return -1;
-        }
-        s32 x0 = (s32)floorf(min_x / cell_size_);
-        s32 x1 = (s32)floorf(max_x / cell_size_);
-        s32 y0 = (s32)floorf(min_y / cell_size_);
-        s32 y1 = (s32)floorf(max_y / cell_size_);
-        if (x0 < 0) x0 = 0;
-        if (y0 < 0) y0 = 0;
-        if (x1 >= width_) x1 = width_ - 1;
-        if (y1 >= height_) y1 = height_ - 1;
-        for (s32 y = y0; y <= y1; y++)
-        {
-            for (s32 x = x0; x <= x1; x++)
-            {
-                f32 center_x = ((f32)x + 0.5f) * cell_size_;
-                f32 center_y = ((f32)y + 0.5f) * cell_size_;
-                if (center_x >= min_x && center_x <= max_x && center_y >= min_y && center_y <= max_y)
-                {
-                    set_cell(x, y, walkable);
-                }
-            }
-        }
-        return 0;
-    }
-
-    s32 raster_circle(f32 center_x, f32 center_y, f32 radius, bool walkable)
-    {
-        if (cell_size_ <= 0.0f || radius < 0.0f)
-        {
-            return -1;
-        }
-        s32 x0 = (s32)floorf((center_x - radius) / cell_size_);
-        s32 x1 = (s32)floorf((center_x + radius) / cell_size_);
-        s32 y0 = (s32)floorf((center_y - radius) / cell_size_);
-        s32 y1 = (s32)floorf((center_y + radius) / cell_size_);
-        if (x0 < 0) x0 = 0;
-        if (y0 < 0) y0 = 0;
-        if (x1 >= width_) x1 = width_ - 1;
-        if (y1 >= height_) y1 = height_ - 1;
-        f32 radius_sq = radius * radius;
-        for (s32 y = y0; y <= y1; y++)
-        {
-            for (s32 x = x0; x <= x1; x++)
-            {
-                f32 cx = ((f32)x + 0.5f) * cell_size_ - center_x;
-                f32 cy = ((f32)y + 0.5f) * cell_size_ - center_y;
-                if (cx * cx + cy * cy <= radius_sq)
-                {
-                    set_cell(x, y, walkable);
-                }
-            }
-        }
-        return 0;
-    }
-
-    s32 raster_polygon(const std::vector<zpoint>& vertexes, bool walkable)
-    {
-        if (cell_size_ <= 0.0f || vertexes.size() < 3)
-        {
-            return -1;
-        }
-        f32 min_y = vertexes[0].y;
-        f32 max_y = vertexes[0].y;
-        for (size_t i = 1; i < vertexes.size(); i++)
-        {
-            if (vertexes[i].y < min_y) min_y = vertexes[i].y;
-            if (vertexes[i].y > max_y) max_y = vertexes[i].y;
-        }
-        s32 y0 = (s32)floorf(min_y / cell_size_);
-        s32 y1 = (s32)floorf(max_y / cell_size_);
-        if (y0 < 0) y0 = 0;
-        if (y1 >= height_) y1 = height_ - 1;
-        std::vector<f32> crossings;
-        for (s32 y = y0; y <= y1; y++)
-        {
-            f32 center_y = ((f32)y + 0.5f) * cell_size_;
-            crossings.clear();
-            for (size_t i = 0; i < vertexes.size(); i++)
-            {
-                const zpoint& a = vertexes[i];
-                const zpoint& b = vertexes[(i + 1) % vertexes.size()];
-                if (a.y == b.y)
-                {
-                    continue;
-                }
-                if ((a.y <= center_y && center_y < b.y) || (b.y <= center_y && center_y < a.y))
-                {
-                    f32 t = (center_y - a.y) / (b.y - a.y);
-                    crossings.push_back(a.x + (b.x - a.x) * t);
-                }
-            }
-            std::sort(crossings.begin(), crossings.end());
-            for (size_t k = 0; k + 1 < crossings.size(); k += 2)
-            {
-                f32 span_min_x = crossings[k];
-                f32 span_max_x = crossings[k + 1];
-                s32 x0 = (s32)floorf(span_min_x / cell_size_);
-                s32 x1 = (s32)floorf(span_max_x / cell_size_);
-                if (x0 < 0) x0 = 0;
-                if (x1 >= width_) x1 = width_ - 1;
-                for (s32 x = x0; x <= x1; x++)
-                {
-                    f32 center_x = ((f32)x + 0.5f) * cell_size_;
-                    if (center_x >= span_min_x && center_x <= span_max_x)
-                    {
-                        set_cell(x, y, walkable);
-                    }
-                }
-            }
-        }
-        return 0;
     }
 
 private:
@@ -891,6 +799,39 @@ private:
             }
         }
         ln[0] = cnt;
+    }
+
+    static void line_insert(s32* vals, s32& cnt, s32 cap, s32 v)
+    {
+        s32 pos = line_lower(vals, cnt, v);
+        if (pos < cnt && vals[pos] == v)
+        {
+            return;
+        }
+        if (cnt >= cap)
+        {
+            return;
+        }
+        if (pos < cnt)
+        {
+            memmove(vals + pos + 1, vals + pos, (size_t)(cnt - pos) * sizeof(s32));
+        }
+        vals[pos] = v;
+        cnt++;
+    }
+
+    static void line_remove(s32* vals, s32& cnt, s32 v)
+    {
+        s32 pos = line_lower(vals, cnt, v);
+        if (pos >= cnt || vals[pos] != v)
+        {
+            return;
+        }
+        if (pos + 1 < cnt)
+        {
+            memmove(vals + pos, vals + pos + 1, (size_t)(cnt - pos - 1) * sizeof(s32));
+        }
+        cnt--;
     }
 
     s32* light_row_head(s32 y)
@@ -1672,27 +1613,6 @@ private:
             }
         }
         return lo;
-    }
-
-    static f32 point_segment_dist_sq(f32 px, f32 py, const zpoint& source, const zpoint& target)
-    {
-        f32 dx = target.x - source.x;
-        f32 dy = target.y - source.y;
-        f32 len_sq = dx * dx + dy * dy;
-        if (len_sq <= 0.0f)
-        {
-            f32 ex = px - source.x;
-            f32 ey = py - source.y;
-            return ex * ex + ey * ey;
-        }
-        f32 t = ((px - source.x) * dx + (py - source.y) * dy) / len_sq;
-        if (t < 0.0f) t = 0.0f;
-        if (t > 1.0f) t = 1.0f;
-        f32 closest_x = source.x + dx * t;
-        f32 closest_y = source.y + dy * t;
-        f32 ex = px - closest_x;
-        f32 ey = py - closest_y;
-        return ex * ex + ey * ey;
     }
 
 private:
