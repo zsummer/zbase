@@ -136,48 +136,7 @@ public:
 
 private:
     static constexpr s32 kScanProbeSteps = 8;
-
-    static s32 line_lower(const s32* vals, s32 cnt, s32 v);
-
-    static s32 line_upper(const s32* vals, s32 cnt, s32 v);
-
-    s32 mark_light_dirty_row(s32 y)
-    {
-        if (light_dirty_row_[(size_t)y] == 0)
-        {
-            light_dirty_row_[(size_t)y] = 1;
-            light_dirty_cnt_++;
-        }
-        return 0;
-    }
-
-    s32 mark_light_dirty_col(s32 x)
-    {
-        if (light_dirty_col_[(size_t)x] == 0)
-        {
-            light_dirty_col_[(size_t)x] = 1;
-            light_dirty_cnt_++;
-        }
-        return 0;
-    }
-
-    s32 refill_light_row(s32 y);
-
-    s32 refill_light_col(s32 x);
-
-    static s32 line_insert(s32* vals, s32& cnt, s32 cap, s32 v);
-
-    static s32 line_remove(s32* vals, s32& cnt, s32 v);
-
-    s32* light_row_head(s32 y)
-    {
-        return light_row_.data() + (size_t)y * (size_t)(width_ + 1);
-    }
-
-    s32* light_col_head(s32 x)
-    {
-        return light_col_.data() + (size_t)x * (size_t)(height_ + 1);
-    }
+    static constexpr s32 kDirCnt = 8;
 
     struct search_state
     {
@@ -201,8 +160,6 @@ private:
         s32 cell;
     };
 
-    static constexpr s32 kDirCnt = 8;
-
     static s32 dir_x(s32 d)
     {
         const s32 dirs[8] = { 1, 1, 0, -1, -1, -1, 0, 1 };
@@ -215,13 +172,15 @@ private:
         return dirs[d];
     }
 
+    static s32 dir_index(s32 dx, s32 dy);
+
     static s32 octile_to(s32 x, s32 y, s32 target_x, s32 target_y)
     {
         s32 dx = x > target_x ? x - target_x : target_x - x;
         s32 dy = y > target_y ? y - target_y : target_y - y;
-        s32 mx = dx > dy ? dx : dy;
-        s32 mn = dx > dy ? dy : dx;
-        return kCostStraight * mx + (kCostDiagonal - kCostStraight) * mn;
+        s32 long_axis = dx > dy ? dx : dy;
+        s32 short_axis = dx > dy ? dy : dx;
+        return kCostStraight * long_axis + (kCostDiagonal - kCostStraight) * short_axis;
     }
 
     static bool heap_before(const heap_entry& a, const heap_entry& b)
@@ -237,36 +196,76 @@ private:
 
     static s32 heap_pop(std::vector<heap_entry>& heap, heap_entry& out);
 
-    static s32 dir_index(s32 dx, s32 dy);
+    static s32 line_lower(const s32* vals, s32 cnt, s32 v);
+
+    static s32 line_upper(const s32* vals, s32 cnt, s32 v);
+
+    static s32 line_insert(s32* vals, s32& cnt, s32 cap, s32 v);
+
+    static s32 line_remove(s32* vals, s32& cnt, s32 v);
+
+    static size_t block_run_end(const s32* blocks, size_t i, size_t cnt);
+
+    static size_t block_run_start(const s32* blocks, size_t i);
+
+    static s32* light_row_head(s32* rows, s32 width, s32 y)
+    {
+        return rows + (size_t)y * (size_t)(width + 1);
+    }
+
+    static s32* light_col_head(s32* cols, s32 height, s32 x)
+    {
+        return cols + (size_t)x * (size_t)(height + 1);
+    }
+
+    static s32 refill_light_row(const u8* cell_flag, s32* rows, s32 width, s32 y);
+
+    static s32 refill_light_col(const u8* cell_flag, s32* cols, s32 width, s32 height, s32 x);
+
+    static s32 mark_light_dirty_row(u8* dirty_rows, s32& dirty_cnt, s32 y)
+    {
+        if (dirty_rows[(size_t)y] == 0)
+        {
+            dirty_rows[(size_t)y] = 1;
+            dirty_cnt++;
+        }
+        return 0;
+    }
+
+    static s32 mark_light_dirty_col(u8* dirty_cols, s32& dirty_cnt, s32 x)
+    {
+        if (dirty_cols[(size_t)x] == 0)
+        {
+            dirty_cols[(size_t)x] = 1;
+            dirty_cnt++;
+        }
+        return 0;
+    }
 
     static size_t plus_slot(s32 cell_idx, s32 d)
     {
         return (size_t)cell_idx * kPlusSlotCnt + (size_t)(d / 2);
     }
 
-    bool has_forced(s32 x, s32 y, s32 dx, s32 dy);
+    bool at_forced_turn(s32 x, s32 y, s32 dx, s32 dy);
 
-    s32 jump(s32 x, s32 y, s32 dx, s32 dy, s32 target_x, s32 target_y);
+    s32 successor_dirs(s32 x, s32 y, s32 d, s32* out_dirs);
 
-    s32 jump_straight(s32 x, s32 y, s32 dx, s32 dy, s32 target_x, s32 target_y);
+    s32 jump(s32 x, s32 y, s32 dx, s32 dy, s32 target_x, s32 target_y, bool light_ok);
+
+    s32 jump_straight(s32 x, s32 y, s32 dx, s32 dy, s32 target_x, s32 target_y, bool light_ok);
 
     s32 jump_straight_indexed(s32 x, s32 y, s32 dx, s32 dy, s32 target_x, s32 target_y);
 
-    s32 straight_forced_stop_row(s32 y, s32 x, s32 dx, s32 c_max);
+    s32 straight_forced_turn_row(s32 y, s32 x, s32 dx, s32 col_limit);
 
-    s32 straight_forced_stop_col(s32 x, s32 y, s32 dy, s32 r_max);
-
-    s32 successor_dirs(s32 x, s32 y, s32 d, s32* out_dirs);
+    s32 straight_forced_turn_col(s32 x, s32 y, s32 dy, s32 row_limit);
 
     s32 jump_table_lookup(s32 cell_idx, s32 d, s32 target_x, s32 target_y);
 
     bool ray_reaches_target(s32 x, s32 y, s32 dx, s32 dy, s32 target_x, s32 target_y);
 
     s32 jump_diag_plus(s32 x, s32 y, s32 dx, s32 dy, s32 target_x, s32 target_y);
-
-    static size_t block_run_end(const s32* blocks, size_t i, size_t cnt);
-
-    static size_t block_run_start(const s32* blocks, size_t i);
 
     s32 width_ = 0;
     s32 height_ = 0;
@@ -348,8 +347,8 @@ inline s32 zjps_grid::set_cell(s32 x, s32 y, bool walkable)
     {
         if (light_dirty_row_[(size_t)y] == 0 && light_dirty_col_[(size_t)x] == 0)
         {
-            s32* row = light_row_head(y);
-            s32* col = light_col_head(x);
+            s32* row = light_row_head(light_row_.data(), width_, y);
+            s32* col = light_col_head(light_col_.data(), height_, x);
             if (next != 0)
             {
                 line_remove(row + 1, row[0], x);
@@ -358,14 +357,14 @@ inline s32 zjps_grid::set_cell(s32 x, s32 y, bool walkable)
             else if (line_insert(row + 1, row[0], width_, x) != 0
                      || line_insert(col + 1, col[0], height_, y) != 0)
             {
-                mark_light_dirty_row(y);
-                mark_light_dirty_col(x);
+                mark_light_dirty_row(light_dirty_row_.data(), light_dirty_cnt_, y);
+                mark_light_dirty_col(light_dirty_col_.data(), light_dirty_cnt_, x);
             }
         }
         else
         {
-            mark_light_dirty_row(y);
-            mark_light_dirty_col(x);
+            mark_light_dirty_row(light_dirty_row_.data(), light_dirty_cnt_, y);
+            mark_light_dirty_col(light_dirty_col_.data(), light_dirty_cnt_, x);
         }
     }
     return 0;
@@ -400,11 +399,11 @@ inline s32 zjps_grid::set_rect_cell(s32 x0, s32 y0, s32 x1, s32 y1, bool walkabl
     {
         for (s32 y = y0; y <= y1; y++)
         {
-            mark_light_dirty_row(y);
+            mark_light_dirty_row(light_dirty_row_.data(), light_dirty_cnt_, y);
         }
         for (s32 x = x0; x <= x1; x++)
         {
-            mark_light_dirty_col(x);
+            mark_light_dirty_col(light_dirty_col_.data(), light_dirty_cnt_, x);
         }
     }
     return 0;
@@ -471,11 +470,11 @@ inline s32 zjps_grid::set_triangle_cell(const zpoint& a, const zpoint& b, const 
     {
         for (s32 y = y0; y <= y1; y++)
         {
-            mark_light_dirty_row(y);
+            mark_light_dirty_row(light_dirty_row_.data(), light_dirty_cnt_, y);
         }
         for (s32 x = x0; x <= x1; x++)
         {
-            mark_light_dirty_col(x);
+            mark_light_dirty_col(light_dirty_col_.data(), light_dirty_cnt_, x);
         }
     }
     return 0;
@@ -651,11 +650,11 @@ inline s32 zjps_grid::build_jps_light()
     {
         for (s32 y = 0; y < height_; y++)
         {
-            refill_light_row(y);
+            refill_light_row(cell_flag_.data(), light_row_.data(), width_, y);
         }
         for (s32 x = 0; x < width_; x++)
         {
-            refill_light_col(x);
+            refill_light_col(cell_flag_.data(), light_col_.data(), width_, height_, x);
         }
         index_built_ = true;
         return 0;
@@ -664,7 +663,7 @@ inline s32 zjps_grid::build_jps_light()
     {
         if (light_dirty_row_[(size_t)y] != 0)
         {
-            refill_light_row(y);
+            refill_light_row(cell_flag_.data(), light_row_.data(), width_, y);
             light_dirty_row_[(size_t)y] = 0;
             light_dirty_cnt_--;
         }
@@ -673,7 +672,7 @@ inline s32 zjps_grid::build_jps_light()
     {
         if (light_dirty_col_[(size_t)x] != 0)
         {
-            refill_light_col(x);
+            refill_light_col(cell_flag_.data(), light_col_.data(), width_, height_, x);
             light_dirty_col_[(size_t)x] = 0;
             light_dirty_cnt_--;
         }
@@ -706,7 +705,7 @@ inline s32 zjps_grid::build_jps_plus()
                 jump_table_[base].stop = y * width_ + next;
                 continue;
             }
-            if (has_forced(next, y, 1, 0))
+            if (at_forced_turn(next, y, 1, 0))
             {
                 jump_table_[base].jump = y * width_ + next;
             }
@@ -726,7 +725,7 @@ inline s32 zjps_grid::build_jps_plus()
                 jump_table_[base].stop = y * width_ + next;
                 continue;
             }
-            if (has_forced(next, y, -1, 0))
+            if (at_forced_turn(next, y, -1, 0))
             {
                 jump_table_[base].jump = y * width_ + next;
             }
@@ -749,7 +748,7 @@ inline s32 zjps_grid::build_jps_plus()
                 jump_table_[base].stop = next * width_ + x;
                 continue;
             }
-            if (has_forced(x, next, 0, 1))
+            if (at_forced_turn(x, next, 0, 1))
             {
                 jump_table_[base].jump = next * width_ + x;
             }
@@ -769,7 +768,7 @@ inline s32 zjps_grid::build_jps_plus()
                 jump_table_[base].stop = next * width_ + x;
                 continue;
             }
-            if (has_forced(x, next, 0, -1))
+            if (at_forced_turn(x, next, 0, -1))
             {
                 jump_table_[base].jump = next * width_ + x;
             }
@@ -886,25 +885,40 @@ inline s32 zjps_grid::jps_search(s32 start_x, s32 start_y, s32 target_x, s32 tar
             s32 d = dirs[k];
             s32 dx = dir_x(d);
             s32 dy = dir_y(d);
-            s32 t = jump_table_ok ? (dx != 0 && dy != 0 ? jump_diag_plus(x, y, dx, dy, target_x, target_y)
-                                                        : jump_table_lookup(cur, d, target_x, target_y))
-                                  : jump(x, y, dx, dy, target_x, target_y);
-            if (t < 0)
+            s32 jump_cell;
+            if (jump_table_ok)
+            {
+                //plus档: 轴向O(1)查表 斜向仍逐格 每格查表判侧
+                if (dx != 0 && dy != 0)
+                {
+                    jump_cell = jump_diag_plus(x, y, dx, dy, target_x, target_y);
+                }
+                else
+                {
+                    jump_cell = jump_table_lookup(cur, d, target_x, target_y);
+                }
+            }
+            else
+            {
+                //light档索引二分 scan档纯逐格 由light_ok选择
+                jump_cell = jump(x, y, dx, dy, target_x, target_y, light_ok);
+            }
+            if (jump_cell < 0)
             {
                 continue;
             }
-            s32 tx = t % width_;
-            s32 ty = t / width_;
-            s32 next_cost = states_[cur].cost + octile_to(x, y, tx, ty);
-            if (states_[t].stamp != search_stamp_ || next_cost < states_[t].cost)
+            s32 jump_x = jump_cell % width_;
+            s32 jump_y = jump_cell / width_;
+            s32 next_cost = states_[cur].cost + octile_to(x, y, jump_x, jump_y);
+            if (states_[jump_cell].stamp != search_stamp_ || next_cost < states_[jump_cell].cost)
             {
-                states_[t].cost = next_cost;
-                states_[t].came_from = cur;
-                states_[t].dir = (u8)(d + 1);
-                states_[t].stamp = search_stamp_;
-                states_[t].closed = 0;
+                states_[jump_cell].cost = next_cost;
+                states_[jump_cell].came_from = cur;
+                states_[jump_cell].dir = (u8)(d + 1);
+                states_[jump_cell].stamp = search_stamp_;
+                states_[jump_cell].closed = 0;
                 visit_count_++;
-                if (heap_push(open_heap_, open_capacity_, next_cost + octile_to(tx, ty, target_x, target_y), next_cost, t) != 0)
+                if (heap_push(open_heap_, open_capacity_, next_cost + octile_to(jump_x, jump_y, target_x, target_y), next_cost, jump_cell) != 0)
                 {
                     return -3;
                 }
@@ -957,36 +971,36 @@ inline s32 zjps_grid::line_upper(const s32* vals, s32 cnt, s32 v)
     return lo;
 }
 
-inline s32 zjps_grid::refill_light_row(s32 y)
+inline s32 zjps_grid::refill_light_row(const u8* cell_flag, s32* rows, s32 width, s32 y)
 {
-    const u8* row = cell_flag_.data() + (size_t)y * (size_t)width_;
-    s32* ln = light_row_head(y);
-    s32* vals = ln + 1;
+    const u8* row = cell_flag + (size_t)y * (size_t)width;
+    s32* row_head = light_row_head(rows, width, y);
+    s32* vals = row_head + 1;
     s32 cnt = 0;
-    for (s32 x = 0; x < width_; x++)
+    for (s32 x = 0; x < width; x++)
     {
         if (row[x] == 0)
         {
             vals[cnt++] = x;
         }
     }
-    ln[0] = cnt;
+    row_head[0] = cnt;
     return 0;
 }
 
-inline s32 zjps_grid::refill_light_col(s32 x)
+inline s32 zjps_grid::refill_light_col(const u8* cell_flag, s32* cols, s32 width, s32 height, s32 x)
 {
-    s32* ln = light_col_head(x);
-    s32* vals = ln + 1;
+    s32* col_head = light_col_head(cols, height, x);
+    s32* vals = col_head + 1;
     s32 cnt = 0;
-    for (s32 y = 0; y < height_; y++)
+    for (s32 y = 0; y < height; y++)
     {
-        if (cell_flag_[(size_t)y * (size_t)width_ + (size_t)x] == 0)
+        if (cell_flag[(size_t)y * (size_t)width + (size_t)x] == 0)
         {
             vals[cnt++] = y;
         }
     }
-    ln[0] = cnt;
+    col_head[0] = cnt;
     return 0;
 }
 
@@ -1100,7 +1114,7 @@ inline s32 zjps_grid::dir_index(s32 dx, s32 dy)
     return dy > 0 ? 2 : 6;
 }
 
-inline bool zjps_grid::has_forced(s32 x, s32 y, s32 dx, s32 dy)
+inline bool zjps_grid::at_forced_turn(s32 x, s32 y, s32 dx, s32 dy)
 {
     if (dx != 0 && dy != 0)
     {
@@ -1108,28 +1122,28 @@ inline bool zjps_grid::has_forced(s32 x, s32 y, s32 dx, s32 dy)
     }
     if (dx != 0)
     {
-        if (cell_walkable(x, y + 1) && !cell_walkable(x - dx, y + 1))
+        //横向走: 查上下两侧 x-dx是来路那一列
+        for (s32 side = -1; side <= 1; side += 2)
         {
-            return true;
-        }
-        if (cell_walkable(x, y - 1) && !cell_walkable(x - dx, y - 1))
-        {
-            return true;
+            if (cell_walkable(x, y + side) && !cell_walkable(x - dx, y + side))
+            {
+                return true;
+            }
         }
         return false;
     }
-    if (cell_walkable(x + 1, y) && !cell_walkable(x + 1, y - dy))
+    //纵向走: 查左右两侧 y-dy是来路那一行
+    for (s32 side = -1; side <= 1; side += 2)
     {
-        return true;
-    }
-    if (cell_walkable(x - 1, y) && !cell_walkable(x - 1, y - dy))
-    {
-        return true;
+        if (cell_walkable(x + side, y) && !cell_walkable(x + side, y - dy))
+        {
+            return true;
+        }
     }
     return false;
 }
 
-inline s32 zjps_grid::jump(s32 x, s32 y, s32 dx, s32 dy, s32 target_x, s32 target_y)
+inline s32 zjps_grid::jump(s32 x, s32 y, s32 dx, s32 dy, s32 target_x, s32 target_y, bool light_ok)
 {
     if (dx != 0 && dy != 0)
     {
@@ -1145,26 +1159,26 @@ inline s32 zjps_grid::jump(s32 x, s32 y, s32 dx, s32 dy, s32 target_x, s32 targe
             {
                 return y * width_ + x;
             }
-            if (has_forced(x, y, dx, dy))
+            if (at_forced_turn(x, y, dx, dy))
             {
                 return y * width_ + x;
             }
-            if (jump_straight(x, y, dx, 0, target_x, target_y) >= 0)
+            if (jump_straight(x, y, dx, 0, target_x, target_y, light_ok) >= 0)
             {
                 return y * width_ + x;
             }
-            if (jump_straight(x, y, 0, dy, target_x, target_y) >= 0)
+            if (jump_straight(x, y, 0, dy, target_x, target_y, light_ok) >= 0)
             {
                 return y * width_ + x;
             }
         }
     }
-    return jump_straight(x, y, dx, dy, target_x, target_y);
+    return jump_straight(x, y, dx, dy, target_x, target_y, light_ok);
 }
 
-inline s32 zjps_grid::jump_straight(s32 x, s32 y, s32 dx, s32 dy, s32 target_x, s32 target_y)
+inline s32 zjps_grid::jump_straight(s32 x, s32 y, s32 dx, s32 dy, s32 target_x, s32 target_y, bool light_ok)
 {
-    if (!(index_built_ && light_dirty_cnt_ == 0))
+    if (!light_ok)
     {
         while (true)
         {
@@ -1178,7 +1192,7 @@ inline s32 zjps_grid::jump_straight(s32 x, s32 y, s32 dx, s32 dy, s32 target_x, 
             {
                 return y * width_ + x;
             }
-            if (has_forced(x, y, dx, dy))
+            if (at_forced_turn(x, y, dx, dy))
             {
                 return y * width_ + x;
             }
@@ -1197,7 +1211,7 @@ inline s32 zjps_grid::jump_straight(s32 x, s32 y, s32 dx, s32 dy, s32 target_x, 
         {
             return y * width_ + x;
         }
-        if (has_forced(x, y, dx, dy))
+        if (at_forced_turn(x, y, dx, dy))
         {
             return y * width_ + x;
         }
@@ -1210,38 +1224,38 @@ inline s32 zjps_grid::jump_straight_indexed(s32 x, s32 y, s32 dx, s32 dy, s32 ta
 {
     if (dx != 0)
     {
-        const s32* row_ln = light_row_head(y);
-        const s32* row_vals = row_ln + 1;
-        s32 row_cnt = row_ln[0];
-        s32 hard;
+        const s32* row_head = light_row_head(light_row_.data(), width_, y);
+        const s32* row_vals = row_head + 1;
+        s32 row_cnt = row_head[0];
+        s32 block_at;
         if (dx > 0)
         {
             s32 pos = line_lower(row_vals, row_cnt, x + 1);
-            hard = pos < row_cnt ? row_vals[pos] : -1;
+            block_at = pos < row_cnt ? row_vals[pos] : -1;
         }
         else
         {
             s32 pos = line_upper(row_vals, row_cnt, x - 1);
-            hard = pos > 0 ? row_vals[pos - 1] : -1;
+            block_at = pos > 0 ? row_vals[pos - 1] : -1;
         }
-        s32 c_max = hard < 0 ? (dx > 0 ? width_ - 1 : 0) : hard - dx;
-        if (dx > 0 && c_max > width_ - 1)
+        s32 col_limit = block_at < 0 ? (dx > 0 ? width_ - 1 : 0) : block_at - dx;
+        if (dx > 0 && col_limit > width_ - 1)
         {
-            c_max = width_ - 1;
+            col_limit = width_ - 1;
         }
-        if (dx < 0 && c_max < 0)
+        if (dx < 0 && col_limit < 0)
         {
-            c_max = 0;
+            col_limit = 0;
         }
         s32 stop = -1;
         if (y == target_y)
         {
-            if ((dx > 0 && target_x > x && target_x <= c_max) || (dx < 0 && target_x < x && target_x >= c_max))
+            if ((dx > 0 && target_x > x && target_x <= col_limit) || (dx < 0 && target_x < x && target_x >= col_limit))
             {
                 stop = target_x;
             }
         }
-        s32 forced = straight_forced_stop_row(y, x, dx, c_max);
+        s32 forced = straight_forced_turn_row(y, x, dx, col_limit);
         if (forced >= 0 && (stop < 0 || (dx > 0 ? forced < stop : forced > stop)))
         {
             stop = forced;
@@ -1252,38 +1266,38 @@ inline s32 zjps_grid::jump_straight_indexed(s32 x, s32 y, s32 dx, s32 dy, s32 ta
         }
         return y * width_ + stop;
     }
-    const s32* col_ln = light_col_head(x);
-    const s32* col_vals = col_ln + 1;
-    s32 col_cnt = col_ln[0];
-    s32 hard;
+    const s32* col_head = light_col_head(light_col_.data(), height_, x);
+    const s32* col_vals = col_head + 1;
+    s32 col_cnt = col_head[0];
+    s32 block_at;
     if (dy > 0)
     {
         s32 pos = line_lower(col_vals, col_cnt, y + 1);
-        hard = pos < col_cnt ? col_vals[pos] : -1;
+        block_at = pos < col_cnt ? col_vals[pos] : -1;
     }
     else
     {
         s32 pos = line_upper(col_vals, col_cnt, y - 1);
-        hard = pos > 0 ? col_vals[pos - 1] : -1;
+        block_at = pos > 0 ? col_vals[pos - 1] : -1;
     }
-    s32 r_max = hard < 0 ? (dy > 0 ? height_ - 1 : 0) : hard - dy;
-    if (dy > 0 && r_max > height_ - 1)
+    s32 row_limit = block_at < 0 ? (dy > 0 ? height_ - 1 : 0) : block_at - dy;
+    if (dy > 0 && row_limit > height_ - 1)
     {
-        r_max = height_ - 1;
+        row_limit = height_ - 1;
     }
-    if (dy < 0 && r_max < 0)
+    if (dy < 0 && row_limit < 0)
     {
-        r_max = 0;
+        row_limit = 0;
     }
     s32 stop = -1;
     if (x == target_x)
     {
-        if ((dy > 0 && target_y > y && target_y <= r_max) || (dy < 0 && target_y < y && target_y >= r_max))
+        if ((dy > 0 && target_y > y && target_y <= row_limit) || (dy < 0 && target_y < y && target_y >= row_limit))
         {
             stop = target_y;
         }
     }
-    s32 forced = straight_forced_stop_col(x, y, dy, r_max);
+    s32 forced = straight_forced_turn_col(x, y, dy, row_limit);
     if (forced >= 0 && (stop < 0 || (dy > 0 ? forced < stop : forced > stop)))
     {
         stop = forced;
@@ -1295,106 +1309,106 @@ inline s32 zjps_grid::jump_straight_indexed(s32 x, s32 y, s32 dx, s32 dy, s32 ta
     return stop * width_ + x;
 }
 
-inline s32 zjps_grid::straight_forced_stop_row(s32 y, s32 x, s32 dx, s32 c_max)
+inline s32 zjps_grid::straight_forced_turn_row(s32 y, s32 x, s32 dx, s32 col_limit)
 {
     s32 best = -1;
     for (s32 side = -1; side <= 1; side += 2)
     {
-        s32 ys = y + side;
-        if (ys < 0 || ys >= height_)
+        s32 side_y = y + side;
+        if (side_y < 0 || side_y >= height_)
         {
             continue;
         }
-        const s32* row_ln = light_row_head(ys);
-        const s32* blocks = row_ln + 1;
-        s32 block_cnt = row_ln[0];
+        const s32* row_head = light_row_head(light_row_.data(), width_, side_y);
+        const s32* blocks = row_head + 1;
+        s32 block_cnt = row_head[0];
         if (dx > 0)
         {
-            s32 i = line_lower(blocks, block_cnt, x);
-            if (i >= block_cnt)
+            s32 block_idx = line_lower(blocks, block_cnt, x);
+            if (block_idx >= block_cnt)
             {
                 continue;
             }
-            size_t e = block_run_end(blocks, (size_t)i, (size_t)block_cnt);
-            s32 c = blocks[e] + 1;
-            if (c >= width_ || c > c_max)
+            size_t run_end = block_run_end(blocks, (size_t)block_idx, (size_t)block_cnt);
+            s32 stop_col = blocks[run_end] + 1;
+            if (stop_col >= width_ || stop_col > col_limit)
             {
                 continue;
             }
-            if (best < 0 || c < best)
+            if (best < 0 || stop_col < best)
             {
-                best = c;
+                best = stop_col;
             }
         }
         else
         {
-            s32 i = line_upper(blocks, block_cnt, x);
-            if (i <= 0)
+            s32 block_idx = line_upper(blocks, block_cnt, x);
+            if (block_idx <= 0)
             {
                 continue;
             }
-            size_t s = block_run_start(blocks, (size_t)(i - 1));
-            s32 c = blocks[s] - 1;
-            if (c < 0 || c < c_max)
+            size_t run_start = block_run_start(blocks, (size_t)(block_idx - 1));
+            s32 stop_col = blocks[run_start] - 1;
+            if (stop_col < 0 || stop_col < col_limit)
             {
                 continue;
             }
-            if (best < 0 || c > best)
+            if (best < 0 || stop_col > best)
             {
-                best = c;
+                best = stop_col;
             }
         }
     }
     return best;
 }
 
-inline s32 zjps_grid::straight_forced_stop_col(s32 x, s32 y, s32 dy, s32 r_max)
+inline s32 zjps_grid::straight_forced_turn_col(s32 x, s32 y, s32 dy, s32 row_limit)
 {
     s32 best = -1;
     for (s32 side = -1; side <= 1; side += 2)
     {
-        s32 xs = x + side;
-        if (xs < 0 || xs >= width_)
+        s32 side_x = x + side;
+        if (side_x < 0 || side_x >= width_)
         {
             continue;
         }
-        const s32* col_ln = light_col_head(xs);
-        const s32* blocks = col_ln + 1;
-        s32 block_cnt = col_ln[0];
+        const s32* col_head = light_col_head(light_col_.data(), height_, side_x);
+        const s32* blocks = col_head + 1;
+        s32 block_cnt = col_head[0];
         if (dy > 0)
         {
-            s32 i = line_lower(blocks, block_cnt, y);
-            if (i >= block_cnt)
+            s32 block_idx = line_lower(blocks, block_cnt, y);
+            if (block_idx >= block_cnt)
             {
                 continue;
             }
-            size_t e = block_run_end(blocks, (size_t)i, (size_t)block_cnt);
-            s32 r = blocks[e] + 1;
-            if (r >= height_ || r > r_max)
+            size_t run_end = block_run_end(blocks, (size_t)block_idx, (size_t)block_cnt);
+            s32 stop_row = blocks[run_end] + 1;
+            if (stop_row >= height_ || stop_row > row_limit)
             {
                 continue;
             }
-            if (best < 0 || r < best)
+            if (best < 0 || stop_row < best)
             {
-                best = r;
+                best = stop_row;
             }
         }
         else
         {
-            s32 i = line_upper(blocks, block_cnt, y);
-            if (i <= 0)
+            s32 block_idx = line_upper(blocks, block_cnt, y);
+            if (block_idx <= 0)
             {
                 continue;
             }
-            size_t s = block_run_start(blocks, (size_t)(i - 1));
-            s32 r = blocks[s] - 1;
-            if (r < 0 || r < r_max)
+            size_t run_start = block_run_start(blocks, (size_t)(block_idx - 1));
+            s32 stop_row = blocks[run_start] - 1;
+            if (stop_row < 0 || stop_row < row_limit)
             {
                 continue;
             }
-            if (best < 0 || r > best)
+            if (best < 0 || stop_row > best)
             {
-                best = r;
+                best = stop_row;
             }
         }
     }
@@ -1507,19 +1521,19 @@ inline bool zjps_grid::ray_reaches_target(s32 x, s32 y, s32 dx, s32 dy, s32 targ
         }
     }
     size_t slot = plus_slot(y * width_ + x, dir_index(dx, dy));
-    s32 j = jump_table_[slot].jump;
+    s32 jump_cell = jump_table_[slot].jump;
     s32 stop = jump_table_[slot].stop;
-    s32 t_axis = (dx != 0) ? target_x : target_y;
-    s32 s = (dx != 0) ? dx : dy;
-    if (j >= 0)
+    s32 target_axis = (dx != 0) ? target_x : target_y;
+    s32 step = (dx != 0) ? dx : dy;
+    if (jump_cell >= 0)
     {
-        s32 j_axis = (dx != 0) ? (j % width_) : (j / width_);
-        return (t_axis - j_axis) * s <= 0;
+        s32 jump_axis = (dx != 0) ? (jump_cell % width_) : (jump_cell / width_);
+        return (target_axis - jump_axis) * step <= 0;
     }
     if (stop >= 0)
     {
         s32 stop_axis = (dx != 0) ? (stop % width_) : (stop / width_);
-        return (t_axis - stop_axis) * s < 0;
+        return (target_axis - stop_axis) * step < 0;
     }
     return true;
 }
@@ -1538,7 +1552,7 @@ inline s32 zjps_grid::jump_diag_plus(s32 x, s32 y, s32 dx, s32 dy, s32 target_x,
         {
             return y * width_ + x;
         }
-        if (has_forced(x, y, dx, dy))
+        if (at_forced_turn(x, y, dx, dy))
         {
             return y * width_ + x;
         }
