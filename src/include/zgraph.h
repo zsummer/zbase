@@ -123,7 +123,7 @@ public:
     struct graph_link
     {
         Link data;
-        s32 node[kSlotMax];
+        s32 node_id[kSlotMax];
         s32 refs;
         s32 color;
         s32 cost;
@@ -139,7 +139,7 @@ public:
 
     struct graph_path_step
     {
-        s32 link;
+        s32 link_id;
         s32 slot;
         zpoint pos;
     };
@@ -351,11 +351,11 @@ private:
                 {
                     graph_link* link = ref_link(path_node_states_[cursor].came_from_link);
                     graph_path_step step;
-                    step.link =path_node_states_[cursor].came_from_link;
-                    step.slot = link->node[kSlotS] == cursor ? kSlotS : kSlotT;
+                    step.link_id =path_node_states_[cursor].came_from_link;
+                    step.slot = link->node_id[kSlotS] == cursor ? kSlotS : kSlotT;
                     step.pos = ref_node(cursor)->pos;
                     out_steps.push_back(step);
-                    cursor = link->node[1 - step.slot];
+                    cursor = link->node_id[1 - step.slot];
                 }
                 std::reverse(out_steps.begin(), out_steps.end());
                 return 0;
@@ -370,7 +370,7 @@ private:
                     {
                         continue;
                     }
-                    s32 next_node_id = link->node[1 - slot];
+                    s32 next_node_id = link->node_id[1 - slot];
                     if (next_node_id == current_node_id)
                     {
                         continue;
@@ -583,8 +583,8 @@ public:
 
         graph_link link;
         link.data = v;
-        link.node[kSlotS] = source;
-        link.node[kSlotT] = target;
+        link.node_id[kSlotS] = source;
+        link.node_id[kSlotT] = target;
         link.refs = 0;
         link.color = color;
         link.cost = cost;
@@ -631,12 +631,12 @@ public:
             return -2;
         }
 
-        graph_node* source = ref_node(link->node[kSlotS]);
+        graph_node* source = ref_node(link->node_id[kSlotS]);
         if (source == nullptr)
         {
             return -3;
         }
-        graph_node* target = ref_node(link->node[kSlotT]);
+        graph_node* target = ref_node(link->node_id[kSlotT]);
         if (target == nullptr)
         {
             return -4;
@@ -687,12 +687,12 @@ public:
             return -2;
         }
 
-        graph_node* source_node = ref_node(link->node[kSlotS]);
+        graph_node* source_node = ref_node(link->node_id[kSlotS]);
         if (source_node == nullptr)
         {
             return -3;
         }
-        graph_node* target_node = ref_node(link->node[kSlotT]);
+        graph_node* target_node = ref_node(link->node_id[kSlotT]);
         if (target_node == nullptr)
         {
             return -4;
@@ -783,12 +783,12 @@ public:
             return -2;
         }
 
-        graph_node* source_node = ref_node(link->node[kSlotS]);
+        graph_node* source_node = ref_node(link->node_id[kSlotS]);
         if (source_node == nullptr)
         {
             return -3;
         }
-        graph_node* target_node = ref_node(link->node[kSlotT]);
+        graph_node* target_node = ref_node(link->node_id[kSlotT]);
         if (target_node == nullptr)
         {
             return -4;
@@ -910,8 +910,8 @@ public:
             {
                 return;
             }
-            const graph_node* source = const_cast<zgraph*>(this)->ref_node(link->node[kSlotS]);
-            const graph_node* target = const_cast<zgraph*>(this)->ref_node(link->node[kSlotT]);
+            const graph_node* source = const_cast<zgraph*>(this)->ref_node(link->node_id[kSlotS]);
+            const graph_node* target = const_cast<zgraph*>(this)->ref_node(link->node_id[kSlotT]);
             if (source == nullptr || target == nullptr)
             {
                 return;
@@ -1069,24 +1069,24 @@ public:
         if (entry_link_id == exit_link_id)
         {
             graph_path_step step_walk_to_entry;
-            step_walk_to_entry.link =-1;
+            step_walk_to_entry.link_id =-1;
             step_walk_to_entry.slot = -1;
             step_walk_to_entry.pos = entry_pos;
             out_steps.push_back(step_walk_to_entry);
             graph_path_step step_ride;
-            step_ride.link =entry_link_id;
+            step_ride.link_id =entry_link_id;
             step_ride.slot = exit_slot;
             step_ride.pos = exit_pos;
             out_steps.push_back(step_ride);
             graph_path_step step_walk_to_target;
-            step_walk_to_target.link =-1;
+            step_walk_to_target.link_id =-1;
             step_walk_to_target.slot = -1;
             step_walk_to_target.pos = to;
             out_steps.push_back(step_walk_to_target);
             return 0;
         }
-        s32 entry_node_id = entry_link->node[entry_slot];
-        s32 target_node_id = exit_link->node[exit_slot];
+        s32 entry_node_id = entry_link->node_id[entry_slot];
+        s32 target_node_id = exit_link->node_id[exit_slot];
         std::vector<graph_path_step> ride_steps;
         s32 ret = path_search(entry_node_id, target_node_id, option, ride_steps);
         if (ret != 0)
@@ -1094,14 +1094,14 @@ public:
             return ret;
         }
         graph_path_step step_walk_to_entry;
-        step_walk_to_entry.link =-1;
+        step_walk_to_entry.link_id =-1;
         step_walk_to_entry.slot = -1;
         step_walk_to_entry.pos = entry_pos;
         out_steps.push_back(step_walk_to_entry);
-        if (ride_steps.empty() || ride_steps.front().link !=entry_link_id)
+        if (ride_steps.empty() || ride_steps.front().link_id !=entry_link_id)
         {
             graph_path_step step_ride_to_entry;
-            step_ride_to_entry.link =entry_link_id;
+            step_ride_to_entry.link_id =entry_link_id;
             step_ride_to_entry.slot = entry_slot;
             step_ride_to_entry.pos = ref_node(entry_node_id)->pos;
             out_steps.push_back(step_ride_to_entry);
@@ -1110,12 +1110,12 @@ public:
         {
             out_steps.push_back(ride_steps[i]);
         }
-        if (!ride_steps.empty() && ride_steps.back().link ==exit_link_id)
+        if (!ride_steps.empty() && ride_steps.back().link_id ==exit_link_id)
         {
             out_steps.back().pos = exit_pos;
         }
         graph_path_step step_walk_to_target;
-        step_walk_to_target.link =-1;
+        step_walk_to_target.link_id =-1;
         step_walk_to_target.slot = -1;
         step_walk_to_target.pos = to;
         out_steps.push_back(step_walk_to_target);

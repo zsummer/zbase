@@ -518,11 +518,11 @@ static s32 zgraph_astar_grid_test()
     for (size_t i = 0; i < steps.size(); i++)
     {
         const test_graph::graph_path_step& step = steps[i];
-        ASSERT_TEST(step.link >= 0, "grid step link_id invalid at i=", (s32)i);
-        test_graph::graph_link* link = g.ref_link(step.link);
-        ASSERT_TEST(link->node[0] == curr || link->node[1] == curr, "path discontinuity at i=", (s32)i);
-        s32 depart_slot = link->node[0] == curr ? 0 : 1;
-        s32 next = link->node[1 - depart_slot];
+        ASSERT_TEST(step.link_id >= 0, "grid step link_id invalid at i=", (s32)i);
+        test_graph::graph_link* link = g.ref_link(step.link_id);
+        ASSERT_TEST(link->node_id[0] == curr || link->node_id[1] == curr, "path discontinuity at i=", (s32)i);
+        s32 depart_slot = link->node_id[0] == curr ? 0 : 1;
+        s32 next = link->node_id[1 - depart_slot];
         ASSERT_TEST(step.slot == 1 - depart_slot, "step slot mismatch at i=", (s32)i);
         f32 dx = g.ref_node(next)->pos.x - g.ref_node(curr)->pos.x;
         f32 dy = g.ref_node(next)->pos.y - g.ref_node(curr)->pos.y;
@@ -624,16 +624,16 @@ static s32 zgraph_astar_composite_test()
     ASSERT_TEST((s32)steps.size() == 4, "composite expect 4 steps, got=", (s32)steps.size());
     if (steps.size() == 4)
     {
-        ASSERT_TEST(steps[0].link == -1 && steps[0].slot == -1
+        ASSERT_TEST(steps[0].link_id == -1 && steps[0].slot == -1
                     && fabsf(steps[0].pos.x - 200.0f) < 0.001f && fabsf(steps[0].pos.y) < 0.001f,
                     "composite walk-a step mismatch");
-        ASSERT_TEST(steps[1].link == lab && steps[1].slot == 1
+        ASSERT_TEST(steps[1].link_id == lab && steps[1].slot == 1
                     && fabsf(steps[1].pos.x - 1000.0f) < 0.001f,
                     "composite seed step mismatch");
-        ASSERT_TEST(steps[2].link == lbc && steps[2].slot == 1
+        ASSERT_TEST(steps[2].link_id == lbc && steps[2].slot == 1
                     && fabsf(steps[2].pos.x - 1800.0f) < 0.001f,
                     "composite truncated step mismatch");
-        ASSERT_TEST(steps[3].link == -1 && steps[3].slot == -1
+        ASSERT_TEST(steps[3].link_id == -1 && steps[3].slot == -1
                     && fabsf(steps[3].pos.x - 1800.0f) < 0.001f && fabsf(steps[3].pos.y - 300.0f) < 0.001f,
                     "composite walk-b step mismatch");
     }
@@ -645,12 +645,12 @@ static s32 zgraph_astar_composite_test()
     ASSERT_TEST((s32)steps.size() == 3, "same-link expect 3 steps, got=", (s32)steps.size());
     if (steps.size() == 3)
     {
-        ASSERT_TEST(steps[0].link == -1 && fabsf(steps[0].pos.x - 300.0f) < 0.001f,
+        ASSERT_TEST(steps[0].link_id == -1 && fabsf(steps[0].pos.x - 300.0f) < 0.001f,
                     "same-link walk-a step mismatch");
-        ASSERT_TEST(steps[1].link == lab && steps[1].slot == 1
+        ASSERT_TEST(steps[1].link_id == lab && steps[1].slot == 1
                     && fabsf(steps[1].pos.x - 700.0f) < 0.001f,
                     "same-link ride step mismatch");
-        ASSERT_TEST(steps[2].link == -1 && fabsf(steps[2].pos.x - 700.0f) < 0.001f
+        ASSERT_TEST(steps[2].link_id == -1 && fabsf(steps[2].pos.x - 700.0f) < 0.001f
                     && fabsf(steps[2].pos.y - 400.0f) < 0.001f,
                     "same-link walk-b step mismatch");
     }
@@ -935,9 +935,9 @@ static s32 zgraph_decrease_key_test()
     ASSERT_TEST((s32)steps.size() == 3, "decrease-key expect 3-step detour, got=", (s32)steps.size());
     if (steps.size() == 3)
     {
-        ASSERT_TEST(steps[0].link != -1 && g.ref_link(steps[0].link)->node[1] == detour,
+        ASSERT_TEST(steps[0].link_id != -1 && g.ref_link(steps[0].link_id)->node_id[1] == detour,
                     "decrease-key first hop should reach detour");
-        ASSERT_TEST(steps[2].link == l_ht, "decrease-key last hop should be hub->t");
+        ASSERT_TEST(steps[2].link_id == l_ht, "decrease-key last hop should be hub->t");
     }
     ASSERT_TEST((s32)g.path_open_peak() <= test_graph::kMaxOpenCnt,
                 "open peak must stay within cap, got=", (s32)g.path_open_peak());
@@ -1106,7 +1106,7 @@ static s32 zgraph_dijkstra_crosscheck_test()
             f32 got = 0.0f;
             for (size_t i = 0; i < steps.size(); i++)
             {
-                got += g.ref_link(steps[i].link)->weight;
+                got += g.ref_link(steps[i].link_id)->weight;
             }
             f32 tolerance = ref_cost[target_index] * 1e-4f + 0.01f;
             ASSERT_TEST_NOLOG(fabsf(got - ref_cost[target_index]) < tolerance,
