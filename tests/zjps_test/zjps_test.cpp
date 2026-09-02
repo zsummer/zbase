@@ -1242,7 +1242,6 @@ static s32 phase5_serpentine_bench()
 {
     zjps_grid grid;
     ASSERT_TEST(bench_serpentine_grid(grid) == 0, "p5 serp grid fail");
-    ASSERT_TEST(grid.build_jps_light() == 0, "p5 serp light build fail");
 
     test_graph graph;
     const s32 ROW_CNT = 33;
@@ -1331,6 +1330,26 @@ static s32 phase5_serpentine_bench()
         salt += warm_ret;
     }
     const char* tier_names[3] = { "short5-10m", "mid20-40m", "long80-140m" };
+    f64 res0[3] = { 0.0, 0.0, 0.0 };
+    for (s32 t = 0; t < 3; t++)
+    {
+        if (tier_pairs[t].empty())
+        {
+            continue;
+        }
+        const s32 N = (s32)tier_pairs[t].size();
+        zclock<> c;
+        c.start();
+        for (s32 s = 0; s < N; s++)
+        {
+            grid.find_path(tier_pairs[t][s].ax, tier_pairs[t][s].ay, tier_pairs[t][s].bx, tier_pairs[t][s].by, cells);
+            salt += (s32)cells.size();
+        }
+        c.stop_and_save();
+        res0[t] = (f64)c.cost_ns() / (f64)N;
+        ASSERT_TEST(grid.last_tier() == 0, "serpentine jps0 tier expect 0(no light yet), t=", t, " got=", grid.last_tier());
+    }
+    ASSERT_TEST(grid.build_jps_light() == 0, "p5 serp light build fail");
     {
         f64 res[3][4];
         s32 jps_tier[3];
@@ -1416,9 +1435,9 @@ static s32 phase5_serpentine_bench()
             const s32 N = (s32)tier_pairs[t].size();
             f64 dist_avg_m = tier_dist[t] / (f64)N / 100.0;
             f64 zlen_avg_m = tier_zlen[t] / (f64)N / 100.0;
-            LOGFMTI("phase5 serpentine %s: pairs=%d dist=%.1fm zpath=%.1fm(wrap=%.1fx) | zgraph=%.0fns astar=%.0fns jps=%.0fns(tier%d) jps+=%.0fns(tier%d)",
+            LOGFMTI("phase5 serpentine %s: pairs=%d dist=%.1fm zpath=%.1fm(wrap=%.1fx) | zgraph=%.0fns astar=%.0fns jps0=%.0fns(tier0) jps=%.0fns(tier%d) jps+=%.0fns(tier%d)",
                     tier_names[t], N, dist_avg_m, zlen_avg_m, zlen_avg_m / (dist_avg_m > 0.0001 ? dist_avg_m : 1.0),
-                    res[t][0], res[t][1], res[t][2], jps_tier[t], res[t][3], plus_tier[t]);
+                    res[t][0], res[t][1], res0[t], res[t][2], jps_tier[t], res[t][3], plus_tier[t]);
         }
     }
 
@@ -1536,7 +1555,6 @@ static s32 phase5_obstacle_bench(s32 rect_cnt, const char* density_name, u32 see
             }
         }
     }
-    ASSERT_TEST(grid.build_jps_light() == 0, "p5 obst light build fail");
     LOGFMTI("phase5 obstacle[%s]: rects=%d walkable=%.1f%%", density_name, rect_cnt,
             100.0 * (f64)walkable_cnt / (f64)(W * W));
 
@@ -1717,6 +1735,7 @@ static s32 phase5_obstacle_bench(s32 rect_cnt, const char* density_name, u32 see
     volatile s32 salt = 0;
     f64 res_z[TIER_CNT];
     f64 res_a[TIER_CNT];
+    f64 res_n[TIER_CNT];
     f64 res_j[TIER_CNT];
     f64 res_p[TIER_CNT];
     {
@@ -1725,6 +1744,25 @@ static s32 phase5_obstacle_bench(s32 rect_cnt, const char* density_name, u32 see
                                           tier_pairs[0][0].bx, tier_pairs[0][0].by, warm_cells);
         salt += warm_ret;
     }
+    for (s32 t = 0; t < TIER_CNT; t++)
+    {
+        if (tier_pairs[t].empty())
+        {
+            continue;
+        }
+        const s32 N = (s32)tier_pairs[t].size();
+        zclock<> c;
+        c.start();
+        for (s32 s = 0; s < N; s++)
+        {
+            grid.find_path(tier_pairs[t][s].ax, tier_pairs[t][s].ay, tier_pairs[t][s].bx, tier_pairs[t][s].by, cells);
+            salt += (s32)cells.size();
+        }
+        c.stop_and_save();
+        res_n[t] = (f64)c.cost_ns() / (f64)N;
+        ASSERT_TEST(grid.last_tier() == 0, "obstacle jps0 tier expect 0(no light yet), got=", grid.last_tier());
+    }
+    ASSERT_TEST(grid.build_jps_light() == 0, "p5 obst light build fail");
     for (s32 t = 0; t < TIER_CNT; t++)
     {
         if (tier_pairs[t].empty())
@@ -1800,9 +1838,9 @@ static s32 phase5_obstacle_bench(s32 rect_cnt, const char* density_name, u32 see
             continue;
         }
         const s32 N = (s32)tier_pairs[t].size();
-        LOGFMTI("phase5 obstacle[%s] %s: pairs=%d zpath=%.1fm apath=%.1fm | zgraph=%.0fns astar=%.0fns jps=%.0fns jps+=%.0fns",
+        LOGFMTI("phase5 obstacle[%s] %s: pairs=%d zpath=%.1fm apath=%.1fm | zgraph=%.0fns astar=%.0fns jps0=%.0fns(tier0) jps=%.0fns(tier1) jps+=%.0fns(tier2)",
                 density_name, tier_names[t], N, tier_zlen[t] / (f64)N / 100.0, tier_alen[t] / (f64)N / 100.0,
-                res_z[t], res_a[t], res_j[t], res_p[t]);
+                res_z[t], res_a[t], res_n[t], res_j[t], res_p[t]);
     }
     LOGFMTI("phase5 obstacle[%s] summary: coarse zgraph nodes=%d links=%d grids=%d | jps+ build=%.2fms table=%.1fMB",
             density_name, graph.node_count(), graph.link_count(), graph.grid_count(),

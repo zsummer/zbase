@@ -420,23 +420,6 @@ private:
         return -3;
     }
 
-    template<size_t MaxOut, class Filter>
-    s32 neighbor_try_node(zarray<s32, MaxOut>& out_node_ids, s32 node_id, s32 exclude_node_id,
-                          const Filter& filter, const graph_find_option& option) const
-    {
-        if (out_node_ids.full() || node_id == exclude_node_id)
-        {
-            return -1;
-        }
-        const graph_node* node = const_cast<zgraph*>(this)->ref_node(node_id);
-        if (node == nullptr || !match_node(node, option) || filter(node->data))
-        {
-            return -2;
-        }
-        out_node_ids.push_back(node_id);
-        return 0;
-    }
-
 public:
     static std::pair<s32, s32> to_int_pos(const zpoint& pos)
     {
@@ -474,6 +457,8 @@ public:
     }
     bool is_valid_node(s32 node_id) const
     {
+
+        static_assert(node_list::MAX_SIZE == kMaxNodeCnt, "");
         return node_id >= 0 && node_id < kMaxNodeCnt && node_alive_[node_id] != 0;
     }
 
@@ -620,6 +605,7 @@ public:
 
     bool is_valid_link(s32 link_id) const
     {
+        static_assert(link_list::MAX_SIZE == kMaxLinkCnt, "");
         return link_id >= 0 && link_id < kMaxLinkCnt && link_alive_[link_id] != 0;
     }
 
@@ -900,52 +886,6 @@ public:
     }
 
 
-    s32 update_nearest_link(s32 link_id, const zpoint& pos, s32 exclude_link_id, const graph_find_option& option,
-                            s32& best_link_id, zpoint& best_pos, s32& best_slot, f32& best_sq_dist) const
-    {
-        if (link_id == exclude_link_id)
-        {
-            return -1;
-        }
-        const graph_link* link = const_cast<zgraph*>(this)->ref_link(link_id);
-        if (link == nullptr || !match_link(link, option))
-        {
-            return -2;
-        }
-        const graph_node* source = const_cast<zgraph*>(this)->ref_node(link->node[kSlotS]);
-        const graph_node* target = const_cast<zgraph*>(this)->ref_node(link->node[kSlotT]);
-        if (source == nullptr || target == nullptr)
-        {
-            return -3;
-        }
-
-        f32 ex = target->pos.x - source->pos.x;
-        f32 ey = target->pos.y - source->pos.y;
-        f32 len_sq = ex * ex + ey * ey;
-
-        f32 t = 0.0f;
-        if (len_sq > kMergeDist * kMergeDist)
-        {
-            t = ((pos.x - source->pos.x) * ex + (pos.y - source->pos.y) * ey) / len_sq;
-            t = t < 0.0f ? 0.0f : (t > 1.0f ? 1.0f : t);
-        }
-
-        zpoint nearest(source->pos.x + t * ex, source->pos.y + t * ey,
-                        source->pos.z + t * (target->pos.z - source->pos.z));
-
-        f32 ddx = nearest.x - pos.x;
-        f32 ddy = nearest.y - pos.y;
-        f32 sq_dist = ddx * ddx + ddy * ddy;
-        if (best_link_id == -1 || sq_dist < best_sq_dist)
-        {
-            best_link_id = link_id;
-            best_pos = nearest;
-            best_slot = t <= 0.5f ? kSlotS : kSlotT;
-            best_sq_dist = sq_dist;
-        }
-        return 0;
-    }
-
     s32 find_nearest_link(const zpoint& pos, s32& out_link_id, s32& out_slot, zpoint& out_nearest_pos,
                           f32& out_slot_sq_dist,
                           s32 exclude_link_id = -1, const graph_find_option& option = graph_find_option()) const
@@ -958,6 +898,50 @@ public:
         zpoint best_pos;
         s32 best_slot = kSlotS;
         f32 best_sq_dist = 0.0f;
+
+        auto try_link = [&](s32 link_id)
+        {
+            if (link_id == exclude_link_id)
+            {
+                return;
+            }
+            const graph_link* link = const_cast<zgraph*>(this)->ref_link(link_id);
+            if (link == nullptr || !match_link(link, option))
+            {
+                return;
+            }
+            const graph_node* source = const_cast<zgraph*>(this)->ref_node(link->node[kSlotS]);
+            const graph_node* target = const_cast<zgraph*>(this)->ref_node(link->node[kSlotT]);
+            if (source == nullptr || target == nullptr)
+            {
+                return;
+            }
+
+            f32 ex = target->pos.x - source->pos.x;
+            f32 ey = target->pos.y - source->pos.y;
+            f32 len_sq = ex * ex + ey * ey;
+
+            f32 t = 0.0f;
+            if (len_sq > kMergeDist * kMergeDist)
+            {
+                t = ((pos.x - source->pos.x) * ex + (pos.y - source->pos.y) * ey) / len_sq;
+                t = t < 0.0f ? 0.0f : (t > 1.0f ? 1.0f : t);
+            }
+
+            zpoint nearest(source->pos.x + t * ex, source->pos.y + t * ey,
+                            source->pos.z + t * (target->pos.z - source->pos.z));
+
+            f32 ddx = nearest.x - pos.x;
+            f32 ddy = nearest.y - pos.y;
+            f32 sq_dist = ddx * ddx + ddy * ddy;
+            if (best_link_id == -1 || sq_dist < best_sq_dist)
+            {
+                best_link_id = link_id;
+                best_pos = nearest;
+                best_slot = t <= 0.5f ? kSlotS : kSlotT;
+                best_sq_dist = sq_dist;
+            }
+        };
 
         for (s32 dx = -1; dx <= 1; dx++)
         {
@@ -972,11 +956,11 @@ public:
                 const terrain& t = iter->second;
                 for (s32 link_id : t.links)
                 {
-                    update_nearest_link(link_id, pos, exclude_link_id, option, best_link_id, best_pos, best_slot, best_sq_dist);
+                    try_link(link_id);
                 }
                 for (s32 link_id : t.ext_links)
                 {
-                    update_nearest_link(link_id, pos, exclude_link_id, option, best_link_id, best_pos, best_slot, best_sq_dist);
+                    try_link(link_id);
                 }
             }
         }
@@ -996,6 +980,20 @@ public:
     s32 find_neighbor_nodes(const zpoint& pos, zarray<s32, MaxOut>& out_node_ids, s32 exclude_node_id = -1,
                              Filter filter = Filter(), const graph_find_option& option = graph_find_option()) const
     {
+        auto try_node = [&](s32 node_id)
+        {
+            if (out_node_ids.full() || node_id == exclude_node_id)
+            {
+                return;
+            }
+            const graph_node* node = const_cast<zgraph*>(this)->ref_node(node_id);
+            if (node == nullptr || !match_node(node, option) || filter(node->data))
+            {
+                return;
+            }
+            out_node_ids.push_back(node_id);
+        };
+
         auto xy = to_int_pos(pos);
         s32 cx = xy.first;
         s32 cy = xy.second;
@@ -1013,11 +1011,11 @@ public:
                 const terrain& t = iter->second;
                 for (s32 node_id : t.nodes)
                 {
-                    neighbor_try_node(out_node_ids, node_id, exclude_node_id, filter, option);
+                    try_node(node_id);
                 }
                 for (s32 node_id : t.ext_nodes)
                 {
-                    neighbor_try_node(out_node_ids, node_id, exclude_node_id, filter, option);
+                    try_node(node_id);
                 }
             }
         }
