@@ -506,7 +506,8 @@ static s32 random_map_check(s32 width, s32 rect_cnt, s32 sample_pairs, u32 seed)
             }
             if (x + 1 < width && y + 1 < width
                 && node_ids[(size_t)(y + 1) * width + (size_t)x + 1] >= 0
-                && (node_ids[(size_t)y * width + (size_t)x + 1] >= 0 || node_ids[(size_t)(y + 1) * width + (size_t)x] >= 0))
+                && node_ids[(size_t)y * width + (size_t)x + 1] >= 0
+                && node_ids[(size_t)(y + 1) * width + (size_t)x] >= 0)
             {
                 s32 lid = graph.new_link(node_ids[(size_t)y * width + (size_t)x], node_ids[(size_t)(y + 1) * width + (size_t)x + 1], link_cnt);
                 ASSERT_TEST(lid >= 0, "new_link northeast fail x=", x, " y=", y);
@@ -516,7 +517,8 @@ static s32 random_map_check(s32 width, s32 rect_cnt, s32 sample_pairs, u32 seed)
             }
             if (x + 1 < width && y - 1 >= 0
                 && node_ids[(size_t)(y - 1) * width + (size_t)x + 1] >= 0
-                && (node_ids[(size_t)y * width + (size_t)x + 1] >= 0 || node_ids[(size_t)(y - 1) * width + (size_t)x] >= 0))
+                && node_ids[(size_t)y * width + (size_t)x + 1] >= 0
+                && node_ids[(size_t)(y - 1) * width + (size_t)x] >= 0)
             {
                 s32 lid = graph.new_link(node_ids[(size_t)y * width + (size_t)x], node_ids[(size_t)(y - 1) * width + (size_t)x + 1], link_cnt);
                 ASSERT_TEST(lid >= 0, "new_link southeast fail x=", x, " y=", y);
@@ -878,34 +880,94 @@ static s32 zjps_bench_test()
     return 0;
 }
 
-static s32 zjps_fcut_experiment_test()
+static s32 zjps_api_surface_test()
 {
     zjps_grid grid;
-    ASSERT_TEST(grid.init(20, 20, kCellSize, true) == 0, "fcut grid init fail");
+    ASSERT_TEST(grid.init(16, 12, kCellSize, true) == 0, "api grid init fail");
+
+    f32 px = 0.0f;
+    f32 py = 0.0f;
+    ASSERT_TEST(grid.cell_to_pos(0, 0, px, py) == 0, "api cell_to_pos origin fail");
+    ASSERT_TEST(px == 0.5f * kCellSize && py == 0.5f * kCellSize, "api cell_to_pos origin value px=", px, " py=", py);
+    ASSERT_TEST(grid.cell_to_pos(15, 11, px, py) == 0, "api cell_to_pos corner fail");
+    ASSERT_TEST(px == 15.5f * kCellSize && py == 11.5f * kCellSize, "api cell_to_pos corner value");
+    ASSERT_TEST(grid.cell_to_pos(-1, 0, px, py) == -1, "api cell_to_pos neg x expect -1");
+    ASSERT_TEST(grid.cell_to_pos(0, -1, px, py) == -1, "api cell_to_pos neg y expect -1");
+    ASSERT_TEST(grid.cell_to_pos(16, 0, px, py) == -1, "api cell_to_pos over x expect -1");
+    ASSERT_TEST(grid.cell_to_pos(0, 12, px, py) == -1, "api cell_to_pos over y expect -1");
+    for (s32 y = 0; y < 12; y++)
+    {
+        for (s32 x = 0; x < 16; x++)
+        {
+            ASSERT_TEST_NOLOG(grid.cell_to_pos(x, y, px, py) == 0, "api roundtrip cell_to_pos x=", x, " y=", y);
+            s32 bx = 0;
+            s32 by = 0;
+            ASSERT_TEST_NOLOG(grid.pos_to_cell(px, py, bx, by) == 0, "api roundtrip pos_to_cell x=", x, " y=", y);
+            ASSERT_TEST_NOLOG(bx == x && by == y, "api roundtrip mismatch x=", x, " y=", y, " bx=", bx, " by=", by);
+        }
+    }
+
+    u32 version = grid.map_version();
+    ASSERT_TEST(grid.set_cell(4, 4, false) == 0, "api set_cell block fail");
+    ASSERT_TEST(!grid.cell_walkable(4, 4), "api set_cell block not applied");
+    ASSERT_TEST(grid.map_version() > version, "api set_cell should bump map version");
+    version = grid.map_version();
+    ASSERT_TEST(grid.set_cell(4, 4, false) == 0, "api set_cell idempotent fail");
+    ASSERT_TEST(grid.map_version() == version, "api set_cell idempotent should not bump version");
+    ASSERT_TEST(grid.set_cell(4, 4, true) == 0, "api set_cell unblock fail");
+    ASSERT_TEST(grid.cell_walkable(4, 4), "api set_cell unblock not applied");
+    ASSERT_TEST(grid.set_cell(-1, 0, false) == -1, "api set_cell neg x expect -1");
+    ASSERT_TEST(grid.set_cell(0, -1, false) == -1, "api set_cell neg y expect -1");
+    ASSERT_TEST(grid.set_cell(16, 0, false) == -1, "api set_cell over x expect -1");
+    ASSERT_TEST(grid.set_cell(0, 12, false) == -1, "api set_cell over y expect -1");
+
+    std::vector<s32> cells;
+    ASSERT_TEST(grid.build_jps_plus() == 0, "api plus build fail");
+    ASSERT_TEST(grid.jps_plus_table_bytes() > 0, "api plus table empty after build");
+    ASSERT_TEST(grid.find_path(0, 0, 15, 11, cells) == 0, "api plus query fail");
+    ASSERT_TEST(grid.last_tier() == 2, "api plus expect tier 2, got=", grid.last_tier());
+    s32 plus_cost = grid.last_path_cost();
+
+    ASSERT_TEST(grid.drop_jps_plus() == 0, "api drop_jps_plus fail");
+    ASSERT_TEST(grid.jps_plus_table_bytes() == 0, "api plus table not released, bytes=",
+                (s32)grid.jps_plus_table_bytes());
+    ASSERT_TEST(grid.find_path(0, 0, 15, 11, cells) == 0, "api post-drop query fail");
+    ASSERT_TEST(grid.last_tier() < 2, "api post-drop tier still 2");
+    ASSERT_TEST(grid.last_path_cost() == plus_cost, "api post-drop cost mismatch, got=", grid.last_path_cost(),
+                " plus=", plus_cost);
+    ASSERT_TEST(grid.drop_jps_plus() == 0, "api drop_jps_plus twice fail");
+    ASSERT_TEST(grid.build_jps_plus() == 0, "api plus rebuild after drop fail");
+    ASSERT_TEST(grid.find_path(0, 0, 15, 11, cells) == 0, "api plus requery fail");
+    ASSERT_TEST(grid.last_tier() == 2, "api plus rebuild expect tier 2, got=", grid.last_tier());
+    ASSERT_TEST(grid.last_path_cost() == plus_cost, "api plus rebuild cost mismatch");
+
+    zjps_grid bare;
+    ASSERT_TEST(bare.drop_jps_plus() == 0, "api drop on uninit fail");
+    ASSERT_TEST(bare.build_jps_plus() == -1, "api build on uninit expect -1");
+    LOGFMTI("zjps api surface: cell_to_pos roundtrip 192 cells, set_cell and drop_jps_plus covered");
+    return 0;
+}
+
+static s32 zjps_wall_detour_test()
+{
+    zjps_grid grid;
+    ASSERT_TEST(grid.init(20, 20, kCellSize, true) == 0, "detour grid init fail");
     for (s32 x = 0; x <= 9; x++)
     {
-        ASSERT_TEST(grid.set_blocked(x, 1) == 0, "fcut wall fail x=", x);
-        ASSERT_TEST(grid.set_blocked(x, 2) == 0, "fcut wall fail x=", x);
+        ASSERT_TEST(grid.set_blocked(x, 1) == 0, "detour wall fail x=", x);
+        ASSERT_TEST(grid.set_blocked(x, 2) == 0, "detour wall fail x=", x);
     }
     std::vector<s32> cells;
     s32 aret = grid.path_search(0, 0, 10, 3, cells);
-    ASSERT_TEST(aret == 0, "fcut astar fail aret=", aret);
-    ASSERT_TEST(grid.last_path_cost() == 12414, "fcut astar cost mismatch, got=", grid.last_path_cost());
+    ASSERT_TEST(aret == 0, "detour astar fail aret=", aret);
+    ASSERT_TEST(grid.last_path_cost() == 13000, "detour astar cost mismatch, got=", grid.last_path_cost());
     s32 jret = grid.find_path(0, 0, 10, 3, cells);
-    ASSERT_TEST(jret == 0, "fcut jps fail jret=", jret);
-    ASSERT_TEST(grid.last_path_cost() == 12414, "fcut jps cost mismatch, got=", grid.last_path_cost());
-
-    ASSERT_TEST(grid.set_scan_f_cut(true) == 0, "fcut enable fail");
-    s32 cret = grid.find_path(0, 0, 10, 3, cells);
-    LOGFMTI("fcut counterexample(wall detour): astar=12414 jps_nocut=12414 jps_fcut ret=%d cost=%d",
-            cret, grid.last_path_cost());
-    ASSERT_TEST(cret != 0 || grid.last_path_cost() != 12414,
-                "fcut counterexample NOT reproduced: cut variant still optimal");
-    ASSERT_TEST(grid.set_scan_f_cut(false) == 0, "fcut disable fail");
+    ASSERT_TEST(jret == 0, "detour jps fail jret=", jret);
+    ASSERT_TEST(grid.last_path_cost() == 13000, "detour jps cost mismatch, got=", grid.last_path_cost());
 
     zjps_grid rgrid;
-    ASSERT_TEST(rgrid.init(20, 20, kCellSize, true) == 0, "fcut rgrid init fail");
-    ASSERT_TEST(rgrid.set_open_capacity(8192) == 0, "fcut rgrid capacity fail");
+    ASSERT_TEST(rgrid.init(20, 20, kCellSize, true) == 0, "detour rgrid init fail");
+    ASSERT_TEST(rgrid.set_open_capacity(8192) == 0, "detour rgrid capacity fail");
     std::mt19937 rng(20260835u);
     for (s32 i = 0; i < 14; i++)
     {
@@ -914,7 +976,7 @@ static s32 zjps_fcut_experiment_test()
         s32 bw = 1 + (s32)(rng() % 3);
         s32 bh = 1 + (s32)(rng() % 3);
         ASSERT_TEST(rgrid.set_rect_cell(bx, by, bx + bw - 1, by + bh - 1, false) == 0,
-                    "fcut block fail i=", i);
+                    "detour block fail i=", i);
     }
     std::vector<s32> rcells;
     for (s32 y = 0; y < 20; y++)
@@ -927,9 +989,7 @@ static s32 zjps_fcut_experiment_test()
             }
         }
     }
-    ASSERT_TEST(rgrid.set_scan_f_cut(true) == 0, "fcut rgrid enable fail");
     std::uniform_int_distribution<size_t> dist(0, rcells.size() - 1);
-    s32 mismatch = 0;
     for (s32 s = 0; s < 2000; s++)
     {
         s32 a = rcells[dist(rng)];
@@ -938,32 +998,11 @@ static s32 zjps_fcut_experiment_test()
         s32 acost = rgrid.last_path_cost();
         s32 jr = rgrid.find_path(a % 20, a / 20, b % 20, b / 20, cells);
         s32 jcost = rgrid.last_path_cost();
-        if (ar != jr || (ar == 0 && acost != jcost))
-        {
-            mismatch++;
-        }
+        ASSERT_TEST_NOLOG(ar == jr, "detour ret mismatch s=", s, " astar=", ar, " jps=", jr);
+        ASSERT_TEST_NOLOG(ar != 0 || acost == jcost, "detour cost mismatch s=", s,
+                          " astar=", acost, " jps=", jcost);
     }
-    LOGFMTI("fcut random map: 2000 pairs checked, %d mismatch vs astar (ret or cost differs)", mismatch);
-    ASSERT_TEST(rgrid.set_scan_f_cut(false) == 0, "fcut rgrid disable fail");
-
-    zjps_grid egrid;
-    ASSERT_TEST(egrid.init(200, 200, kCellSize, true) == 0, "fcut egrid init fail");
-    ASSERT_TEST(egrid.set_scan_f_cut(true) == 0, "fcut egrid enable fail");
-    volatile s32 salt = 0;
-    {
-        const s32 N = 2000;
-        zclock<> cost;
-        cost.start();
-        for (s32 i = 0; i < N; i++)
-        {
-            s32 ret = egrid.find_path(1, 1, 198, 198, cells);
-            salt += ret + (s32)cells.size();
-        }
-        cost.stop_and_save();
-        LOGFMTI("fcut openfield(200x200 diag) jps_with_fcut: %.0f ns/op (nocut baseline ~90000 ns/op)",
-                (f64)cost.cost_ns() / (f64)N);
-    }
-    LOGFMTI("(anti-optimize salt=%d)", (int)salt);
+    LOGFMTI("zjps wall detour: no corner cut, 2000 random pairs jps == astar on ret and cost");
     return 0;
 }
 
@@ -1062,7 +1101,7 @@ static s32 zjps_jps_plus_test()
     ASSERT_TEST(sgrid.pos_to_cell(300.0f, 19500.0f, tx, ty) == 0, "plus pos b fail");
     ret = sgrid.find_path(sx, sy, tx, ty, cells);
     ASSERT_TEST(ret == 0, "plus serpentine long query fail ret=", ret);
-    ASSERT_TEST(sgrid.last_path_cost() == 12712916, "plus serpentine long cost mismatch, got=", sgrid.last_path_cost());
+    ASSERT_TEST(sgrid.last_path_cost() == 12749834, "plus serpentine long cost mismatch, got=", sgrid.last_path_cost());
 
     std::vector<s32> walk_cells;
     for (s32 y = 0; y < sgrid.height(); y++)
@@ -1824,15 +1863,23 @@ static s32 zjps_height_test()
     zjps_grid grid;
     ASSERT_TEST(grid.init(10, 10, kCellSize, true) == 0, "height grid init fail");
     ASSERT_TEST(grid.cell_height(5, 5) == 1, "default voxel height expect 1, got=", grid.cell_height(5, 5));
+    ASSERT_TEST(grid.build_jps_plus() == 0, "height plus build fail");
+    std::vector<s32> warm;
+    ASSERT_TEST(grid.find_path(0, 0, 9, 9, warm) == 0, "height plus warm query fail");
+    ASSERT_TEST(grid.last_tier() == 2, "height plus tier expect 2, got=", grid.last_tier());
     u32 version = grid.map_version();
+    u32 payload = grid.payload_version();
     ASSERT_TEST(grid.set_cell_height(5, 5, 5) == 0, "set height fail");
-    ASSERT_TEST(grid.map_version() > version, "set height should bump version");
+    ASSERT_TEST(grid.map_version() == version, "set height must not bump map version");
+    ASSERT_TEST(grid.payload_version() > payload, "set height should bump payload version");
+    ASSERT_TEST(grid.find_path(0, 0, 9, 9, warm) == 0, "height plus requery fail");
+    ASSERT_TEST(grid.last_tier() == 2, "height edit must not degrade tier, got=", grid.last_tier());
     ASSERT_TEST(grid.cell_height(5, 5) == 5, "height mismatch, got=", grid.cell_height(5, 5));
     ASSERT_TEST(grid.set_cell_height(0, 0, 200) == 0, "set 200 fail");
     ASSERT_TEST(grid.cell_height(0, 0) == 200, "height 200 mismatch");
-    version = grid.map_version();
+    payload = grid.payload_version();
     ASSERT_TEST(grid.set_cell_height(0, 0, 200) == 0, "idempotent set fail");
-    ASSERT_TEST(grid.map_version() == version, "idempotent set should not bump version");
+    ASSERT_TEST(grid.payload_version() == payload, "idempotent set should not bump payload version");
     ASSERT_TEST(grid.cell_height(-1, 0) == -1, "out of range height expect -1");
     ASSERT_TEST(grid.set_cell_height(10, 0, 1) == -1, "out of range set expect -1");
 
@@ -1995,10 +2042,11 @@ static s32 zjps_dirty_flow_test()
 
     ASSERT_TEST(grid.set_blocked(20, 20) == 0, "dirty set_blocked fail");
     ASSERT_TEST(grid.light_dirty() == 0, "single cell on clean lines eager-maintained, dirty=", grid.light_dirty());
-    ret = grid.path_search(0, 0, 39, 39, jcells);
+    ret = grid.find_path(0, 0, 39, 39, jcells);
     ASSERT_TEST(ret == 0, "eager-maintained jps fail ret=", ret);
     ASSERT_TEST(grid.last_tier() == 1, "eager-maintained expect tier 1, got=", grid.last_tier());
     ASSERT_TEST(grid.path_search(0, 0, 39, 39, acells) == 0, "dirty astar fail");
+    ASSERT_TEST(grid.last_tier() == -1, "astar expect tier -1, got=", grid.last_tier());
 
     ASSERT_TEST(grid.set_rect_cell(20, 20, 22, 22, true) == 0, "dirty rect clear fail");
     ASSERT_TEST(grid.light_dirty() == 6, "rect 3x3 expects 6 dirty lines(span of rows+cols), got=", grid.light_dirty());
@@ -2118,8 +2166,10 @@ static s32 zjps_eager_test()
         LOGFMTI("eager edit on 400x400: set_cell(index-maintained, light stays ready)=%.0fns/op",
                 (f64)c.cost_ns() / (f64)OPS);
         ASSERT_TEST(bench.light_dirty() == 0, "eager bench dirty leak=", bench.light_dirty());
+        ASSERT_TEST(bench.set_open_capacity(65536) == 0, "eager bench open capacity fail");
         s32 r = bench.find_path(0, 0, 399, 399, cells);
-        ASSERT_TEST(r == 0 && bench.last_tier() == 1, "eager bench tier after 20000 edits");
+        ASSERT_TEST(r == 0 && bench.last_tier() == 1, "eager bench tier after 20000 edits r=", r,
+                    " tier=", bench.last_tier());
     }
     LOGFMTI("zjps eager: set_cell maintains light in-place on clean lines, rect keeps lazy");
     return 0;
@@ -2270,7 +2320,8 @@ int main(int argc, char* argv[])
     ASSERT_TEST(zjps_eager_test()                             == 0);
     ASSERT_TEST(zjps_five_way_test()                          == 0);
     ASSERT_TEST(zjps_bench_test()                             == 0);
-    ASSERT_TEST(zjps_fcut_experiment_test()                   == 0);
+    ASSERT_TEST(zjps_api_surface_test()                       == 0);
+    ASSERT_TEST(zjps_wall_detour_test()                       == 0);
     ASSERT_TEST(zjps_jps_plus_test()                          == 0);
     ASSERT_TEST(zjps_phase5_bench_test()                      == 0);
 
