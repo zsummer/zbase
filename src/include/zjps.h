@@ -191,7 +191,7 @@ private:
 
     static bool dir_is_axis(s32 dx, s32 dy)
     {
-        return (dx == 0) != (dy == 0);
+        return dx == 0 || dy == 0;
     }
 
     static s32 octile_to(s32 x, s32 y, s32 target_x, s32 target_y)
@@ -309,6 +309,16 @@ private:
         }
         return 0;
     }
+
+    static_assert(kZjpsDirX[kDirEast] == 1 && kZjpsDirY[kDirEast] == 0
+        && kZjpsDirX[kDirNorth] == 0 && kZjpsDirY[kDirNorth] == 1
+        && kZjpsDirX[kDirWest] == -1 && kZjpsDirY[kDirWest] == 0
+        && kZjpsDirX[kDirSouth] == 0 && kZjpsDirY[kDirSouth] == -1,
+        "axis dir codes must pair with kZjpsDirX/kZjpsDirY layout");
+
+    static_assert(kDirEast / 2 == 0 && kDirNorth / 2 == 1
+        && kDirWest / 2 == 2 && kDirSouth / 2 == 3 && kPlusSlotCnt == 4,
+        "axis dirs must fill distinct plus slots by d/2");
 
     static size_t plus_slot(s32 cell_idx, s32 d)
     {
@@ -1197,8 +1207,11 @@ inline s32 zjps_grid::jump(s32 x, s32 y, s32 dx, s32 dy, s32 target_x, s32 targe
 {
     if (dir_is_axis(dx, dy))
     {
+        //轴方向 返回目标或拐点中先遇到者 探空则该方向无后继 
         return probe_next_cell(x, y, dx, dy, target_x, target_y, tier);
     }
+
+    //斜线 踏上目标返回目标 每步轴探测看见拐点或目标则返回当前步 看见的点由下一跳重新发现  
     while (true)
     {
         if (!move_valid(x, y, dx, dy))
