@@ -15,6 +15,9 @@
 #include <cstring>
 #include <algorithm>
 
+static constexpr s32 kZjpsDirX[8] = { 1, 1, 0, -1, -1, -1, 0, 1 };
+static constexpr s32 kZjpsDirY[8] = { 0, 1, 1, 1, 0, -1, -1, -1 };
+
 class zjps_grid
 {
 public:
@@ -93,6 +96,26 @@ public:
 
     bool move_valid(s32 x, s32 y, s32 dx, s32 dy) const;
 
+    s32 build_jps_light();
+
+    s32 drop_jps_plus()
+    {
+        plus_table_.clear();
+        plus_table_version_ = 0;
+        return 0;
+    }
+
+    s32 build_jps_plus();
+
+    s32 astar_search(s32 start_x, s32 start_y, s32 target_x, s32 target_y, std::vector<s32>& out_cells);
+
+    s32 jps_search(s32 start_x, s32 start_y, s32 target_x, s32 target_y, std::vector<s32>& out_cells);
+
+    s32 find_path(s32 start_x, s32 start_y, s32 target_x, s32 target_y, std::vector<s32>& out_cells)
+    {
+        return jps_search(start_x, start_y, target_x, target_y, out_cells);
+    }
+
     s32 set_open_capacity(s32 max_open_cnt)
     {
         if (max_open_cnt <= 0)
@@ -107,69 +130,61 @@ public:
     s32 open_capacity() const { return open_capacity_; }
     s32 light_dirty() const { return light_dirty_cnt_; }
     s32 last_tier() const { return last_tier_; }
-    size_t jps_plus_table_bytes() const { return jump_table_.size() * sizeof(jump_entry); }
+    size_t jps_plus_table_bytes() const { return plus_table_.size() * sizeof(plus_ray); }
     s32 open_push_count() const { return open_push_count_; }
     s32 open_pop_count() const { return open_pop_count_; }
     s32 open_peak() const { return open_peak_; }
     s32 visit_count() const { return visit_count_; }
     s32 last_path_cost() const { return last_path_cost_; }
 
-    s32 path_search(s32 start_x, s32 start_y, s32 target_x, s32 target_y, std::vector<s32>& out_cells);
-
-    s32 find_path(s32 start_x, s32 start_y, s32 target_x, s32 target_y, std::vector<s32>& out_cells)
-    {
-        return jps_search(start_x, start_y, target_x, target_y, out_cells);
-    }
-
-    s32 build_jps_light();
-
-    s32 drop_jps_plus()
-    {
-        jump_table_.clear();
-        jump_build_version_ = 0;
-        return 0;
-    }
-
-    s32 build_jps_plus();
-
-    s32 jps_search(s32 start_x, s32 start_y, s32 target_x, s32 target_y, std::vector<s32>& out_cells);
-
 private:
-    static constexpr s32 kScanProbeSteps = 8;
+    static constexpr s32 kProbeStepsBeforeIndex = 8;
     static constexpr s32 kDirCnt = 8;
+    static constexpr s32 kNoCell = -1;
+    static constexpr s8 kNoDir = -1;
 
     struct search_state
     {
         s32 cost = 0;
-        s32 came_from = -1;
+        s32 came_from = kNoCell;
         u32 stamp = 0;
         u8 closed = 0;
-        u8 dir = 0;
+        s8 entry_dir = kNoDir;
     };
 
-    struct jump_entry
+    struct plus_ray
     {
-        s32 jump = -1;
-        s32 stop = -1;
+        s32 first_turn_cell = kNoCell;
+        s32 first_block_cell = kNoCell;
+    };
+
+    struct block_line
+    {
+        const s32* blocks;
+        s32 cnt;
+    };
+
+    struct block_line_mut
+    {
+        s32* blocks;
+        s32* cnt;
     };
 
     struct heap_entry
     {
-        s32 f;
-        s32 g;
+        s32 total_estimate;
+        s32 cost_so_far;
         s32 cell;
     };
 
     static s32 dir_x(s32 d)
     {
-        const s32 dirs[8] = { 1, 1, 0, -1, -1, -1, 0, 1 };
-        return dirs[d];
+        return kZjpsDirX[d];
     }
 
     static s32 dir_y(s32 d)
     {
-        const s32 dirs[8] = { 0, 1, 1, 1, 0, -1, -1, -1 };
-        return dirs[d];
+        return kZjpsDirY[d];
     }
 
     static s32 dir_index(s32 dx, s32 dy);
@@ -185,24 +200,48 @@ private:
 
     static bool heap_before(const heap_entry& a, const heap_entry& b)
     {
-        if (a.f != b.f)
+        if (a.total_estimate != b.total_estimate)
         {
-            return a.f < b.f;
+            return a.total_estimate < b.total_estimate;
         }
-        return a.g > b.g;
+        return a.cost_so_far > b.cost_so_far;
     }
 
     static s32 heap_push(std::vector<heap_entry>& heap, s32 capacity, s32 f, s32 g, s32 cell);
 
     static s32 heap_pop(std::vector<heap_entry>& heap, heap_entry& out);
 
-    static s32 line_lower(const s32* vals, s32 cnt, s32 v);
+    s32 open_push(s32 f, s32 g, s32 cell)
+    {
+        if (heap_push(open_heap_, open_capacity_, f, g, cell) != 0)
+        {
+            return -1;
+        }
+        open_push_count_++;
+        if ((s32)open_heap_.size() > open_peak_)
+        {
+            open_peak_ = (s32)open_heap_.size();
+        }
+        return 0;
+    }
 
-    static s32 line_upper(const s32* vals, s32 cnt, s32 v);
+    bool open_pop(heap_entry& out)
+    {
+        if (heap_pop(open_heap_, out) != 0)
+        {
+            return false;
+        }
+        open_pop_count_++;
+        return true;
+    }
 
-    static s32 line_insert(s32* vals, s32& cnt, s32 cap, s32 v);
+    static s32 sorted_lower_bound(const s32* vals, s32 cnt, s32 v);
 
-    static s32 line_remove(s32* vals, s32& cnt, s32 v);
+    static s32 sorted_upper_bound(const s32* vals, s32 cnt, s32 v);
+
+    static s32 sorted_insert(s32* vals, s32& cnt, s32 cap, s32 v);
+
+    static s32 sorted_erase(s32* vals, s32& cnt, s32 v);
 
     static size_t block_run_end(const s32* blocks, size_t i, size_t cnt);
 
@@ -216,6 +255,30 @@ private:
     static s32* light_col_head(s32* cols, s32 height, s32 x)
     {
         return cols + (size_t)x * (size_t)(height + 1);
+    }
+
+    static block_line light_row_line(const s32* rows, s32 width, s32 y)
+    {
+        const s32* head = rows + (size_t)y * (size_t)(width + 1);
+        return block_line{ head + 1, head[0] };
+    }
+
+    static block_line light_col_line(const s32* cols, s32 height, s32 x)
+    {
+        const s32* head = cols + (size_t)x * (size_t)(height + 1);
+        return block_line{ head + 1, head[0] };
+    }
+
+    static block_line_mut light_row_line_mut(s32* rows, s32 width, s32 y)
+    {
+        s32* head = light_row_head(rows, width, y);
+        return block_line_mut{ head + 1, head };
+    }
+
+    static block_line_mut light_col_line_mut(s32* cols, s32 height, s32 x)
+    {
+        s32* head = light_col_head(cols, height, x);
+        return block_line_mut{ head + 1, head };
     }
 
     static s32 refill_light_row(const u8* cell_flag, s32* rows, s32 width, s32 y);
@@ -247,25 +310,42 @@ private:
         return (size_t)cell_idx * kPlusSlotCnt + (size_t)(d / 2);
     }
 
-    bool at_forced_turn(s32 x, s32 y, s32 dx, s32 dy);
+    bool side_forced(s32 x, s32 y, s32 entry_dx, s32 entry_dy, s32 side) const
+    {
+        s32 side_dx = (entry_dx != 0) ? 0 : side;
+        s32 side_dy = (entry_dx != 0) ? side : 0;
+        return cell_walkable(x + side_dx, y + side_dy)
+            && !cell_walkable(x - entry_dx + side_dx, y - entry_dy + side_dy);
+    }
+
+    bool at_forced_turn(s32 x, s32 y, s32 entry_dx, s32 entry_dy);
 
     s32 successor_dirs(s32 x, s32 y, s32 d, s32* out_dirs);
 
-    s32 jump(s32 x, s32 y, s32 dx, s32 dy, s32 target_x, s32 target_y, bool light_ok);
+    void rebuild_path(s32 target, std::vector<s32>& out_cells);
 
-    s32 jump_straight(s32 x, s32 y, s32 dx, s32 dy, s32 target_x, s32 target_y, bool light_ok);
+    s32 jump(s32 x, s32 y, s32 dx, s32 dy, s32 target_x, s32 target_y, s32 tier);
+
+    s32 jump_axis(s32 x, s32 y, s32 dx, s32 dy, s32 target_x, s32 target_y, s32 tier);
+
+    bool axis_probe_hit(s32 x, s32 y, s32 dx, s32 dy, s32 target_x, s32 target_y, s32 tier)
+    {
+        return jump_axis(x, y, dx, dy, target_x, target_y, tier) >= 0;
+    }
+
+    s32 jump_axis_scan(s32 x, s32 y, s32 dx, s32 dy, s32 target_x, s32 target_y);
+
+    s32 jump_axis_indexed(s32 x, s32 y, s32 dx, s32 dy, s32 target_x, s32 target_y);
 
     s32 jump_straight_indexed(s32 x, s32 y, s32 dx, s32 dy, s32 target_x, s32 target_y);
 
-    s32 straight_forced_turn_row(s32 y, s32 x, s32 dx, s32 col_limit);
+    s32 straight_forced_turn_row(s32 y, s32 x, s32 dx, s32 reach_col);
 
-    s32 straight_forced_turn_col(s32 x, s32 y, s32 dy, s32 row_limit);
+    s32 straight_forced_turn_col(s32 x, s32 y, s32 dy, s32 reach_row);
 
-    s32 jump_table_lookup(s32 cell_idx, s32 d, s32 target_x, s32 target_y);
+    s32 jump_axis_table(s32 x, s32 y, s32 dx, s32 dy, s32 target_x, s32 target_y);
 
     bool ray_reaches_target(s32 x, s32 y, s32 dx, s32 dy, s32 target_x, s32 target_y);
-
-    s32 jump_diag_plus(s32 x, s32 y, s32 dx, s32 dy, s32 target_x, s32 target_y);
 
     s32 width_ = 0;
     s32 height_ = 0;
@@ -276,24 +356,27 @@ private:
     std::vector<u8> cell_flag_;
     std::vector<u8> cell_voxel_;
 
-    s32 open_capacity_ = kDefaultOpenCnt;
-    u32 search_stamp_ = 0;
-    bool index_built_ = false;
+    bool light_built_ = false;
     std::vector<u8> light_dirty_row_;
     std::vector<u8> light_dirty_col_;
     s32 light_dirty_cnt_ = 0;
-    s32 last_tier_ = kTierScan;
     std::vector<s32> light_row_;
     std::vector<s32> light_col_;
-    std::vector<jump_entry> jump_table_;
-    u32 jump_build_version_ = 0;
+
+    std::vector<plus_ray> plus_table_;
+    u32 plus_table_version_ = 0;
+
+    s32 open_capacity_ = kDefaultOpenCnt;
     std::vector<heap_entry> open_heap_;
-    std::vector<search_state> states_;
+    u32 search_stamp_ = 0;
+    std::vector<search_state> search_states_;
+
     s32 open_push_count_ = 0;
     s32 open_pop_count_ = 0;
     s32 open_peak_ = 0;
     s32 visit_count_ = 0;
     s32 last_path_cost_ = 0;
+    s32 last_tier_ = kTierScan;
 };
 
 inline s32 zjps_grid::init(s32 width, s32 height, f32 cell_size, bool walkable_default)
@@ -318,13 +401,13 @@ inline s32 zjps_grid::init(s32 width, s32 height, f32 cell_size, bool walkable_d
     light_row_.assign((size_t)height_ * (size_t)(width_ + 1), 0);
     light_col_.assign((size_t)width_ * (size_t)(height_ + 1), 0);
 
-    states_.resize(cell_cnt);
+    search_states_.resize(cell_cnt);
     open_heap_.reserve((size_t)open_capacity_);
 
     map_version_++;
-    index_built_ = false;
-    jump_table_.clear();
-    jump_build_version_ = 0;
+    light_built_ = false;
+    plus_table_.clear();
+    plus_table_version_ = 0;
     return 0;
 }
 
@@ -343,29 +426,27 @@ inline s32 zjps_grid::set_cell(s32 x, s32 y, bool walkable)
     }
     cell_flag_[idx] = next;
     map_version_++;
-    if (index_built_)
+    block_line_mut row = light_row_line_mut(light_row_.data(), width_, y);
+    block_line_mut col = light_col_line_mut(light_col_.data(), height_, x);
+    if (!light_built_)
     {
-        if (light_dirty_row_[(size_t)y] == 0 && light_dirty_col_[(size_t)x] == 0)
-        {
-            s32* row = light_row_head(light_row_.data(), width_, y);
-            s32* col = light_col_head(light_col_.data(), height_, x);
-            if (next != 0)
-            {
-                line_remove(row + 1, row[0], x);
-                line_remove(col + 1, col[0], y);
-            }
-            else if (line_insert(row + 1, row[0], width_, x) != 0
-                     || line_insert(col + 1, col[0], height_, y) != 0)
-            {
-                mark_light_dirty_row(light_dirty_row_.data(), light_dirty_cnt_, y);
-                mark_light_dirty_col(light_dirty_col_.data(), light_dirty_cnt_, x);
-            }
-        }
-        else
-        {
-            mark_light_dirty_row(light_dirty_row_.data(), light_dirty_cnt_, y);
-            mark_light_dirty_col(light_dirty_col_.data(), light_dirty_cnt_, x);
-        }
+        //nothing todo
+    }
+    else if (light_dirty_row_[(size_t)y] != 0 || light_dirty_col_[(size_t)x] != 0)
+    {
+        mark_light_dirty_row(light_dirty_row_.data(), light_dirty_cnt_, y);
+        mark_light_dirty_col(light_dirty_col_.data(), light_dirty_cnt_, x);
+    }
+    else if (next != 0)
+    {
+        sorted_erase(row.blocks, *row.cnt, x);
+        sorted_erase(col.blocks, *col.cnt, y);
+    }
+    else if (sorted_insert(row.blocks, *row.cnt, width_, x) != 0
+             || sorted_insert(col.blocks, *col.cnt, height_, y) != 0)
+    {
+        mark_light_dirty_row(light_dirty_row_.data(), light_dirty_cnt_, y);
+        mark_light_dirty_col(light_dirty_col_.data(), light_dirty_cnt_, x);
     }
     return 0;
 }
@@ -395,7 +476,7 @@ inline s32 zjps_grid::set_rect_cell(s32 x0, s32 y0, s32 x1, s32 y1, bool walkabl
         return 0;
     }
     map_version_++;
-    if (index_built_)
+    if (light_built_)
     {
         for (s32 y = y0; y <= y1; y++)
         {
@@ -466,7 +547,7 @@ inline s32 zjps_grid::set_triangle_cell(const zpoint& a, const zpoint& b, const 
         return 0;
     }
     map_version_++;
-    if (index_built_)
+    if (light_built_)
     {
         for (s32 y = y0; y <= y1; y++)
         {
@@ -530,7 +611,7 @@ inline bool zjps_grid::move_valid(s32 x, s32 y, s32 dx, s32 dy) const
     return true;
 }
 
-inline s32 zjps_grid::path_search(s32 start_x, s32 start_y, s32 target_x, s32 target_y, std::vector<s32>& out_cells)
+inline s32 zjps_grid::astar_search(s32 start_x, s32 start_y, s32 target_x, s32 target_y, std::vector<s32>& out_cells)
 {
     out_cells.clear();
     if (start_x < 0 || start_y < 0 || start_x >= width_ || start_y >= height_
@@ -554,9 +635,9 @@ inline s32 zjps_grid::path_search(s32 start_x, s32 start_y, s32 target_x, s32 ta
     search_stamp_++;
     if (search_stamp_ == 0)
     {
-        for (size_t i = 0; i < states_.size(); i++)
+        for (size_t i = 0; i < search_states_.size(); i++)
         {
-            states_[i].stamp = 0;
+            search_states_[i].stamp = 0;
         }
         search_stamp_ = 1;
     }
@@ -566,38 +647,32 @@ inline s32 zjps_grid::path_search(s32 start_x, s32 start_y, s32 target_x, s32 ta
     open_peak_ = 0;
     visit_count_ = 0;
 
-    states_[start_idx].cost = 0;
-    states_[start_idx].came_from = -1;
-    states_[start_idx].stamp = search_stamp_;
-    states_[start_idx].closed = 0;
+    search_states_[start_idx].cost = 0;
+    search_states_[start_idx].came_from = kNoCell;
+    search_states_[start_idx].stamp = search_stamp_;
+    search_states_[start_idx].closed = 0;
     visit_count_ = 1;
-    if (heap_push(open_heap_, open_capacity_, octile_to(start_x, start_y, target_x, target_y), 0, start_idx) != 0)
+    if (open_push(octile_to(start_x, start_y, target_x, target_y), 0, start_idx) != 0)
     {
         return -3;
     }
-    open_push_count_++;
-    if ((s32)open_heap_.size() > open_peak_)
-    {
-        open_peak_ = (s32)open_heap_.size();
-    }
 
     heap_entry entry;
-    while (heap_pop(open_heap_, entry) == 0)
+    while (open_pop(entry))
     {
-        open_pop_count_++;
         s32 cur = entry.cell;
-        if (states_[cur].closed != 0)
+        if (search_states_[cur].closed != 0)
         {
             continue;
         }
-        states_[cur].closed = 1;
+        search_states_[cur].closed = 1;
         if (cur == target_idx)
         {
-            last_path_cost_ = states_[cur].cost;
+            last_path_cost_ = search_states_[cur].cost;
             while (cur >= 0)
             {
                 out_cells.push_back(cur);
-                cur = states_[cur].came_from;
+                cur = search_states_[cur].came_from;
             }
             std::reverse(out_cells.begin(), out_cells.end());
             return 0;
@@ -613,22 +688,17 @@ inline s32 zjps_grid::path_search(s32 start_x, s32 start_y, s32 target_x, s32 ta
                 continue;
             }
             s32 next = (y + dy) * width_ + (x + dx);
-            s32 next_cost = states_[cur].cost + ((dx != 0 && dy != 0) ? kCostDiagonal : kCostStraight);
-            if (states_[next].stamp != search_stamp_ || next_cost < states_[next].cost)
+            s32 next_cost = search_states_[cur].cost + ((dx != 0 && dy != 0) ? kCostDiagonal : kCostStraight);
+            if (search_states_[next].stamp != search_stamp_ || next_cost < search_states_[next].cost)
             {
-                states_[next].cost = next_cost;
-                states_[next].came_from = cur;
-                states_[next].stamp = search_stamp_;
-                states_[next].closed = 0;
+                search_states_[next].cost = next_cost;
+                search_states_[next].came_from = cur;
+                search_states_[next].stamp = search_stamp_;
+                search_states_[next].closed = 0;
                 visit_count_++;
-                if (heap_push(open_heap_, open_capacity_, next_cost + octile_to(x + dx, y + dy, target_x, target_y), next_cost, next) != 0)
+                if (open_push(next_cost + octile_to(x + dx, y + dy, target_x, target_y), next_cost, next) != 0)
                 {
                     return -3;
-                }
-                open_push_count_++;
-                if ((s32)open_heap_.size() > open_peak_)
-                {
-                    open_peak_ = (s32)open_heap_.size();
                 }
             }
         }
@@ -642,11 +712,11 @@ inline s32 zjps_grid::build_jps_light()
     {
         return -1;
     }
-    if (index_built_ && light_dirty_cnt_ == 0)
+    if (light_built_ && light_dirty_cnt_ == 0)
     {
         return 0;
     }
-    if (!index_built_)
+    if (!light_built_)
     {
         for (s32 y = 0; y < height_; y++)
         {
@@ -656,7 +726,7 @@ inline s32 zjps_grid::build_jps_light()
         {
             refill_light_col(cell_flag_.data(), light_col_.data(), width_, height_, x);
         }
-        index_built_ = true;
+        light_built_ = true;
         return 0;
     }
     for (s32 y = 0; y < height_; y++)
@@ -688,11 +758,11 @@ inline s32 zjps_grid::build_jps_plus()
     }
     size_t cell_cnt = (size_t)width_ * (size_t)height_;
     size_t slot_cnt = cell_cnt * kPlusSlotCnt;
-    if (jump_table_.capacity() < slot_cnt)
+    if (plus_table_.capacity() < slot_cnt)
     {
-        jump_table_.reserve(slot_cnt);
+        plus_table_.reserve(slot_cnt);
     }
-    jump_table_.assign(slot_cnt, jump_entry());
+    plus_table_.assign(slot_cnt, plus_ray());
     for (s32 y = 0; y < height_; y++)
     {
         for (s32 x = width_ - 2; x >= 0; x--)
@@ -702,18 +772,18 @@ inline s32 zjps_grid::build_jps_plus()
             size_t next_base = plus_slot(y * width_ + next, kDirEast);
             if (cell_flag_[(size_t)y * (size_t)width_ + (size_t)next] == 0)
             {
-                jump_table_[base].stop = y * width_ + next;
+                plus_table_[base].first_block_cell = y * width_ + next;
                 continue;
             }
             if (at_forced_turn(next, y, 1, 0))
             {
-                jump_table_[base].jump = y * width_ + next;
+                plus_table_[base].first_turn_cell = y * width_ + next;
             }
             else
             {
-                jump_table_[base].jump = jump_table_[next_base].jump;
+                plus_table_[base].first_turn_cell = plus_table_[next_base].first_turn_cell;
             }
-            jump_table_[base].stop = jump_table_[next_base].stop;
+            plus_table_[base].first_block_cell = plus_table_[next_base].first_block_cell;
         }
         for (s32 x = 1; x < width_; x++)
         {
@@ -722,18 +792,18 @@ inline s32 zjps_grid::build_jps_plus()
             size_t next_base = plus_slot(y * width_ + next, kDirWest);
             if (cell_flag_[(size_t)y * (size_t)width_ + (size_t)next] == 0)
             {
-                jump_table_[base].stop = y * width_ + next;
+                plus_table_[base].first_block_cell = y * width_ + next;
                 continue;
             }
             if (at_forced_turn(next, y, -1, 0))
             {
-                jump_table_[base].jump = y * width_ + next;
+                plus_table_[base].first_turn_cell = y * width_ + next;
             }
             else
             {
-                jump_table_[base].jump = jump_table_[next_base].jump;
+                plus_table_[base].first_turn_cell = plus_table_[next_base].first_turn_cell;
             }
-            jump_table_[base].stop = jump_table_[next_base].stop;
+            plus_table_[base].first_block_cell = plus_table_[next_base].first_block_cell;
         }
     }
     for (s32 x = 0; x < width_; x++)
@@ -745,18 +815,18 @@ inline s32 zjps_grid::build_jps_plus()
             size_t next_base = plus_slot(next * width_ + x, kDirNorth);
             if (cell_flag_[(size_t)next * (size_t)width_ + (size_t)x] == 0)
             {
-                jump_table_[base].stop = next * width_ + x;
+                plus_table_[base].first_block_cell = next * width_ + x;
                 continue;
             }
             if (at_forced_turn(x, next, 0, 1))
             {
-                jump_table_[base].jump = next * width_ + x;
+                plus_table_[base].first_turn_cell = next * width_ + x;
             }
             else
             {
-                jump_table_[base].jump = jump_table_[next_base].jump;
+                plus_table_[base].first_turn_cell = plus_table_[next_base].first_turn_cell;
             }
-            jump_table_[base].stop = jump_table_[next_base].stop;
+            plus_table_[base].first_block_cell = plus_table_[next_base].first_block_cell;
         }
         for (s32 y = 1; y < height_; y++)
         {
@@ -765,22 +835,49 @@ inline s32 zjps_grid::build_jps_plus()
             size_t next_base = plus_slot(next * width_ + x, kDirSouth);
             if (cell_flag_[(size_t)next * (size_t)width_ + (size_t)x] == 0)
             {
-                jump_table_[base].stop = next * width_ + x;
+                plus_table_[base].first_block_cell = next * width_ + x;
                 continue;
             }
             if (at_forced_turn(x, next, 0, -1))
             {
-                jump_table_[base].jump = next * width_ + x;
+                plus_table_[base].first_turn_cell = next * width_ + x;
             }
             else
             {
-                jump_table_[base].jump = jump_table_[next_base].jump;
+                plus_table_[base].first_turn_cell = plus_table_[next_base].first_turn_cell;
             }
-            jump_table_[base].stop = jump_table_[next_base].stop;
+            plus_table_[base].first_block_cell = plus_table_[next_base].first_block_cell;
         }
     }
-    jump_build_version_ = map_version_;
+    plus_table_version_ = map_version_;
     return 0;
+}
+
+inline void zjps_grid::rebuild_path(s32 target, std::vector<s32>& out_cells)
+{
+    s32 node = target;
+    while (node >= 0)
+    {
+        out_cells.push_back(node);
+        s32 parent = search_states_[node].came_from;
+        if (parent < 0)
+        {
+            break;
+        }
+        s32 d = search_states_[node].entry_dir;
+        s32 dx = dir_x(d);
+        s32 dy = dir_y(d);
+        s32 cx = node % width_ - dx;
+        s32 cy = node / width_ - dy;
+        while (cy * width_ + cx != parent)
+        {
+            out_cells.push_back(cy * width_ + cx);
+            cx -= dx;
+            cy -= dy;
+        }
+        node = parent;
+    }
+    std::reverse(out_cells.begin(), out_cells.end());
 }
 
 inline s32 zjps_grid::jps_search(s32 start_x, s32 start_y, s32 target_x, s32 target_y, std::vector<s32>& out_cells)
@@ -798,9 +895,9 @@ inline s32 zjps_grid::jps_search(s32 start_x, s32 start_y, s32 target_x, s32 tar
         return -2;
     }
     last_path_cost_ = 0;
-    bool jump_table_ok = !jump_table_.empty() && jump_build_version_ == map_version_;
-    bool light_ok = index_built_ && light_dirty_cnt_ == 0;
-    last_tier_ = jump_table_ok ? kTierPlus : (light_ok ? kTierLight : kTierScan);
+    bool plus_ready = !plus_table_.empty() && plus_table_version_ == map_version_;
+    bool light_ready = light_built_ && light_dirty_cnt_ == 0;
+    last_tier_ = plus_ready ? kTierPlus : (light_ready ? kTierLight : kTierScan);
     if (start_idx == target_idx)
     {
         out_cells.push_back(start_idx);
@@ -809,9 +906,9 @@ inline s32 zjps_grid::jps_search(s32 start_x, s32 start_y, s32 target_x, s32 tar
     search_stamp_++;
     if (search_stamp_ == 0)
     {
-        for (size_t i = 0; i < states_.size(); i++)
+        for (size_t i = 0; i < search_states_.size(); i++)
         {
-            states_[i].stamp = 0;
+            search_states_[i].stamp = 0;
         }
         search_stamp_ = 1;
     }
@@ -821,111 +918,61 @@ inline s32 zjps_grid::jps_search(s32 start_x, s32 start_y, s32 target_x, s32 tar
     open_peak_ = 0;
     visit_count_ = 0;
 
-    states_[start_idx].cost = 0;
-    states_[start_idx].came_from = -1;
-    states_[start_idx].stamp = search_stamp_;
-    states_[start_idx].closed = 0;
-    states_[start_idx].dir = 0;
+    search_states_[start_idx].cost = 0;
+    search_states_[start_idx].came_from = kNoCell;
+    search_states_[start_idx].stamp = search_stamp_;
+    search_states_[start_idx].closed = 0;
+    search_states_[start_idx].entry_dir = kNoDir;
     visit_count_ = 1;
-    if (heap_push(open_heap_, open_capacity_, octile_to(start_x, start_y, target_x, target_y), 0, start_idx) != 0)
+    if (open_push(octile_to(start_x, start_y, target_x, target_y), 0, start_idx) != 0)
     {
         return -3;
-    }
-    open_push_count_++;
-    if ((s32)open_heap_.size() > open_peak_)
-    {
-        open_peak_ = (s32)open_heap_.size();
     }
 
     s32 dirs[8];
     heap_entry entry;
-    while (heap_pop(open_heap_, entry) == 0)
+    while (open_pop(entry))
     {
-        open_pop_count_++;
         s32 cur = entry.cell;
-        if (states_[cur].closed != 0)
+        if (search_states_[cur].closed != 0)
         {
             continue;
         }
-        states_[cur].closed = 1;
+        search_states_[cur].closed = 1;
         if (cur == target_idx)
         {
-            last_path_cost_ = states_[cur].cost;
-            s32 node = cur;
-            while (node >= 0)
-            {
-                out_cells.push_back(node);
-                s32 parent = states_[node].came_from;
-                if (parent < 0)
-                {
-                    break;
-                }
-                s32 d = (s32)states_[node].dir - 1;
-                s32 dx = dir_x(d);
-                s32 dy = dir_y(d);
-                s32 cx = node % width_ - dx;
-                s32 cy = node / width_ - dy;
-                while (cy * width_ + cx != parent)
-                {
-                    out_cells.push_back(cy * width_ + cx);
-                    cx -= dx;
-                    cy -= dy;
-                }
-                node = parent;
-            }
-            std::reverse(out_cells.begin(), out_cells.end());
+            last_path_cost_ = search_states_[cur].cost;
+            rebuild_path(cur, out_cells);
             return 0;
         }
         s32 x = cur % width_;
         s32 y = cur / width_;
-        s32 entry_dir = (s32)states_[cur].dir - 1;
+        s32 entry_dir = search_states_[cur].entry_dir;
         s32 dir_cnt = successor_dirs(x, y, entry_dir, dirs);
         for (s32 k = 0; k < dir_cnt; k++)
         {
             s32 d = dirs[k];
             s32 dx = dir_x(d);
             s32 dy = dir_y(d);
-            s32 jump_cell;
-            if (jump_table_ok)
-            {
-                //plus档: 轴向O(1)查表 斜向仍逐格 每格查表判侧
-                if (dx != 0 && dy != 0)
-                {
-                    jump_cell = jump_diag_plus(x, y, dx, dy, target_x, target_y);
-                }
-                else
-                {
-                    jump_cell = jump_table_lookup(cur, d, target_x, target_y);
-                }
-            }
-            else
-            {
-                //light档索引二分 scan档纯逐格 由light_ok选择
-                jump_cell = jump(x, y, dx, dy, target_x, target_y, light_ok);
-            }
+            s32 jump_cell = jump(x, y, dx, dy, target_x, target_y, last_tier_);
             if (jump_cell < 0)
             {
                 continue;
             }
             s32 jump_x = jump_cell % width_;
             s32 jump_y = jump_cell / width_;
-            s32 next_cost = states_[cur].cost + octile_to(x, y, jump_x, jump_y);
-            if (states_[jump_cell].stamp != search_stamp_ || next_cost < states_[jump_cell].cost)
+            s32 next_cost = search_states_[cur].cost + octile_to(x, y, jump_x, jump_y);
+            if (search_states_[jump_cell].stamp != search_stamp_ || next_cost < search_states_[jump_cell].cost)
             {
-                states_[jump_cell].cost = next_cost;
-                states_[jump_cell].came_from = cur;
-                states_[jump_cell].dir = (u8)(d + 1);
-                states_[jump_cell].stamp = search_stamp_;
-                states_[jump_cell].closed = 0;
+                search_states_[jump_cell].cost = next_cost;
+                search_states_[jump_cell].came_from = cur;
+                search_states_[jump_cell].entry_dir = (s8)d;
+                search_states_[jump_cell].stamp = search_stamp_;
+                search_states_[jump_cell].closed = 0;
                 visit_count_++;
-                if (heap_push(open_heap_, open_capacity_, next_cost + octile_to(jump_x, jump_y, target_x, target_y), next_cost, jump_cell) != 0)
+                if (open_push(next_cost + octile_to(jump_x, jump_y, target_x, target_y), next_cost, jump_cell) != 0)
                 {
                     return -3;
-                }
-                open_push_count_++;
-                if ((s32)open_heap_.size() > open_peak_)
-                {
-                    open_peak_ = (s32)open_heap_.size();
                 }
             }
         }
@@ -933,7 +980,7 @@ inline s32 zjps_grid::jps_search(s32 start_x, s32 start_y, s32 target_x, s32 tar
     return -2;
 }
 
-inline s32 zjps_grid::line_lower(const s32* vals, s32 cnt, s32 v)
+inline s32 zjps_grid::sorted_lower_bound(const s32* vals, s32 cnt, s32 v)
 {
     s32 lo = 0;
     s32 hi = cnt;
@@ -952,7 +999,7 @@ inline s32 zjps_grid::line_lower(const s32* vals, s32 cnt, s32 v)
     return lo;
 }
 
-inline s32 zjps_grid::line_upper(const s32* vals, s32 cnt, s32 v)
+inline s32 zjps_grid::sorted_upper_bound(const s32* vals, s32 cnt, s32 v)
 {
     s32 lo = 0;
     s32 hi = cnt;
@@ -974,39 +1021,37 @@ inline s32 zjps_grid::line_upper(const s32* vals, s32 cnt, s32 v)
 inline s32 zjps_grid::refill_light_row(const u8* cell_flag, s32* rows, s32 width, s32 y)
 {
     const u8* row = cell_flag + (size_t)y * (size_t)width;
-    s32* row_head = light_row_head(rows, width, y);
-    s32* vals = row_head + 1;
+    block_line_mut line = light_row_line_mut(rows, width, y);
     s32 cnt = 0;
     for (s32 x = 0; x < width; x++)
     {
         if (row[x] == 0)
         {
-            vals[cnt++] = x;
+            line.blocks[cnt++] = x;
         }
     }
-    row_head[0] = cnt;
+    *line.cnt = cnt;
     return 0;
 }
 
 inline s32 zjps_grid::refill_light_col(const u8* cell_flag, s32* cols, s32 width, s32 height, s32 x)
 {
-    s32* col_head = light_col_head(cols, height, x);
-    s32* vals = col_head + 1;
+    block_line_mut line = light_col_line_mut(cols, height, x);
     s32 cnt = 0;
     for (s32 y = 0; y < height; y++)
     {
         if (cell_flag[(size_t)y * (size_t)width + (size_t)x] == 0)
         {
-            vals[cnt++] = y;
+            line.blocks[cnt++] = y;
         }
     }
-    col_head[0] = cnt;
+    *line.cnt = cnt;
     return 0;
 }
 
-inline s32 zjps_grid::line_insert(s32* vals, s32& cnt, s32 cap, s32 v)
+inline s32 zjps_grid::sorted_insert(s32* vals, s32& cnt, s32 cap, s32 v)
 {
-    s32 pos = line_lower(vals, cnt, v);
+    s32 pos = sorted_lower_bound(vals, cnt, v);
     if (pos < cnt && vals[pos] == v)
     {
         return 0;
@@ -1024,9 +1069,9 @@ inline s32 zjps_grid::line_insert(s32* vals, s32& cnt, s32 cap, s32 v)
     return 0;
 }
 
-inline s32 zjps_grid::line_remove(s32* vals, s32& cnt, s32 v)
+inline s32 zjps_grid::sorted_erase(s32* vals, s32& cnt, s32 v)
 {
-    s32 pos = line_lower(vals, cnt, v);
+    s32 pos = sorted_lower_bound(vals, cnt, v);
     if (pos >= cnt || vals[pos] != v)
     {
         return 0;
@@ -1046,8 +1091,8 @@ inline s32 zjps_grid::heap_push(std::vector<heap_entry>& heap, s32 capacity, s32
         return -1;
     }
     heap_entry entry;
-    entry.f = f;
-    entry.g = g;
+    entry.total_estimate = f;
+    entry.cost_so_far = g;
     entry.cell = cell;
     heap.push_back(entry);
     size_t child = heap.size() - 1;
@@ -1114,96 +1159,27 @@ inline s32 zjps_grid::dir_index(s32 dx, s32 dy)
     return dy > 0 ? 2 : 6;
 }
 
-inline bool zjps_grid::at_forced_turn(s32 x, s32 y, s32 dx, s32 dy)
+inline bool zjps_grid::at_forced_turn(s32 x, s32 y, s32 entry_dx, s32 entry_dy)
 {
-    if (dx != 0 && dy != 0)
+    if (entry_dx != 0 && entry_dy != 0)
     {
         return false;
     }
-    if (dx != 0)
-    {
-        //横向走: 查上下两侧 x-dx是来路那一列
-        for (s32 side = -1; side <= 1; side += 2)
-        {
-            if (cell_walkable(x, y + side) && !cell_walkable(x - dx, y + side))
-            {
-                return true;
-            }
-        }
-        return false;
-    }
-    //纵向走: 查左右两侧 y-dy是来路那一行
-    for (s32 side = -1; side <= 1; side += 2)
-    {
-        if (cell_walkable(x + side, y) && !cell_walkable(x + side, y - dy))
-        {
-            return true;
-        }
-    }
-    return false;
+    return side_forced(x, y, entry_dx, entry_dy, -1)
+        || side_forced(x, y, entry_dx, entry_dy, 1);
 }
 
-inline s32 zjps_grid::jump(s32 x, s32 y, s32 dx, s32 dy, s32 target_x, s32 target_y, bool light_ok)
+inline s32 zjps_grid::jump(s32 x, s32 y, s32 dx, s32 dy, s32 target_x, s32 target_y, s32 tier)
 {
-    if (dx != 0 && dy != 0)
+    if (dx == 0 || dy == 0)
     {
-        while (true)
-        {
-            if (!move_valid(x, y, dx, dy))
-            {
-                return -1;
-            }
-            x += dx;
-            y += dy;
-            if (x == target_x && y == target_y)
-            {
-                return y * width_ + x;
-            }
-            if (at_forced_turn(x, y, dx, dy))
-            {
-                return y * width_ + x;
-            }
-            if (jump_straight(x, y, dx, 0, target_x, target_y, light_ok) >= 0)
-            {
-                return y * width_ + x;
-            }
-            if (jump_straight(x, y, 0, dy, target_x, target_y, light_ok) >= 0)
-            {
-                return y * width_ + x;
-            }
-        }
+        return jump_axis(x, y, dx, dy, target_x, target_y, tier);
     }
-    return jump_straight(x, y, dx, dy, target_x, target_y, light_ok);
-}
-
-inline s32 zjps_grid::jump_straight(s32 x, s32 y, s32 dx, s32 dy, s32 target_x, s32 target_y, bool light_ok)
-{
-    if (!light_ok)
-    {
-        while (true)
-        {
-            if (!move_valid(x, y, dx, dy))
-            {
-                return -1;
-            }
-            x += dx;
-            y += dy;
-            if (x == target_x && y == target_y)
-            {
-                return y * width_ + x;
-            }
-            if (at_forced_turn(x, y, dx, dy))
-            {
-                return y * width_ + x;
-            }
-        }
-    }
-    s32 probe = kScanProbeSteps;
-    while (probe > 0)
+    while (true)
     {
         if (!move_valid(x, y, dx, dy))
         {
-            return -1;
+            return kNoCell;
         }
         x += dx;
         y += dy;
@@ -1215,7 +1191,71 @@ inline s32 zjps_grid::jump_straight(s32 x, s32 y, s32 dx, s32 dy, s32 target_x, 
         {
             return y * width_ + x;
         }
-        probe--;
+        if (axis_probe_hit(x, y, dx, 0, target_x, target_y, tier))
+        {
+            return y * width_ + x;
+        }
+        if (axis_probe_hit(x, y, 0, dy, target_x, target_y, tier))
+        {
+            return y * width_ + x;
+        }
+    }
+}
+
+inline s32 zjps_grid::jump_axis(s32 x, s32 y, s32 dx, s32 dy, s32 target_x, s32 target_y, s32 tier)
+{
+    if (tier == kTierPlus)
+    {
+        return jump_axis_table(x, y, dx, dy, target_x, target_y);
+    }
+    if (tier == kTierLight)
+    {
+        return jump_axis_indexed(x, y, dx, dy, target_x, target_y);
+    }
+    return jump_axis_scan(x, y, dx, dy, target_x, target_y);
+}
+
+inline s32 zjps_grid::jump_axis_scan(s32 x, s32 y, s32 dx, s32 dy, s32 target_x, s32 target_y)
+{
+    while (true)
+    {
+        if (!move_valid(x, y, dx, dy))
+        {
+            return kNoCell;
+        }
+        x += dx;
+        y += dy;
+        if (x == target_x && y == target_y)
+        {
+            return y * width_ + x;
+        }
+        if (at_forced_turn(x, y, dx, dy))
+        {
+            return y * width_ + x;
+        }
+    }
+}
+
+inline s32 zjps_grid::jump_axis_indexed(s32 x, s32 y, s32 dx, s32 dy, s32 target_x, s32 target_y)
+{
+    s32 probe_left = kProbeStepsBeforeIndex;
+    while (probe_left > 0)
+    {
+        if (!move_valid(x, y, dx, dy))
+        {
+            return kNoCell;
+        }
+        x += dx;
+        y += dy;
+        if (x == target_x && y == target_y)
+        {
+            return y * width_ + x;
+        }
+        if (at_forced_turn(x, y, dx, dy))
+        {
+            return y * width_ + x;
+        }
+        probe_left--;
     }
     return jump_straight_indexed(x, y, dx, dy, target_x, target_y);
 }
@@ -1224,94 +1264,108 @@ inline s32 zjps_grid::jump_straight_indexed(s32 x, s32 y, s32 dx, s32 dy, s32 ta
 {
     if (dx != 0)
     {
-        const s32* row_head = light_row_head(light_row_.data(), width_, y);
-        const s32* row_vals = row_head + 1;
-        s32 row_cnt = row_head[0];
-        s32 block_at;
-        if (dx > 0)
+        block_line row = light_row_line(light_row_.data(), width_, y);
+        s32 reach_col;
+        if (true)
         {
-            s32 pos = line_lower(row_vals, row_cnt, x + 1);
-            block_at = pos < row_cnt ? row_vals[pos] : -1;
+            s32 block_at;
+            if (dx > 0)
+            {
+                s32 pos = sorted_lower_bound(row.blocks, row.cnt, x + 1);
+                block_at = pos < row.cnt ? row.blocks[pos] : -1;
+            }
+            else
+            {
+                s32 pos = sorted_upper_bound(row.blocks, row.cnt, x - 1);
+                block_at = pos > 0 ? row.blocks[pos - 1] : -1;
+            }
+            reach_col = block_at < 0 ? (dx > 0 ? width_ - 1 : 0) : block_at - dx;
+            if (dx > 0 && reach_col > width_ - 1)
+            {
+                reach_col = width_ - 1;
+            }
+            if (dx < 0 && reach_col < 0)
+            {
+                reach_col = 0;
+            }
+        }
+        s32 jump_col;
+        if (true)
+        {
+            jump_col = -1;
+            if (y == target_y
+                && ((dx > 0 && target_x > x && target_x <= reach_col) || (dx < 0 && target_x < x && target_x >= reach_col)))
+            {
+                jump_col = target_x;
+            }
+        }
+        if (true)
+        {
+            s32 forced = straight_forced_turn_row(y, x, dx, reach_col);
+            if (forced >= 0 && (jump_col < 0 || (dx > 0 ? forced < jump_col : forced > jump_col)))
+            {
+                jump_col = forced;
+            }
+        }
+        if (jump_col < 0)
+        {
+            return kNoCell;
+        }
+        return y * width_ + jump_col;
+    }
+    block_line col = light_col_line(light_col_.data(), height_, x);
+    s32 reach_row;
+    if (true)
+    {
+        s32 block_at;
+        if (dy > 0)
+        {
+            s32 pos = sorted_lower_bound(col.blocks, col.cnt, y + 1);
+            block_at = pos < col.cnt ? col.blocks[pos] : -1;
         }
         else
         {
-            s32 pos = line_upper(row_vals, row_cnt, x - 1);
-            block_at = pos > 0 ? row_vals[pos - 1] : -1;
+            s32 pos = sorted_upper_bound(col.blocks, col.cnt, y - 1);
+            block_at = pos > 0 ? col.blocks[pos - 1] : -1;
         }
-        s32 col_limit = block_at < 0 ? (dx > 0 ? width_ - 1 : 0) : block_at - dx;
-        if (dx > 0 && col_limit > width_ - 1)
+        reach_row = block_at < 0 ? (dy > 0 ? height_ - 1 : 0) : block_at - dy;
+        if (dy > 0 && reach_row > height_ - 1)
         {
-            col_limit = width_ - 1;
+            reach_row = height_ - 1;
         }
-        if (dx < 0 && col_limit < 0)
+        if (dy < 0 && reach_row < 0)
         {
-            col_limit = 0;
+            reach_row = 0;
         }
-        s32 stop = -1;
-        if (y == target_y)
+    }
+    s32 jump_row;
+    if (true)
+    {
+        jump_row = -1;
+        if (x == target_x
+            && ((dy > 0 && target_y > y && target_y <= reach_row) || (dy < 0 && target_y < y && target_y >= reach_row)))
         {
-            if ((dx > 0 && target_x > x && target_x <= col_limit) || (dx < 0 && target_x < x && target_x >= col_limit))
-            {
-                stop = target_x;
-            }
+            jump_row = target_y;
         }
-        s32 forced = straight_forced_turn_row(y, x, dx, col_limit);
-        if (forced >= 0 && (stop < 0 || (dx > 0 ? forced < stop : forced > stop)))
+    }
+    if (true)
+    {
+        s32 forced = straight_forced_turn_col(x, y, dy, reach_row);
+        if (forced >= 0 && (jump_row < 0 || (dy > 0 ? forced < jump_row : forced > jump_row)))
         {
-            stop = forced;
-        }
-        if (stop < 0)
-        {
-            return -1;
-        }
-        return y * width_ + stop;
-    }
-    const s32* col_head = light_col_head(light_col_.data(), height_, x);
-    const s32* col_vals = col_head + 1;
-    s32 col_cnt = col_head[0];
-    s32 block_at;
-    if (dy > 0)
-    {
-        s32 pos = line_lower(col_vals, col_cnt, y + 1);
-        block_at = pos < col_cnt ? col_vals[pos] : -1;
-    }
-    else
-    {
-        s32 pos = line_upper(col_vals, col_cnt, y - 1);
-        block_at = pos > 0 ? col_vals[pos - 1] : -1;
-    }
-    s32 row_limit = block_at < 0 ? (dy > 0 ? height_ - 1 : 0) : block_at - dy;
-    if (dy > 0 && row_limit > height_ - 1)
-    {
-        row_limit = height_ - 1;
-    }
-    if (dy < 0 && row_limit < 0)
-    {
-        row_limit = 0;
-    }
-    s32 stop = -1;
-    if (x == target_x)
-    {
-        if ((dy > 0 && target_y > y && target_y <= row_limit) || (dy < 0 && target_y < y && target_y >= row_limit))
-        {
-            stop = target_y;
+            jump_row = forced;
         }
     }
-    s32 forced = straight_forced_turn_col(x, y, dy, row_limit);
-    if (forced >= 0 && (stop < 0 || (dy > 0 ? forced < stop : forced > stop)))
+    if (jump_row < 0)
     {
-        stop = forced;
+        return kNoCell;
     }
-    if (stop < 0)
-    {
-        return -1;
-    }
-    return stop * width_ + x;
+    return jump_row * width_ + x;
 }
 
-inline s32 zjps_grid::straight_forced_turn_row(s32 y, s32 x, s32 dx, s32 col_limit)
+inline s32 zjps_grid::straight_forced_turn_row(s32 y, s32 x, s32 dx, s32 reach_col)
 {
-    s32 best = -1;
+    s32 nearest_turn = -1;
     for (s32 side = -1; side <= 1; side += 2)
     {
         s32 side_y = y + side;
@@ -1319,52 +1373,50 @@ inline s32 zjps_grid::straight_forced_turn_row(s32 y, s32 x, s32 dx, s32 col_lim
         {
             continue;
         }
-        const s32* row_head = light_row_head(light_row_.data(), width_, side_y);
-        const s32* blocks = row_head + 1;
-        s32 block_cnt = row_head[0];
+        block_line line = light_row_line(light_row_.data(), width_, side_y);
         if (dx > 0)
         {
-            s32 block_idx = line_lower(blocks, block_cnt, x);
-            if (block_idx >= block_cnt)
+            s32 block_idx = sorted_lower_bound(line.blocks, line.cnt, x);
+            if (block_idx >= line.cnt)
             {
                 continue;
             }
-            size_t run_end = block_run_end(blocks, (size_t)block_idx, (size_t)block_cnt);
-            s32 stop_col = blocks[run_end] + 1;
-            if (stop_col >= width_ || stop_col > col_limit)
+            size_t run_end = block_run_end(line.blocks, (size_t)block_idx, (size_t)line.cnt);
+            s32 stop_col = line.blocks[run_end] + 1;
+            if (stop_col >= width_ || stop_col > reach_col)
             {
                 continue;
             }
-            if (best < 0 || stop_col < best)
+            if (nearest_turn < 0 || stop_col < nearest_turn)
             {
-                best = stop_col;
+                nearest_turn = stop_col;
             }
         }
         else
         {
-            s32 block_idx = line_upper(blocks, block_cnt, x);
+            s32 block_idx = sorted_upper_bound(line.blocks, line.cnt, x);
             if (block_idx <= 0)
             {
                 continue;
             }
-            size_t run_start = block_run_start(blocks, (size_t)(block_idx - 1));
-            s32 stop_col = blocks[run_start] - 1;
-            if (stop_col < 0 || stop_col < col_limit)
+            size_t run_start = block_run_start(line.blocks, (size_t)(block_idx - 1));
+            s32 stop_col = line.blocks[run_start] - 1;
+            if (stop_col < 0 || stop_col < reach_col)
             {
                 continue;
             }
-            if (best < 0 || stop_col > best)
+            if (nearest_turn < 0 || stop_col > nearest_turn)
             {
-                best = stop_col;
+                nearest_turn = stop_col;
             }
         }
     }
-    return best;
+    return nearest_turn;
 }
 
-inline s32 zjps_grid::straight_forced_turn_col(s32 x, s32 y, s32 dy, s32 row_limit)
+inline s32 zjps_grid::straight_forced_turn_col(s32 x, s32 y, s32 dy, s32 reach_row)
 {
-    s32 best = -1;
+    s32 nearest_turn = -1;
     for (s32 side = -1; side <= 1; side += 2)
     {
         s32 side_x = x + side;
@@ -1372,47 +1424,45 @@ inline s32 zjps_grid::straight_forced_turn_col(s32 x, s32 y, s32 dy, s32 row_lim
         {
             continue;
         }
-        const s32* col_head = light_col_head(light_col_.data(), height_, side_x);
-        const s32* blocks = col_head + 1;
-        s32 block_cnt = col_head[0];
+        block_line line = light_col_line(light_col_.data(), height_, side_x);
         if (dy > 0)
         {
-            s32 block_idx = line_lower(blocks, block_cnt, y);
-            if (block_idx >= block_cnt)
+            s32 block_idx = sorted_lower_bound(line.blocks, line.cnt, y);
+            if (block_idx >= line.cnt)
             {
                 continue;
             }
-            size_t run_end = block_run_end(blocks, (size_t)block_idx, (size_t)block_cnt);
-            s32 stop_row = blocks[run_end] + 1;
-            if (stop_row >= height_ || stop_row > row_limit)
+            size_t run_end = block_run_end(line.blocks, (size_t)block_idx, (size_t)line.cnt);
+            s32 stop_row = line.blocks[run_end] + 1;
+            if (stop_row >= height_ || stop_row > reach_row)
             {
                 continue;
             }
-            if (best < 0 || stop_row < best)
+            if (nearest_turn < 0 || stop_row < nearest_turn)
             {
-                best = stop_row;
+                nearest_turn = stop_row;
             }
         }
         else
         {
-            s32 block_idx = line_upper(blocks, block_cnt, y);
+            s32 block_idx = sorted_upper_bound(line.blocks, line.cnt, y);
             if (block_idx <= 0)
             {
                 continue;
             }
-            size_t run_start = block_run_start(blocks, (size_t)(block_idx - 1));
-            s32 stop_row = blocks[run_start] - 1;
-            if (stop_row < 0 || stop_row < row_limit)
+            size_t run_start = block_run_start(line.blocks, (size_t)(block_idx - 1));
+            s32 stop_row = line.blocks[run_start] - 1;
+            if (stop_row < 0 || stop_row < reach_row)
             {
                 continue;
             }
-            if (best < 0 || stop_row > best)
+            if (nearest_turn < 0 || stop_row > nearest_turn)
             {
-                best = stop_row;
+                nearest_turn = stop_row;
             }
         }
     }
-    return best;
+    return nearest_turn;
 }
 
 inline s32 zjps_grid::successor_dirs(s32 x, s32 y, s32 d, s32* out_dirs)
@@ -1455,49 +1505,49 @@ inline s32 zjps_grid::successor_dirs(s32 x, s32 y, s32 d, s32* out_dirs)
         }
         for (s32 side = -1; side <= 1; side += 2)
         {
-            if (!cell_walkable(x, y + side) || cell_walkable(x - dx, y + side))
+            if (side_forced(x, y, dx, 0, side))
             {
-                continue;
-            }
-            out_dirs[cnt++] = dir_index(0, side);
-            if (walk_ahead)
-            {
-                out_dirs[cnt++] = dir_index(dx, side);
+                out_dirs[cnt++] = dir_index(0, side);
+                if (walk_ahead)
+                {
+                    out_dirs[cnt++] = dir_index(dx, side);
+                }
             }
         }
         return cnt;
     }
-    bool walk_ahead = cell_walkable(x, y + dy);
-    if (walk_ahead)
+    
+    if (dy != 0)
     {
-        out_dirs[cnt++] = d;
-    }
-    for (s32 side = -1; side <= 1; side += 2)
-    {
-        if (!cell_walkable(x + side, y) || cell_walkable(x + side, y - dy))
-        {
-            continue;
-        }
-        out_dirs[cnt++] = dir_index(side, 0);
+        bool walk_ahead = cell_walkable(x, y + dy);
         if (walk_ahead)
         {
-            out_dirs[cnt++] = dir_index(side, dy);
+            out_dirs[cnt++] = d;
+        }
+        for (s32 side = -1; side <= 1; side += 2)
+        {
+            if (side_forced(x, y, 0, dy, side))
+            {
+                out_dirs[cnt++] = dir_index(side, 0);
+                if (walk_ahead)
+                {
+                    out_dirs[cnt++] = dir_index(side, dy);
+                }
+            }
         }
     }
+    
+
     return cnt;
 }
 
-inline s32 zjps_grid::jump_table_lookup(s32 cell_idx, s32 d, s32 target_x, s32 target_y)
+inline s32 zjps_grid::jump_axis_table(s32 x, s32 y, s32 dx, s32 dy, s32 target_x, s32 target_y)
 {
-    s32 x = cell_idx % width_;
-    s32 y = cell_idx / width_;
-    s32 dx = dir_x(d);
-    s32 dy = dir_y(d);
     if (ray_reaches_target(x, y, dx, dy, target_x, target_y))
     {
         return target_y * width_ + target_x;
     }
-    return jump_table_[plus_slot(cell_idx, d)].jump;
+    return plus_table_[plus_slot(y * width_ + x, dir_index(dx, dy))].first_turn_cell;
 }
 
 inline bool zjps_grid::ray_reaches_target(s32 x, s32 y, s32 dx, s32 dy, s32 target_x, s32 target_y)
@@ -1521,14 +1571,14 @@ inline bool zjps_grid::ray_reaches_target(s32 x, s32 y, s32 dx, s32 dy, s32 targ
         }
     }
     size_t slot = plus_slot(y * width_ + x, dir_index(dx, dy));
-    s32 jump_cell = jump_table_[slot].jump;
-    s32 stop = jump_table_[slot].stop;
+    s32 jump_cell = plus_table_[slot].first_turn_cell;
+    s32 stop = plus_table_[slot].first_block_cell;
     s32 target_axis = (dx != 0) ? target_x : target_y;
     s32 step = (dx != 0) ? dx : dy;
     if (jump_cell >= 0)
     {
-        s32 jump_axis = (dx != 0) ? (jump_cell % width_) : (jump_cell / width_);
-        return (target_axis - jump_axis) * step <= 0;
+        s32 jump_coord = (dx != 0) ? (jump_cell % width_) : (jump_cell / width_);
+        return (target_axis - jump_coord) * step <= 0;
     }
     if (stop >= 0)
     {
@@ -1536,38 +1586,6 @@ inline bool zjps_grid::ray_reaches_target(s32 x, s32 y, s32 dx, s32 dy, s32 targ
         return (target_axis - stop_axis) * step < 0;
     }
     return true;
-}
-
-inline s32 zjps_grid::jump_diag_plus(s32 x, s32 y, s32 dx, s32 dy, s32 target_x, s32 target_y)
-{
-    while (true)
-    {
-        if (!move_valid(x, y, dx, dy))
-        {
-            return -1;
-        }
-        x += dx;
-        y += dy;
-        if (x == target_x && y == target_y)
-        {
-            return y * width_ + x;
-        }
-        if (at_forced_turn(x, y, dx, dy))
-        {
-            return y * width_ + x;
-        }
-        s32 cell = y * width_ + x;
-        if (jump_table_[plus_slot(cell, dir_index(dx, 0))].jump >= 0
-            || jump_table_[plus_slot(cell, dir_index(0, dy))].jump >= 0)
-        {
-            return cell;
-        }
-        if (ray_reaches_target(x, y, dx, 0, target_x, target_y)
-            || ray_reaches_target(x, y, 0, dy, target_x, target_y))
-        {
-            return cell;
-        }
-    }
 }
 
 inline size_t zjps_grid::block_run_end(const s32* blocks, size_t i, size_t cnt)

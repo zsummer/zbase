@@ -69,7 +69,7 @@ static s32 astar_cross_check(zjps_grid& grid, const zpoint& from_pos, const zpoi
     ASSERT_TEST_NOLOG(grid.pos_to_cell(from_pos.x, from_pos.y, ax, ay) == 0, "astar cross pos_to_cell fail i=", i);
     ASSERT_TEST_NOLOG(grid.pos_to_cell(to_pos.x, to_pos.y, bx, by) == 0, "astar cross pos_to_cell fail j=", j);
     std::vector<s32> acells;
-    s32 aret = grid.path_search(ax, ay, bx, by, acells);
+    s32 aret = grid.astar_search(ax, ay, bx, by, acells);
     ASSERT_TEST_NOLOG(aret == 0 || aret == -2, "astar unexpected ret i=", i, " j=", j, " aret=", aret);
     bool graph_reach = (graph_ret == 0);
     bool astar_reach = (aret == 0);
@@ -422,7 +422,7 @@ static s32 zjps_serpentine_consistency_test()
             SAMPLE_CNT, reachable_cnt, graph.node_count(), graph.link_count(), graph.grid_count());
     {
         std::vector<s32> acells;
-        s32 aret = grid.path_search(cell_x[0], cell_y[0], cell_x[2 * (ROW_CNT - 1)], cell_y[2 * (ROW_CNT - 1)], acells);
+        s32 aret = grid.astar_search(cell_x[0], cell_y[0], cell_x[2 * (ROW_CNT - 1)], cell_y[2 * (ROW_CNT - 1)], acells);
         ASSERT_TEST(aret == 0, "serpentine astar long query fail aret=", aret);
         LOGFMTI("zjps astar serpentine long query: cells=%d cost=%d open_push=%d open_pop=%d open_peak=%d visit=%d",
                 (s32)acells.size(), grid.last_path_cost(), grid.open_push_count(), grid.open_pop_count(),
@@ -603,7 +603,7 @@ static s32 zjps_astar_basic_test()
     zjps_grid grid;
     ASSERT_TEST(grid.init(20, 20, kCellSize, true) == 0, "grid init fail");
     std::vector<s32> cells;
-    s32 ret = grid.path_search(0, 0, 10, 5, cells);
+    s32 ret = grid.astar_search(0, 0, 10, 5, cells);
     ASSERT_TEST(ret == 0, "find_path fail ret=", ret);
     ASSERT_TEST((s32)cells.size() == 11, "expect 11 cells, got=", (s32)cells.size());
     ASSERT_TEST(cells.front() == 0, "path start mismatch");
@@ -618,16 +618,16 @@ static s32 zjps_astar_basic_test()
         ASSERT_TEST(grid.move_valid(cx, cy, nx - cx, ny - cy), "step invalid k=", (s32)k);
     }
 
-    ret = grid.path_search(3, 3, 3, 3, cells);
+    ret = grid.astar_search(3, 3, 3, 3, cells);
     ASSERT_TEST(ret == 0 && cells.size() == 1, "source==target expect single cell, ret=", ret);
 
-    ret = grid.path_search(-1, 0, 5, 5, cells);
+    ret = grid.astar_search(-1, 0, 5, 5, cells);
     ASSERT_TEST(ret == -1, "invalid source expect -1, ret=", ret);
-    ret = grid.path_search(0, 0, 20, 0, cells);
+    ret = grid.astar_search(0, 0, 20, 0, cells);
     ASSERT_TEST(ret == -1, "invalid target expect -1, ret=", ret);
 
     ASSERT_TEST(grid.set_blocked(15, 15) == 0, "set_blocked fail");
-    ret = grid.path_search(0, 0, 15, 15, cells);
+    ret = grid.astar_search(0, 0, 15, 15, cells);
     ASSERT_TEST(ret == -2, "blocked target expect -2, ret=", ret);
     ASSERT_TEST(grid.set_walkable(15, 15) == 0, "set_walkable fail");
 
@@ -635,18 +635,18 @@ static s32 zjps_astar_basic_test()
     {
         ASSERT_TEST(grid.set_blocked(10, y) == 0, "set wall fail y=", y);
     }
-    ret = grid.path_search(0, 0, 19, 0, cells);
+    ret = grid.astar_search(0, 0, 19, 0, cells);
     ASSERT_TEST(ret == -2, "unreachable expect -2, ret=", ret);
     for (s32 y = 0; y < 20; y++)
     {
         ASSERT_TEST(grid.set_walkable(10, y) == 0, "clear wall fail y=", y);
     }
-    ret = grid.path_search(0, 0, 19, 0, cells);
+    ret = grid.astar_search(0, 0, 19, 0, cells);
     ASSERT_TEST(ret == 0, "restored path fail ret=", ret);
 
     zjps_grid diag_grid;
     ASSERT_TEST(diag_grid.init(20, 20, kCellSize, true) == 0, "diag grid init fail");
-    ret = diag_grid.path_search(0, 0, 19, 19, cells);
+    ret = diag_grid.astar_search(0, 0, 19, 19, cells);
     ASSERT_TEST(ret == 0, "diag find_path fail ret=", ret);
     ASSERT_TEST(diag_grid.last_path_cost() == 19 * 1414, "diag octile cost mismatch, got=", diag_grid.last_path_cost());
     ASSERT_TEST((s32)cells.size() == 20, "diag expect 20 cells, got=", (s32)cells.size());
@@ -663,10 +663,10 @@ static s32 zjps_astar_capacity_test()
     ASSERT_TEST(grid.set_open_capacity(2) == 0, "set open capacity 2 fail");
     ASSERT_TEST(grid.set_open_capacity(0) == -1, "set open capacity 0 expect -1");
     std::vector<s32> cells;
-    s32 ret = grid.path_search(0, 0, 19, 19, cells);
+    s32 ret = grid.astar_search(0, 0, 19, 19, cells);
     ASSERT_TEST(ret == -3, "open overflow expect -3, ret=", ret);
     ASSERT_TEST(grid.set_open_capacity(1024) == 0, "set open capacity 1024 fail");
-    ret = grid.path_search(0, 0, 19, 19, cells);
+    ret = grid.astar_search(0, 0, 19, 19, cells);
     ASSERT_TEST(ret == 0, "find_path after capacity restore fail ret=", ret);
     ASSERT_TEST(grid.last_path_cost() == 19 * 1414, "cost after restore mismatch");
     return 0;
@@ -691,7 +691,7 @@ static s32 zjps_jps_basic_test()
         ASSERT_TEST(grid.move_valid(cx, cy, nx - cx, ny - cy), "jps step invalid k=", (s32)k);
     }
     std::vector<s32> acells;
-    s32 aret = grid.path_search(0, 0, 10, 5, acells);
+    s32 aret = grid.astar_search(0, 0, 10, 5, acells);
     ASSERT_TEST(aret == 0 && grid.last_path_cost() == 1000 * 10 + 414 * 5, "astar cross fail");
 
     ret = grid.find_path(3, 3, 3, 3, cells);
@@ -774,7 +774,7 @@ static s32 zjps_bench_test()
         cost.start();
         for (s32 i = 0; i < N; i++)
         {
-            s32 ret = grid.path_search(sx, sy, tx, ty, cells);
+            s32 ret = grid.astar_search(sx, sy, tx, ty, cells);
             salt += ret + (s32)cells.size();
         }
         cost.stop_and_save();
@@ -836,7 +836,7 @@ static s32 zjps_bench_test()
         cost.start();
         for (s32 i = 0; i < N; i++)
         {
-            s32 ret = rgrid.path_search(a[i] % RW, a[i] / RW, b[i] % RW, b[i] / RW, cells);
+            s32 ret = rgrid.astar_search(a[i] % RW, a[i] / RW, b[i] % RW, b[i] / RW, cells);
             salt += ret + (s32)cells.size();
         }
         cost.stop_and_save();
@@ -860,7 +860,7 @@ static s32 zjps_bench_test()
         cost.start();
         for (s32 i = 0; i < N; i++)
         {
-            s32 ret = egrid.path_search(1, 1, 198, 198, cells);
+            s32 ret = egrid.astar_search(1, 1, 198, 198, cells);
             salt += ret + (s32)cells.size();
         }
         cost.stop_and_save();
@@ -958,7 +958,7 @@ static s32 zjps_wall_detour_test()
         ASSERT_TEST(grid.set_blocked(x, 2) == 0, "detour wall fail x=", x);
     }
     std::vector<s32> cells;
-    s32 aret = grid.path_search(0, 0, 10, 3, cells);
+    s32 aret = grid.astar_search(0, 0, 10, 3, cells);
     ASSERT_TEST(aret == 0, "detour astar fail aret=", aret);
     ASSERT_TEST(grid.last_path_cost() == 13000, "detour astar cost mismatch, got=", grid.last_path_cost());
     s32 jret = grid.find_path(0, 0, 10, 3, cells);
@@ -994,7 +994,7 @@ static s32 zjps_wall_detour_test()
     {
         s32 a = rcells[dist(rng)];
         s32 b = rcells[dist(rng)];
-        s32 ar = rgrid.path_search(a % 20, a / 20, b % 20, b / 20, cells);
+        s32 ar = rgrid.astar_search(a % 20, a / 20, b % 20, b / 20, cells);
         s32 acost = rgrid.last_path_cost();
         s32 jr = rgrid.find_path(a % 20, a / 20, b % 20, b / 20, cells);
         s32 jcost = rgrid.last_path_cost();
@@ -1041,7 +1041,7 @@ static s32 plus_random_check(s32 width, s32 rect_cnt, u32 seed)
     {
         for (size_t j = 0; j < cell_list.size(); j++)
         {
-            s32 ar = grid.path_search(cell_list[i] % width, cell_list[i] / width,
+            s32 ar = grid.astar_search(cell_list[i] % width, cell_list[i] / width,
                                     cell_list[j] % width, cell_list[j] / width, acells);
             s32 acost = grid.last_path_cost();
             s32 pr = grid.find_path(cell_list[i] % width, cell_list[i] / width,
@@ -1075,10 +1075,10 @@ static s32 zjps_jps_plus_test()
     ASSERT_TEST(grid.init(20, 20, kCellSize, true) == 0, "plus openfield init fail");
     ASSERT_TEST(grid.build_jps_plus() == 0, "plus openfield build fail");
     std::vector<s32> cells;
-    s32 ret = grid.path_search(0, 0, 15, 10, cells);
+    s32 ret = grid.astar_search(0, 0, 15, 10, cells);
     ASSERT_TEST(ret == 0, "plus openfield target-via-subray fail ret=", ret);
     ASSERT_TEST(grid.last_path_cost() == 19140, "plus openfield cost mismatch, got=", grid.last_path_cost());
-    ret = grid.path_search(1, 1, 18, 18, cells);
+    ret = grid.astar_search(1, 1, 18, 18, cells);
     ASSERT_TEST(ret == 0 && grid.last_path_cost() == 17 * 1414, "plus openfield diag mismatch");
 
     ASSERT_TEST(plus_random_check(12, 10, 20260836u) == 0, "plus random seed1 fail");
@@ -1147,7 +1147,7 @@ static s32 zjps_jps_plus_test()
     ASSERT_TEST(rgrid.build_jps_plus() == 0, "plus fallback build fail");
     ASSERT_TEST(rgrid.set_blocked(3, 3) == 0, "plus fallback set_blocked fail");
     {
-        s32 ar = rgrid.path_search(0, 0, 19, 19, cells);
+        s32 ar = rgrid.astar_search(0, 0, 19, 19, cells);
         s32 acost = rgrid.last_path_cost();
         s32 pr = rgrid.find_path(0, 0, 19, 19, cells);
         s32 pcost = rgrid.last_path_cost();
@@ -1157,7 +1157,7 @@ static s32 zjps_jps_plus_test()
     }
     ASSERT_TEST(rgrid.build_jps_plus() == 0, "plus fallback rebuild fail");
     {
-        s32 ar = rgrid.path_search(0, 0, 19, 19, cells);
+        s32 ar = rgrid.astar_search(0, 0, 19, 19, cells);
         s32 acost = rgrid.last_path_cost();
         s32 pr = rgrid.find_path(0, 0, 19, 19, cells);
         s32 pcost = rgrid.last_path_cost();
@@ -1326,7 +1326,7 @@ static s32 phase5_serpentine_bench()
     std::vector<s32> cells;
     {
         std::vector<s32> warm_cells;
-        s32 warm_ret = grid.path_search(6, 6, 6, 390, warm_cells);
+        s32 warm_ret = grid.astar_search(6, 6, 6, 390, warm_cells);
         salt += warm_ret;
     }
     const char* tier_names[3] = { "short5-10m", "mid20-40m", "long80-140m" };
@@ -1377,7 +1377,7 @@ static s32 phase5_serpentine_bench()
                 c.start();
                 for (s32 s = 0; s < N; s++)
                 {
-                    grid.path_search(tier_pairs[t][s].ax, tier_pairs[t][s].ay, tier_pairs[t][s].bx, tier_pairs[t][s].by, cells);
+                    grid.astar_search(tier_pairs[t][s].ax, tier_pairs[t][s].ay, tier_pairs[t][s].bx, tier_pairs[t][s].by, cells);
                     salt += (s32)cells.size();
                 }
                 c.stop_and_save();
@@ -1707,7 +1707,7 @@ static s32 phase5_obstacle_bench(s32 rect_cnt, const char* density_name, u32 see
         s32 ay = (s32)(cpos[i].y / kCellSize);
         s32 bx = (s32)(cpos[j].x / kCellSize);
         s32 by = (s32)(cpos[j].y / kCellSize);
-        s32 ar = grid.path_search(ax, ay, bx, by, cells);
+        s32 ar = grid.astar_search(ax, ay, bx, by, cells);
         if (ar != 0)
         {
             continue;
@@ -1740,7 +1740,7 @@ static s32 phase5_obstacle_bench(s32 rect_cnt, const char* density_name, u32 see
     f64 res_p[TIER_CNT];
     {
         std::vector<s32> warm_cells;
-        s32 warm_ret = grid.path_search(tier_pairs[0][0].ax, tier_pairs[0][0].ay,
+        s32 warm_ret = grid.astar_search(tier_pairs[0][0].ax, tier_pairs[0][0].ay,
                                           tier_pairs[0][0].bx, tier_pairs[0][0].by, warm_cells);
         salt += warm_ret;
     }
@@ -1786,7 +1786,7 @@ static s32 phase5_obstacle_bench(s32 rect_cnt, const char* density_name, u32 see
             c.start();
             for (s32 s = 0; s < N; s++)
             {
-                grid.path_search(tier_pairs[t][s].ax, tier_pairs[t][s].ay, tier_pairs[t][s].bx, tier_pairs[t][s].by, cells);
+                grid.astar_search(tier_pairs[t][s].ax, tier_pairs[t][s].ay, tier_pairs[t][s].bx, tier_pairs[t][s].by, cells);
                 salt += (s32)cells.size();
             }
             c.stop_and_save();
@@ -1923,14 +1923,14 @@ static s32 zjps_height_test()
 
     std::vector<s32> acells;
     std::vector<s32> jcells;
-    s32 aret = grid.path_search(0, 0, 9, 9, acells);
-    s32 jret = grid.path_search(0, 0, 9, 9, jcells);
+    s32 aret = grid.astar_search(0, 0, 9, 9, acells);
+    s32 jret = grid.astar_search(0, 0, 9, 9, jcells);
     ASSERT_TEST(aret == 0 && jret == 0, "height data must not affect connectivity");
     ASSERT_TEST(grid.last_path_cost() == 9 * 1414, "cost unchanged by height data, got=", grid.last_path_cost());
 
     ASSERT_TEST(grid.set_blocked(5, 5) == 0, "block fail");
     ASSERT_TEST(grid.cell_height(5, 5) == 5, "height preserved across flag edit");
-    aret = grid.path_search(0, 0, 9, 9, acells);
+    aret = grid.astar_search(0, 0, 9, 9, acells);
     ASSERT_TEST(aret == 0, "path around single block fail ret=", aret);
     LOGFMTI("zjps height: voxel plane is pure payload, connectivity driven by flag only");
     return 0;
@@ -1943,7 +1943,7 @@ static s32 zjps_batch_edit_test()
     ASSERT_TEST(grid.build_jps_light() == 0, "batch light build fail");
     std::vector<s32> acells;
     std::vector<s32> jcells;
-    s32 ret = grid.path_search(0, 0, 39, 39, acells);
+    s32 ret = grid.astar_search(0, 0, 39, 39, acells);
     ASSERT_TEST(ret == 0, "batch open path fail ret=", ret);
     s32 open_cost = grid.last_path_cost();
 
@@ -1955,18 +1955,18 @@ static s32 zjps_batch_edit_test()
             ASSERT_TEST(!grid.cell_walkable(x, y), "batch cell still walkable x=", x, " y=", y);
         }
     }
-    ret = grid.path_search(0, 0, 39, 39, acells);
+    ret = grid.astar_search(0, 0, 39, 39, acells);
     ASSERT_TEST(ret == 0, "batch detour path fail ret=", ret);
     s32 detour_cost = grid.last_path_cost();
     ASSERT_TEST(detour_cost > open_cost, "batch detour not longer, got=", detour_cost);
-    ret = grid.path_search(0, 0, 39, 39, jcells);
+    ret = grid.astar_search(0, 0, 39, 39, jcells);
     ASSERT_TEST(ret == 0 && grid.last_path_cost() == detour_cost, "batch jps mismatch, jps=", grid.last_path_cost(),
                 " astar=", detour_cost);
 
     ASSERT_TEST(grid.set_rect_cell(15, 15, 24, 24, true) == 0, "batch unblock rect fail");
-    ret = grid.path_search(0, 0, 39, 39, acells);
+    ret = grid.astar_search(0, 0, 39, 39, acells);
     ASSERT_TEST(ret == 0 && grid.last_path_cost() == open_cost, "batch restore cost mismatch");
-    ret = grid.path_search(0, 0, 39, 39, jcells);
+    ret = grid.astar_search(0, 0, 39, 39, jcells);
     ASSERT_TEST(ret == 0 && grid.last_path_cost() == open_cost, "batch restore jps mismatch");
 
     u32 version = grid.map_version();
@@ -2083,7 +2083,7 @@ static s32 zjps_dirty_flow_test()
     ret = grid.find_path(0, 0, 39, 39, jcells);
     ASSERT_TEST(ret == 0, "eager-maintained jps fail ret=", ret);
     ASSERT_TEST(grid.last_tier() == 1, "eager-maintained expect tier 1, got=", grid.last_tier());
-    ASSERT_TEST(grid.path_search(0, 0, 39, 39, acells) == 0, "dirty astar fail");
+    ASSERT_TEST(grid.astar_search(0, 0, 39, 39, acells) == 0, "dirty astar fail");
     ASSERT_TEST(grid.last_tier() == -1, "astar expect tier -1, got=", grid.last_tier());
 
     ASSERT_TEST(grid.set_rect_cell(20, 20, 22, 22, true) == 0, "dirty rect clear fail");
@@ -2275,7 +2275,7 @@ static s32 zjps_five_way_test()
         c.start();
         for (s32 i = 0; i < N; i++)
         {
-            g.path_search(6, 6, 6, 390, cells);
+            g.astar_search(6, 6, 6, 390, cells);
             salt += (s32)cells.size();
         }
         c.stop_and_save();
