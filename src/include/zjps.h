@@ -18,22 +18,37 @@
 static constexpr s32 kZjpsDirX[8] = { 1, 1, 0, -1, -1, -1, 0, 1 };
 static constexpr s32 kZjpsDirY[8] = { 0, 1, 1, 1, 0, -1, -1, -1 };
 
+/*
+zjps 面向小规模低精度的单层玩法 
+- 单层动态ugc类底座  
+- 2D 寻路和移动方案  
+
+zjps的grid相比navmesh不需要烘焙过程 ugc过程直接落点cache即可 
+相比navmesh通常会降低精度 例如从20~30cm的cell可以调制0.5m~1m 以常规游戏中的小型餐厅/农田级别的巡逻移动场景而言 navmesh 10~100us+量级 jps约20~50us附近  
+*/
+
 class zjps_grid
 {
 public:
     static constexpr s32 kCostStraight = 1000;
     static constexpr s32 kCostDiagonal = 1414;
+
     static constexpr s32 kDefaultOpenCnt = 1024;
+
     static constexpr u8 kDefaultVoxelHeight = 1;
-    static constexpr s32 kTierAstar = -1;
-    static constexpr s32 kTierScan = 0;
-    static constexpr s32 kTierLight = 1;
+
     static constexpr s32 kTierPlus = 2;
-    static constexpr s32 kDirEast = 0;
-    static constexpr s32 kDirNorth = 2;
-    static constexpr s32 kDirWest = 4;
-    static constexpr s32 kDirSouth = 6;
+    static constexpr s32 kTierLight = 1;
+    static constexpr s32 kTierScan = 0;
+    static constexpr s32 kTierAstar = -1;
+
+    static constexpr s32 kDirRight = 0;
+    static constexpr s32 kDirDown = 2;
+    static constexpr s32 kDirLeft = 4;
+    static constexpr s32 kDirUp = 6;
+
     static constexpr size_t kPlusSlotCnt = 4;
+
 
     zjps_grid() = default;
 
@@ -310,14 +325,14 @@ private:
         return 0;
     }
 
-    static_assert(kZjpsDirX[kDirEast] == 1 && kZjpsDirY[kDirEast] == 0
-        && kZjpsDirX[kDirNorth] == 0 && kZjpsDirY[kDirNorth] == 1
-        && kZjpsDirX[kDirWest] == -1 && kZjpsDirY[kDirWest] == 0
-        && kZjpsDirX[kDirSouth] == 0 && kZjpsDirY[kDirSouth] == -1,
+    static_assert(kZjpsDirX[kDirRight] == 1 && kZjpsDirY[kDirRight] == 0
+        && kZjpsDirX[kDirDown] == 0 && kZjpsDirY[kDirDown] == 1
+        && kZjpsDirX[kDirLeft] == -1 && kZjpsDirY[kDirLeft] == 0
+        && kZjpsDirX[kDirUp] == 0 && kZjpsDirY[kDirUp] == -1,
         "axis dir codes must pair with kZjpsDirX/kZjpsDirY layout");
 
-    static_assert(kDirEast / 2 == 0 && kDirNorth / 2 == 1
-        && kDirWest / 2 == 2 && kDirSouth / 2 == 3 && kPlusSlotCnt == 4,
+    static_assert(kDirRight / 2 == 0 && kDirDown / 2 == 1
+        && kDirLeft / 2 == 2 && kDirUp / 2 == 3 && kPlusSlotCnt == 4,
         "axis dirs must fill distinct plus slots by d/2");
 
     static size_t plus_slot(s32 cell_idx, s32 d)
@@ -325,14 +340,14 @@ private:
         return (size_t)cell_idx * kPlusSlotCnt + (size_t)(d / 2);
     }
 
-    bool side_forced_row(s32 x, s32 y, s32 entry_dx, s32 side) const
+    bool side_forced_row(s32 x, s32 y, s32 entry_step, s32 side) const
     {
-        return cell_walkable(x, y + side) && !cell_walkable(x - entry_dx, y + side);
+        return cell_walkable(x, y + side) && !cell_walkable(x - entry_step, y + side);
     }
 
-    bool side_forced_col(s32 x, s32 y, s32 entry_dy, s32 side) const
+    bool side_forced_col(s32 x, s32 y, s32 entry_step, s32 side) const
     {
-        return cell_walkable(x + side, y) && !cell_walkable(x + side, y - entry_dy);
+        return cell_walkable(x + side, y) && !cell_walkable(x + side, y - entry_step);
     }
 
     bool at_forced_turn(s32 x, s32 y, s32 entry_dx, s32 entry_dy) const;
@@ -356,13 +371,13 @@ private:
 
     s32 probe_next_cell_by_real_light(s32 x, s32 y, s32 dx, s32 dy, s32 target_x, s32 target_y) const;
 
-    s32 probe_next_cell_by_real_light_row(s32 x, s32 y, s32 dx, s32 target_x, s32 target_y) const;
+    s32 probe_next_cell_by_real_light_row(s32 x, s32 y, s32 step, s32 target_x, s32 target_y) const;
 
-    s32 probe_next_cell_by_real_light_col(s32 x, s32 y, s32 dy, s32 target_x, s32 target_y) const;
+    s32 probe_next_cell_by_real_light_col(s32 x, s32 y, s32 step, s32 target_x, s32 target_y) const;
 
-    s32 straight_forced_turn_row(s32 y, s32 x, s32 dx, s32 reach_col) const;
+    s32 straight_forced_turn_row(s32 y, s32 x, s32 step, s32 reach_col) const;
 
-    s32 straight_forced_turn_col(s32 x, s32 y, s32 dy, s32 reach_row) const;
+    s32 straight_forced_turn_col(s32 x, s32 y, s32 step, s32 reach_row) const;
 
     s32 probe_next_cell_by_plus(s32 x, s32 y, s32 dx, s32 dy, s32 target_x, s32 target_y) const;
 
@@ -791,8 +806,8 @@ inline s32 zjps_grid::build_jps_plus()
         for (s32 x = width_ - 2; x >= 0; x--)
         {
             s32 next = x + 1;
-            size_t base = plus_slot(y * width_ + x, kDirEast);
-            size_t next_base = plus_slot(y * width_ + next, kDirEast);
+            size_t base = plus_slot(y * width_ + x, kDirRight);
+            size_t next_base = plus_slot(y * width_ + next, kDirRight);
             if (cell_flag_[(size_t)y * (size_t)width_ + (size_t)next] == 0)
             {
                 plus_table_[base].first_block_cell = y * width_ + next;
@@ -811,8 +826,8 @@ inline s32 zjps_grid::build_jps_plus()
         for (s32 x = 1; x < width_; x++)
         {
             s32 next = x - 1;
-            size_t base = plus_slot(y * width_ + x, kDirWest);
-            size_t next_base = plus_slot(y * width_ + next, kDirWest);
+            size_t base = plus_slot(y * width_ + x, kDirLeft);
+            size_t next_base = plus_slot(y * width_ + next, kDirLeft);
             if (cell_flag_[(size_t)y * (size_t)width_ + (size_t)next] == 0)
             {
                 plus_table_[base].first_block_cell = y * width_ + next;
@@ -834,8 +849,8 @@ inline s32 zjps_grid::build_jps_plus()
         for (s32 y = height_ - 2; y >= 0; y--)
         {
             s32 next = y + 1;
-            size_t base = plus_slot(y * width_ + x, kDirNorth);
-            size_t next_base = plus_slot(next * width_ + x, kDirNorth);
+            size_t base = plus_slot(y * width_ + x, kDirDown);
+            size_t next_base = plus_slot(next * width_ + x, kDirDown);
             if (cell_flag_[(size_t)next * (size_t)width_ + (size_t)x] == 0)
             {
                 plus_table_[base].first_block_cell = next * width_ + x;
@@ -854,8 +869,8 @@ inline s32 zjps_grid::build_jps_plus()
         for (s32 y = 1; y < height_; y++)
         {
             s32 next = y - 1;
-            size_t base = plus_slot(y * width_ + x, kDirSouth);
-            size_t next_base = plus_slot(next * width_ + x, kDirSouth);
+            size_t base = plus_slot(y * width_ + x, kDirUp);
+            size_t next_base = plus_slot(next * width_ + x, kDirUp);
             if (cell_flag_[(size_t)next * (size_t)width_ + (size_t)x] == 0)
             {
                 plus_table_[base].first_block_cell = next * width_ + x;
@@ -1310,14 +1325,14 @@ inline s32 zjps_grid::probe_next_cell_by_real_light(s32 x, s32 y, s32 dx, s32 dy
     return probe_next_cell_by_real_light_col(x, y, dy, target_x, target_y);
 }
 
-inline s32 zjps_grid::probe_next_cell_by_real_light_row(s32 x, s32 y, s32 dx, s32 target_x, s32 target_y) const
+inline s32 zjps_grid::probe_next_cell_by_real_light_row(s32 x, s32 y, s32 step, s32 target_x, s32 target_y) const
 {
     block_line row = light_row_line(light_row_.data(), width_, y);
     s32 reach_col;
     if (true)
     {
         s32 block_at;
-        if (dx > 0)
+        if (step > 0)
         {
             s32 pos = sorted_lower_bound(row.blocks, row.cnt, x + 1);
             block_at = pos < row.cnt ? row.blocks[pos] : -1;
@@ -1327,12 +1342,12 @@ inline s32 zjps_grid::probe_next_cell_by_real_light_row(s32 x, s32 y, s32 dx, s3
             s32 pos = sorted_upper_bound(row.blocks, row.cnt, x - 1);
             block_at = pos > 0 ? row.blocks[pos - 1] : -1;
         }
-        reach_col = block_at < 0 ? (dx > 0 ? width_ - 1 : 0) : block_at - dx;
-        if (dx > 0 && reach_col > width_ - 1)
+        reach_col = block_at < 0 ? (step > 0 ? width_ - 1 : 0) : block_at - step;
+        if (step > 0 && reach_col > width_ - 1)
         {
             reach_col = width_ - 1;
         }
-        if (dx < 0 && reach_col < 0)
+        if (step < 0 && reach_col < 0)
         {
             reach_col = 0;
         }
@@ -1342,15 +1357,15 @@ inline s32 zjps_grid::probe_next_cell_by_real_light_row(s32 x, s32 y, s32 dx, s3
     {
         jump_col = -1;
         if (y == target_y
-            && ((dx > 0 && target_x > x && target_x <= reach_col) || (dx < 0 && target_x < x && target_x >= reach_col)))
+            && ((step > 0 && target_x > x && target_x <= reach_col) || (step < 0 && target_x < x && target_x >= reach_col)))
         {
             jump_col = target_x;
         }
     }
     if (true)
     {
-        s32 forced = straight_forced_turn_row(y, x, dx, reach_col);
-        if (forced >= 0 && (jump_col < 0 || (dx > 0 ? forced < jump_col : forced > jump_col)))
+        s32 forced = straight_forced_turn_row(y, x, step, reach_col);
+        if (forced >= 0 && (jump_col < 0 || (step > 0 ? forced < jump_col : forced > jump_col)))
         {
             jump_col = forced;
         }
@@ -1362,14 +1377,14 @@ inline s32 zjps_grid::probe_next_cell_by_real_light_row(s32 x, s32 y, s32 dx, s3
     return y * width_ + jump_col;
 }
 
-inline s32 zjps_grid::probe_next_cell_by_real_light_col(s32 x, s32 y, s32 dy, s32 target_x, s32 target_y) const
+inline s32 zjps_grid::probe_next_cell_by_real_light_col(s32 x, s32 y, s32 step, s32 target_x, s32 target_y) const
 {
     block_line col = light_col_line(light_col_.data(), height_, x);
     s32 reach_row;
     if (true)
     {
         s32 block_at;
-        if (dy > 0)
+        if (step > 0)
         {
             s32 pos = sorted_lower_bound(col.blocks, col.cnt, y + 1);
             block_at = pos < col.cnt ? col.blocks[pos] : -1;
@@ -1379,12 +1394,12 @@ inline s32 zjps_grid::probe_next_cell_by_real_light_col(s32 x, s32 y, s32 dy, s3
             s32 pos = sorted_upper_bound(col.blocks, col.cnt, y - 1);
             block_at = pos > 0 ? col.blocks[pos - 1] : -1;
         }
-        reach_row = block_at < 0 ? (dy > 0 ? height_ - 1 : 0) : block_at - dy;
-        if (dy > 0 && reach_row > height_ - 1)
+        reach_row = block_at < 0 ? (step > 0 ? height_ - 1 : 0) : block_at - step;
+        if (step > 0 && reach_row > height_ - 1)
         {
             reach_row = height_ - 1;
         }
-        if (dy < 0 && reach_row < 0)
+        if (step < 0 && reach_row < 0)
         {
             reach_row = 0;
         }
@@ -1394,15 +1409,15 @@ inline s32 zjps_grid::probe_next_cell_by_real_light_col(s32 x, s32 y, s32 dy, s3
     {
         jump_row = -1;
         if (x == target_x
-            && ((dy > 0 && target_y > y && target_y <= reach_row) || (dy < 0 && target_y < y && target_y >= reach_row)))
+            && ((step > 0 && target_y > y && target_y <= reach_row) || (step < 0 && target_y < y && target_y >= reach_row)))
         {
             jump_row = target_y;
         }
     }
     if (true)
     {
-        s32 forced = straight_forced_turn_col(x, y, dy, reach_row);
-        if (forced >= 0 && (jump_row < 0 || (dy > 0 ? forced < jump_row : forced > jump_row)))
+        s32 forced = straight_forced_turn_col(x, y, step, reach_row);
+        if (forced >= 0 && (jump_row < 0 || (step > 0 ? forced < jump_row : forced > jump_row)))
         {
             jump_row = forced;
         }
@@ -1414,7 +1429,7 @@ inline s32 zjps_grid::probe_next_cell_by_real_light_col(s32 x, s32 y, s32 dy, s3
     return jump_row * width_ + x;
 }
 
-inline s32 zjps_grid::straight_forced_turn_row(s32 y, s32 x, s32 dx, s32 reach_col) const
+inline s32 zjps_grid::straight_forced_turn_row(s32 y, s32 x, s32 step, s32 reach_col) const
 {
     s32 nearest_turn = -1;
     for (s32 side = -1; side <= 1; side += 2)
@@ -1425,7 +1440,7 @@ inline s32 zjps_grid::straight_forced_turn_row(s32 y, s32 x, s32 dx, s32 reach_c
             continue;
         }
         block_line line = light_row_line(light_row_.data(), width_, side_y);
-        if (dx > 0)
+        if (step > 0)
         {
             s32 block_idx = sorted_lower_bound(line.blocks, line.cnt, x);
             if (block_idx >= line.cnt)
@@ -1465,7 +1480,7 @@ inline s32 zjps_grid::straight_forced_turn_row(s32 y, s32 x, s32 dx, s32 reach_c
     return nearest_turn;
 }
 
-inline s32 zjps_grid::straight_forced_turn_col(s32 x, s32 y, s32 dy, s32 reach_row) const
+inline s32 zjps_grid::straight_forced_turn_col(s32 x, s32 y, s32 step, s32 reach_row) const
 {
     s32 nearest_turn = -1;
     for (s32 side = -1; side <= 1; side += 2)
@@ -1476,7 +1491,7 @@ inline s32 zjps_grid::straight_forced_turn_col(s32 x, s32 y, s32 dy, s32 reach_r
             continue;
         }
         block_line line = light_col_line(light_col_.data(), height_, side_x);
-        if (dy > 0)
+        if (step > 0)
         {
             s32 block_idx = sorted_lower_bound(line.blocks, line.cnt, y);
             if (block_idx >= line.cnt)
