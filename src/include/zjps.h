@@ -326,26 +326,26 @@ private:
 
     s32 jump(s32 x, s32 y, s32 dx, s32 dy, s32 target_x, s32 target_y, s32 tier);
 
-    s32 jump_axis(s32 x, s32 y, s32 dx, s32 dy, s32 target_x, s32 target_y, s32 tier);
+    s32 probe_next_cell(s32 x, s32 y, s32 dx, s32 dy, s32 target_x, s32 target_y, s32 tier);
 
-    bool axis_probe_hit(s32 x, s32 y, s32 dx, s32 dy, s32 target_x, s32 target_y, s32 tier)
+    bool probe_has_next_cell(s32 x, s32 y, s32 dx, s32 dy, s32 target_x, s32 target_y, s32 tier)
     {
-        return jump_axis(x, y, dx, dy, target_x, target_y, tier) >= 0;
+        return probe_next_cell(x, y, dx, dy, target_x, target_y, tier) >= 0;
     }
 
-    s32 jump_axis_scan(s32 x, s32 y, s32 dx, s32 dy, s32 target_x, s32 target_y);
+    s32 probe_next_cell_by_scan(s32 x, s32 y, s32 dx, s32 dy, s32 target_x, s32 target_y);
 
-    s32 jump_axis_indexed(s32 x, s32 y, s32 dx, s32 dy, s32 target_x, s32 target_y);
+    s32 probe_next_cell_by_light(s32 x, s32 y, s32 dx, s32 dy, s32 target_x, s32 target_y);
 
-    s32 jump_straight_indexed(s32 x, s32 y, s32 dx, s32 dy, s32 target_x, s32 target_y);
+    s32 probe_next_cell_by_real_light(s32 x, s32 y, s32 dx, s32 dy, s32 target_x, s32 target_y);
 
     s32 straight_forced_turn_row(s32 y, s32 x, s32 dx, s32 reach_col);
 
     s32 straight_forced_turn_col(s32 x, s32 y, s32 dy, s32 reach_row);
 
-    s32 jump_axis_table(s32 x, s32 y, s32 dx, s32 dy, s32 target_x, s32 target_y);
+    s32 probe_next_cell_by_plus(s32 x, s32 y, s32 dx, s32 dy, s32 target_x, s32 target_y);
 
-    bool ray_reaches_target(s32 x, s32 y, s32 dx, s32 dy, s32 target_x, s32 target_y);
+    bool probe_dir_hit_target_by_plus(s32 x, s32 y, s32 dx, s32 dy, s32 target_x, s32 target_y);
 
     s32 width_ = 0;
     s32 height_ = 0;
@@ -1173,7 +1173,7 @@ inline s32 zjps_grid::jump(s32 x, s32 y, s32 dx, s32 dy, s32 target_x, s32 targe
 {
     if (dx == 0 || dy == 0)
     {
-        return jump_axis(x, y, dx, dy, target_x, target_y, tier);
+        return probe_next_cell(x, y, dx, dy, target_x, target_y, tier);
     }
     while (true)
     {
@@ -1191,31 +1191,31 @@ inline s32 zjps_grid::jump(s32 x, s32 y, s32 dx, s32 dy, s32 target_x, s32 targe
         {
             return y * width_ + x;
         }
-        if (axis_probe_hit(x, y, dx, 0, target_x, target_y, tier))
+        if (probe_has_next_cell(x, y, dx, 0, target_x, target_y, tier))
         {
             return y * width_ + x;
         }
-        if (axis_probe_hit(x, y, 0, dy, target_x, target_y, tier))
+        if (probe_has_next_cell(x, y, 0, dy, target_x, target_y, tier))
         {
             return y * width_ + x;
         }
     }
 }
 
-inline s32 zjps_grid::jump_axis(s32 x, s32 y, s32 dx, s32 dy, s32 target_x, s32 target_y, s32 tier)
+inline s32 zjps_grid::probe_next_cell(s32 x, s32 y, s32 dx, s32 dy, s32 target_x, s32 target_y, s32 tier)
 {
     if (tier == kTierPlus)
     {
-        return jump_axis_table(x, y, dx, dy, target_x, target_y);
+        return probe_next_cell_by_plus(x, y, dx, dy, target_x, target_y);
     }
     if (tier == kTierLight)
     {
-        return jump_axis_indexed(x, y, dx, dy, target_x, target_y);
+        return probe_next_cell_by_light(x, y, dx, dy, target_x, target_y);
     }
-    return jump_axis_scan(x, y, dx, dy, target_x, target_y);
+    return probe_next_cell_by_scan(x, y, dx, dy, target_x, target_y);
 }
 
-inline s32 zjps_grid::jump_axis_scan(s32 x, s32 y, s32 dx, s32 dy, s32 target_x, s32 target_y)
+inline s32 zjps_grid::probe_next_cell_by_scan(s32 x, s32 y, s32 dx, s32 dy, s32 target_x, s32 target_y)
 {
     while (true)
     {
@@ -1236,10 +1236,10 @@ inline s32 zjps_grid::jump_axis_scan(s32 x, s32 y, s32 dx, s32 dy, s32 target_x,
     }
 }
 
-inline s32 zjps_grid::jump_axis_indexed(s32 x, s32 y, s32 dx, s32 dy, s32 target_x, s32 target_y)
+inline s32 zjps_grid::probe_next_cell_by_light(s32 x, s32 y, s32 dx, s32 dy, s32 target_x, s32 target_y)
 {
-    s32 probe_left = kProbeStepsBeforeIndex;
-    while (probe_left > 0)
+    s32 fast_probe_left = kProbeStepsBeforeIndex;
+    while (fast_probe_left > 0)
     {
         if (!move_valid(x, y, dx, dy))
         {
@@ -1255,14 +1255,14 @@ inline s32 zjps_grid::jump_axis_indexed(s32 x, s32 y, s32 dx, s32 dy, s32 target
         {
             return y * width_ + x;
         }
-        probe_left--;
+        fast_probe_left--;
     }
-    return jump_straight_indexed(x, y, dx, dy, target_x, target_y);
+    return probe_next_cell_by_real_light(x, y, dx, dy, target_x, target_y);
 }
 
-inline s32 zjps_grid::jump_straight_indexed(s32 x, s32 y, s32 dx, s32 dy, s32 target_x, s32 target_y)
+inline s32 zjps_grid::probe_next_cell_by_real_light(s32 x, s32 y, s32 dx, s32 dy, s32 target_x, s32 target_y)
 {
-    if (dx != 0)
+    if (dx != 0)  
     {
         block_line row = light_row_line(light_row_.data(), width_, y);
         s32 reach_col;
@@ -1541,16 +1541,16 @@ inline s32 zjps_grid::successor_dirs(s32 x, s32 y, s32 d, s32* out_dirs)
     return cnt;
 }
 
-inline s32 zjps_grid::jump_axis_table(s32 x, s32 y, s32 dx, s32 dy, s32 target_x, s32 target_y)
+inline s32 zjps_grid::probe_next_cell_by_plus(s32 x, s32 y, s32 dx, s32 dy, s32 target_x, s32 target_y)
 {
-    if (ray_reaches_target(x, y, dx, dy, target_x, target_y))
+    if (probe_dir_hit_target_by_plus(x, y, dx, dy, target_x, target_y))
     {
         return target_y * width_ + target_x;
     }
     return plus_table_[plus_slot(y * width_ + x, dir_index(dx, dy))].first_turn_cell;
 }
 
-inline bool zjps_grid::ray_reaches_target(s32 x, s32 y, s32 dx, s32 dy, s32 target_x, s32 target_y)
+inline bool zjps_grid::probe_dir_hit_target_by_plus(s32 x, s32 y, s32 dx, s32 dy, s32 target_x, s32 target_y)
 {
     if (dx != 0 && dy != 0)
     {
