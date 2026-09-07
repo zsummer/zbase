@@ -375,9 +375,9 @@ private:
 
     s32 probe_next_cell_by_real_light_col(s32 x, s32 y, s32 step, s32 target_x, s32 target_y) const;
 
-    s32 straight_forced_turn_row(s32 y, s32 x, s32 step, s32 reach_col) const;
+    s32 light_forced_turn_row(s32 y, s32 x, s32 step, s32 reach_col) const;
 
-    s32 straight_forced_turn_col(s32 x, s32 y, s32 step, s32 reach_row) const;
+    s32 light_forced_turn_col(s32 x, s32 y, s32 step, s32 reach_row) const;
 
     s32 probe_next_cell_by_plus(s32 x, s32 y, s32 dx, s32 dy, s32 target_x, s32 target_y) const;
 
@@ -1364,7 +1364,7 @@ inline s32 zjps_grid::probe_next_cell_by_real_light_row(s32 x, s32 y, s32 step, 
     }
     if (true)
     {
-        s32 forced = straight_forced_turn_row(y, x, step, reach_col);
+        s32 forced = light_forced_turn_row(y, x, step, reach_col);
         if (forced >= 0 && (jump_col < 0 || (step > 0 ? forced < jump_col : forced > jump_col)))
         {
             jump_col = forced;
@@ -1416,7 +1416,7 @@ inline s32 zjps_grid::probe_next_cell_by_real_light_col(s32 x, s32 y, s32 step, 
     }
     if (true)
     {
-        s32 forced = straight_forced_turn_col(x, y, step, reach_row);
+        s32 forced = light_forced_turn_col(x, y, step, reach_row);
         if (forced >= 0 && (jump_row < 0 || (step > 0 ? forced < jump_row : forced > jump_row)))
         {
             jump_row = forced;
@@ -1429,7 +1429,7 @@ inline s32 zjps_grid::probe_next_cell_by_real_light_col(s32 x, s32 y, s32 step, 
     return jump_row * width_ + x;
 }
 
-inline s32 zjps_grid::straight_forced_turn_row(s32 y, s32 x, s32 step, s32 reach_col) const
+inline s32 zjps_grid::light_forced_turn_row(s32 y, s32 x, s32 step, s32 reach_col) const
 {
     s32 nearest_turn = -1;
     for (s32 side = -1; side <= 1; side += 2)
@@ -1480,7 +1480,7 @@ inline s32 zjps_grid::straight_forced_turn_row(s32 y, s32 x, s32 step, s32 reach
     return nearest_turn;
 }
 
-inline s32 zjps_grid::straight_forced_turn_col(s32 x, s32 y, s32 step, s32 reach_row) const
+inline s32 zjps_grid::light_forced_turn_col(s32 x, s32 y, s32 step, s32 reach_row) const
 {
     s32 nearest_turn = -1;
     for (s32 side = -1; side <= 1; side += 2)
